@@ -5,6 +5,7 @@ use crate::{
         err::LexerError,
         span::{Position, Span},
     },
+    source::{self, SourceFile},
 };
 
 #[derive(Debug)]
@@ -37,8 +38,10 @@ impl HarpyError {
     }
 
     fn highlight_err(line: &str, span: Span) -> String {
-        let start_col = span.start.column.saturating_add(1);
-        let end_col = span.end.column.saturating_add(1);
+        let line = line.trim_end();
+        let line_number = span.start.line.to_string();
+        let start_col = span.start.column + line_number.len();
+        let end_col = span.end.column + line_number.len();
         let highlight_len = std::cmp::max(1, end_col.saturating_sub(start_col));
         let point_line = format!(
             "{}{}{}{}",
@@ -108,13 +111,31 @@ impl HarpyError {
         result
     }
 
-    fn format_error(buffer: &str, span: Span, err_msg: &str) -> String {
-        let start = span.start.line - 1;
-        let end = span.end.line - span.start.line + 1;
+    fn format_error(src: &SourceFile, span: Span, err_msg: &str) -> String {
+        let start_idx = span.start.line.saturating_sub(1);
+        let end_idx = span.end.line.min(src.line_count());
 
-        let lines: Vec<&str> = buffer.lines().skip(start).take(end).collect();
+        if start_idx >= src.line_count() {
+            return format!(
+                "{}{}Error!{} {err_msg} at EOF\n",
+                Color::Bold,
+                Color::Red,
+                Color::Reset
+            );
+        }
+
+        let lines: Vec<&str> = (start_idx..end_idx)
+            .filter_map(|i| src.get_line(i))
+            //.map(|s| s.trim_end())
+            .collect();
+
         if lines.is_empty() {
-            return "Invalid Error Format!".to_owned();
+            return format!(
+                "{}{}Error!{} {err_msg} at EOF\n",
+                Color::Bold,
+                Color::Red,
+                Color::Reset
+            );
         }
 
         if lines.len() > 1 {
@@ -131,17 +152,41 @@ impl HarpyError {
             Self::highlight_err(line, span)
         )
     }
+    /*
+        fn format_error(source: &SourceFile, span: Span, err_msg: &str) -> String {
+            let start = span.start.line.saturating_sub(1);
+            let end = span.end.line.min(source.line_count());
 
+            let lines: Vec<&str> = buffer.lines().skip(start).take(end).collect();
+            if lines.is_empty() {
+                return "Invalid Error Format!".to_owned();
+            }
+
+            if lines.len() > 1 {
+                return Self::format_multiline(lines, span);
+            }
+
+            let line = lines[0];
+
+            format!(
+                "{}{}Error!{} {err_msg}:\n{} {err_msg}\n\n",
+                Color::Bold,
+                Color::Red,
+                Color::Reset,
+                Self::highlight_err(line, span)
+            )
+        }
+    */
     fn io_msg(&self, err: &std::io::Error) -> String {
         format!("IO Error: {:?}", err)
     }
 
-    pub fn show(&self, buffer: &str) {
+    pub fn show(&self, source: &SourceFile) {
         let msg = match &self.kind {
             HarpyErrorKind::LexerError(e) => e.to_string(),
             HarpyErrorKind::IO(e) => self.io_msg(e),
         };
 
-        println!("{}", Self::format_error(buffer, self.span, &msg))
+        println!("{}", Self::format_error(source, self.span, &msg))
     }
 }

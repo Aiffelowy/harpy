@@ -12,3 +12,7 @@ fn tetorysta(sus1:int, sus2: &mut str) -> bool {
 
   return false;
 }
+
+fn tetorize(var:int var:bool) -> int {
+  return +
+}

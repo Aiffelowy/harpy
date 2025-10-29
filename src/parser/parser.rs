@@ -67,16 +67,26 @@ impl<'parser> Parser<'parser> {
         );
     }
 
-    pub(in crate::parser) fn report_error(&mut self, error: HarpyError) -> Result<()> {
+    pub(in crate::parser) fn report_error(
+        &mut self,
+        error: HarpyError,
+        recovery_points: &[TokenType],
+    ) -> Result<()> {
         self.errors.push(error);
 
-        while let Ok(t) = self.lexer.next_token() {
-            match t.kind() {
-                tt!(;) | tt!("}") | tt!(eof) => break,
-                _ => (),
-            }
-        }
+        loop {
+            let t = self.lexer.peek()?;
 
+            if recovery_points.contains(&t) {
+                break;
+            }
+
+            if matches!(t, tt!(eof) | tt!("}") | tt!(;)) {
+                self.discard_next()?;
+                break;
+            }
+            self.discard_next()?;
+        }
         Ok(())
     }
 

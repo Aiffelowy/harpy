@@ -1,4 +1,4 @@
-use crate::aliases::Result;
+use crate::{aliases::Result, source::SourceFile};
 
 use super::{
     span::{Position, Span},
@@ -7,13 +7,13 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'lexer> {
-    buffer: &'lexer str,
+    buffer: &'lexer SourceFile,
     position: Position,
     next: Token,
 }
 
 impl<'lexer> Lexer<'lexer> {
-    pub fn new(buffer: &'lexer str) -> Result<Self> {
+    pub fn new(buffer: &'lexer SourceFile) -> Result<Self> {
         let mut l = Self {
             buffer,
             position: Position::default(),

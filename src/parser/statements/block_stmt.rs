@@ -19,7 +19,7 @@ impl Parse for BlockStmt {
 
             match parser.parse::<Stmt>() {
                 Ok(s) => stmts.push(s),
-                Err(e) => parser.report_error(e)?,
+                Err(e) => parser.report_error(e, &[])?,
             }
         }
 

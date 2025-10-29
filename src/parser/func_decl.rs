@@ -29,10 +29,9 @@ impl FuncDelc {
         let first = parser.parse::<Param>()?;
         params.push(first);
         loop {
-            if let tt!(,) = parser.peek()? {
-                parser.consume::<t!(,)>()?;
-                params.push(parser.parse::<Param>()?);
-            } else {
+            parser.consume::<t!(,)>()?;
+            params.push(parser.parse::<Param>()?);
+            if let tt!(")") = parser.peek()? {
                 break;
             }
         }
@@ -49,7 +48,10 @@ impl Parse for FuncDelc {
         let mut params = vec![];
 
         if let tt!(ident) = parser.peek()? {
-            Self::parse_params(parser, &mut params)?;
+            match Self::parse_params(parser, &mut params) {
+                Ok(()) => (),
+                Err(e) => parser.report_error(e, &[tt!(")")])?,
+            }
         }
 
         parser.consume::<t!(")")>()?;
