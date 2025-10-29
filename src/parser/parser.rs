@@ -23,24 +23,24 @@ impl<'parser> Parser<'parser> {
         }
     }
 
-    pub fn peek(&mut self) -> Result<&TokenType> {
+    pub(in crate::parser) fn peek(&mut self) -> Result<&TokenType> {
         self.lexer.peek()
     }
 
-    pub fn consume<Tok: Tokenize>(&mut self) -> Result<Tok> {
+    pub(in crate::parser) fn consume<Tok: Tokenize>(&mut self) -> Result<Tok> {
         Tok::tokenize(&mut self.lexer)
     }
 
-    pub fn discard_next(&mut self) -> Result<()> {
+    pub(in crate::parser) fn discard_next(&mut self) -> Result<()> {
         self.lexer.next_token()?;
         Ok(())
     }
 
-    pub fn parse<P: Parse>(&mut self) -> Result<P> {
+    pub(in crate::parser) fn parse<P: Parse>(&mut self) -> Result<P> {
         P::parse(self)
     }
 
-    pub fn try_parse<T: Parse>(&mut self) -> Option<T> {
+    pub(in crate::parser) fn try_parse<T: Parse>(&mut self) -> Option<T> {
         let old = self.lexer.clone();
         if let Ok(parsed) = T::parse(self) {
             return Some(parsed);
@@ -50,20 +50,20 @@ impl<'parser> Parser<'parser> {
         return None;
     }
 
-    pub fn fork(&self) -> Self {
+    pub(in crate::parser) fn fork(&self) -> Self {
         Self {
             lexer: self.lexer.clone(),
             errors: vec![],
         }
     }
 
-    pub fn unexpected<P: Parse>(&mut self, expected: &'static str) -> Result<P> {
+    pub(in crate::parser) fn unexpected<P: Parse>(&mut self, expected: &'static str) -> Result<P> {
         return Err(HarpyError::LexerError(
             crate::lexer::err::LexerError::UnexpectedToken(expected, self.lexer.next_token()?),
         ));
     }
 
-    pub fn report_error(&mut self, error: HarpyError) -> Result<()> {
+    pub(in crate::parser) fn report_error(&mut self, error: HarpyError) -> Result<()> {
         self.errors.push(error);
 
         while let Ok(t) = self.lexer.peek() {
