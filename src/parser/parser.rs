@@ -71,14 +71,11 @@ impl<'parser> Parser<'parser> {
         self.errors.push(error);
 
         while let Ok(t) = self.lexer.next_token() {
-            println!("discarding {:?}", t);
             match t.kind() {
                 tt!(;) | tt!("}") | tt!(eof) => break,
                 _ => (),
             }
         }
-
-        println!("STOPPED DISCARDING\n\n\n");
 
         Ok(())
     }
