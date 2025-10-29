@@ -1,3 +1,4 @@
+use crate::parser::parser::Parser;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::t;
 
@@ -7,23 +8,23 @@ pub struct ReturnStmt {
 }
 
 impl Parse for ReturnStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(return)>()?;
-        let expr = token_stream.parse::<Expr>()?;
-        token_stream.consume::<t!(;)>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(return)>()?;
+        let expr = parser.parse::<Expr>()?;
+        parser.consume::<t!(;)>()?;
         Ok(Self { expr })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::Lexer;
+    use crate::{lexer::Lexer, parser::parser::Parser};
 
     use super::ReturnStmt;
 
     #[test]
     fn test_return_stmt() {
-        let mut lexer = Lexer::new("return a == b").unwrap();
-        lexer.parse::<ReturnStmt>().unwrap();
+        let mut parser = Parser::new(Lexer::new("return a == b").unwrap());
+        parser.parse::<ReturnStmt>().unwrap();
     }
 }

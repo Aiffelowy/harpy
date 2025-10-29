@@ -1,4 +1,5 @@
 use crate::lexer::tokens::Ident;
+use crate::parser::parser::Parser;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::t;
 
@@ -11,10 +12,10 @@ pub struct IterExpr {
 }
 
 impl Parse for IterExpr {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let from = token_stream.parse::<Expr>()?;
-        token_stream.consume::<t!(..)>()?;
-        let to = token_stream.parse::<Expr>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let from = parser.parse::<Expr>()?;
+        parser.consume::<t!(..)>()?;
+        let to = parser.parse::<Expr>()?;
 
         Ok(Self { from, to })
     }
@@ -28,12 +29,12 @@ pub struct ForStmt {
 }
 
 impl Parse for ForStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(for)>()?;
-        let var = token_stream.consume::<t!(ident)>()?;
-        token_stream.consume::<t!(in)>()?;
-        let iter = token_stream.parse::<IterExpr>()?;
-        let block = token_stream.parse::<BlockStmt>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(for)>()?;
+        let var = parser.consume::<t!(ident)>()?;
+        parser.consume::<t!(in)>()?;
+        let iter = parser.parse::<IterExpr>()?;
+        let block = parser.parse::<BlockStmt>()?;
         Ok(Self { var, iter, block })
     }
 }

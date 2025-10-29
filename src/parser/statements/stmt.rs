@@ -1,5 +1,5 @@
 use crate::{
-    parser::{expr::Expr, Parse},
+    parser::{expr::Expr, parser::Parser, Parse},
     t, tt,
 };
 
@@ -19,21 +19,21 @@ pub enum Stmt {
 }
 
 impl Parse for Stmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let s = match token_stream.peek()? {
-            tt!("{") => Self::BlockStmt(BlockStmt::parse(token_stream)?),
-            tt!(let) => Self::LetStmt(LetStmt::parse(token_stream)?),
-            tt!(if) => Self::IfStmt(IfStmt::parse(token_stream)?),
-            tt!(for) => Self::ForStmt(ForStmt::parse(token_stream)?),
-            tt!(while) => Self::WhileStmt(WhileStmt::parse(token_stream)?),
-            tt!(loop) => Self::LoopStmt(LoopStmt::parse(token_stream)?),
-            tt!(return) => Self::ReturnStmt(ReturnStmt::parse(token_stream)?),
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let s = match parser.peek()? {
+            tt!("{") => Self::BlockStmt(BlockStmt::parse(parser)?),
+            tt!(let) => Self::LetStmt(LetStmt::parse(parser)?),
+            tt!(if) => Self::IfStmt(IfStmt::parse(parser)?),
+            tt!(for) => Self::ForStmt(ForStmt::parse(parser)?),
+            tt!(while) => Self::WhileStmt(WhileStmt::parse(parser)?),
+            tt!(loop) => Self::LoopStmt(LoopStmt::parse(parser)?),
+            tt!(return) => Self::ReturnStmt(ReturnStmt::parse(parser)?),
             _ => {
-                let expr = token_stream.parse::<Expr>()?;
-                if let Some(assign) = token_stream.try_parse::<AssignStmt>() {
+                let expr = parser.parse::<Expr>()?;
+                if let Some(assign) = parser.try_parse::<AssignStmt>() {
                     Self::AssignStmt(expr, assign)
                 } else {
-                    token_stream.consume::<t!(;)>()?;
+                    parser.consume::<t!(;)>()?;
                     Self::Expr(expr)
                 }
             }

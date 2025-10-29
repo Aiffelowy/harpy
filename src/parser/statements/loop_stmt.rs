@@ -1,4 +1,5 @@
 use crate::parser::parse_trait::Parse;
+use crate::parser::parser::Parser;
 use crate::t;
 
 use super::BlockStmt;
@@ -9,9 +10,9 @@ pub struct LoopStmt {
 }
 
 impl Parse for LoopStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(loop)>()?;
-        let block = token_stream.parse::<BlockStmt>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(loop)>()?;
+        let block = parser.parse::<BlockStmt>()?;
         Ok(Self { block })
     }
 }

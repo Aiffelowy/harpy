@@ -1,4 +1,4 @@
-use crate::lexer::err::LexerError;
+use crate::parser::parser::Parser;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::{t, tt};
 
@@ -12,23 +12,19 @@ pub enum AssignOp {
 }
 
 impl Parse for AssignOp {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let s = match token_stream.peek()? {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let s = match parser.peek()? {
             tt!(=) => Self::Normal,
             tt!(+=) => Self::Add,
             tt!(-=) => Self::Sub,
             tt!(*=) => Self::Mult,
             tt!(/=) => Self::Div,
             _ => {
-                return Err(LexerError::UnexpectedToken(
-                    "assignment operator",
-                    token_stream.next_token()?,
-                )
-                .into())
+                return parser.unexpected("assignment operator");
             }
         };
 
-        token_stream.next_token()?;
+        parser.discard_next()?;
 
         Ok(s)
     }
@@ -41,10 +37,10 @@ pub struct AssignStmt {
 }
 
 impl Parse for AssignStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let op = token_stream.parse::<AssignOp>()?;
-        let rhs = token_stream.parse::<Expr>()?;
-        token_stream.consume::<t!(;)>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let op = parser.parse::<AssignOp>()?;
+        let rhs = parser.parse::<Expr>()?;
+        parser.consume::<t!(;)>()?;
         Ok(Self { op, rhs })
     }
 }

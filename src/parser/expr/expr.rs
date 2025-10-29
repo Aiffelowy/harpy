@@ -1,12 +1,8 @@
-use crate::lexer::err::LexerError;
 use crate::lexer::tokens::Ident;
+use crate::parser::parser::Parser;
 use crate::t;
 use crate::tt;
-use crate::{
-    aliases::Result,
-    lexer::{tokens::Literal, Lexer},
-    parser::Parse,
-};
+use crate::{aliases::Result, lexer::tokens::Literal, parser::Parse};
 
 use super::infix::InfixOp;
 use super::prefix::PrefixOp;
@@ -21,11 +17,11 @@ pub enum Expr {
 }
 
 impl Expr {
-    fn parse_expr(token_stream: &mut Lexer, min_bp: u8) -> Result<Self> {
-        let mut lhs = Expr::parse_null_den(token_stream)?;
+    fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
+        let mut lhs = Expr::parse_null_den(parser)?;
 
         loop {
-            let mut fork = token_stream.fork();
+            let mut fork = parser.fork();
             let Ok(op) = fork.parse::<InfixOp>() else {
                 break;
             };
@@ -35,65 +31,65 @@ impl Expr {
                 break;
             }
 
-            token_stream.parse::<InfixOp>()?;
+            parser.parse::<InfixOp>()?;
 
-            let rhs = Expr::parse_expr(token_stream, bp.right)?;
+            let rhs = Expr::parse_expr(parser, bp.right)?;
             lhs = Expr::Infix(Box::new(lhs), op, Box::new(rhs));
         }
 
         Ok(lhs)
     }
 
-    fn parse_null_den(token_stream: &mut Lexer) -> Result<Self> {
-        match token_stream.peek()? {
+    fn parse_null_den(parser: &mut Parser) -> Result<Self> {
+        match parser.peek()? {
             tt!(lit) => {
-                let val = token_stream.consume::<t!(lit)>()?;
+                let val = parser.consume::<t!(lit)>()?;
                 return Ok(Expr::Literal(val));
             }
             tt!(ident) => {
-                let ident = token_stream.consume::<t!(ident)>()?;
-                if *token_stream.peek()? != tt!("(") {
+                let ident = parser.consume::<t!(ident)>()?;
+                if *parser.peek()? != tt!("(") {
                     return Ok(Expr::Ident(ident));
                 }
 
-                token_stream.consume::<t!("(")>()?;
+                parser.consume::<t!("(")>()?;
                 let mut args = vec![];
                 loop {
-                    if *token_stream.peek()? == tt!(")") {
+                    if *parser.peek()? == tt!(")") {
                         break;
                     }
 
-                    args.push(Expr::parse_expr(token_stream, 0)?);
-                    if *token_stream.peek()? == tt!(,) {
-                        token_stream.consume::<t!(,)>()?;
+                    args.push(Expr::parse_expr(parser, 0)?);
+                    if *parser.peek()? == tt!(,) {
+                        parser.consume::<t!(,)>()?;
                     } else {
                         break;
                     }
                 }
-                token_stream.consume::<t!(")")>()?;
+                parser.consume::<t!(")")>()?;
                 return Ok(Expr::Call(ident, args));
             }
             tt!("(") => {
-                token_stream.consume::<t!("(")>()?;
-                let expr = Expr::parse_expr(token_stream, 0)?;
-                token_stream.consume::<t!(")")>()?;
+                parser.consume::<t!("(")>()?;
+                let expr = Expr::parse_expr(parser, 0)?;
+                parser.consume::<t!(")")>()?;
                 return Ok(expr);
             }
             _ => (),
         }
 
-        if let Some(op) = token_stream.try_parse::<PrefixOp>() {
-            let rhs = Expr::parse_expr(token_stream, op.bp().right)?;
+        if let Some(op) = parser.try_parse::<PrefixOp>() {
+            let rhs = Expr::parse_expr(parser, op.bp().right)?;
             return Ok(Expr::Prefix(op, Box::new(rhs)));
         }
 
-        return Err(LexerError::UnexpectedToken("expression", token_stream.next_token()?).into());
+        return parser.unexpected("expression");
     }
 }
 
 impl Parse for Expr {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        Expr::parse_expr(token_stream, 0)
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        Expr::parse_expr(parser, 0)
     }
 }
 
@@ -103,8 +99,8 @@ mod tests {
     use crate::lexer::Lexer;
 
     fn parse_expr(s: &str) -> Expr {
-        let mut lexer = Lexer::new(s).unwrap();
-        lexer.parse::<Expr>().unwrap()
+        let mut parser = Parser::new(Lexer::new(s).unwrap());
+        parser.parse::<Expr>().unwrap()
     }
 
     #[test]

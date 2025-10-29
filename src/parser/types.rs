@@ -5,6 +5,7 @@ use crate::t;
 use crate::tt;
 
 use super::parse_trait::Parse;
+use super::parser::Parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PrimitiveType {
@@ -15,30 +16,26 @@ pub enum PrimitiveType {
 }
 
 impl Parse for PrimitiveType {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let s = match token_stream.peek()? {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let s = match parser.peek()? {
             tt!(int) => {
-                token_stream.consume::<t!(int)>()?;
+                parser.consume::<t!(int)>()?;
                 Self::Int
             }
             tt!(float) => {
-                token_stream.consume::<t!(float)>()?;
+                parser.consume::<t!(float)>()?;
                 Self::Float
             }
             tt!(str) => {
-                token_stream.consume::<t!(str)>()?;
+                parser.consume::<t!(str)>()?;
                 Self::Str
             }
             tt!(bool) => {
-                token_stream.consume::<t!(bool)>()?;
+                parser.consume::<t!(bool)>()?;
                 Self::Bool
             }
             _ => {
-                return Err(LexerError::UnexpectedToken(
-                    "primitive type",
-                    token_stream.next_token()?,
-                )
-                .into())
+                return parser.unexpected("primitive type");
             }
         };
 
@@ -53,12 +50,12 @@ pub enum BaseType {
 }
 
 impl Parse for BaseType {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        if let Some(t) = token_stream.try_parse::<PrimitiveType>() {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        if let Some(t) = parser.try_parse::<PrimitiveType>() {
             return Ok(Self::Primitive(t));
         }
 
-        return Ok(Self::Custom(token_stream.consume::<Ident>()?));
+        return Ok(Self::Custom(parser.consume::<Ident>()?));
     }
 }
 
@@ -76,25 +73,25 @@ pub struct Type {
 }
 
 impl Parse for Type {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         let mut mutable = false;
         let mut reference = false;
 
-        if let tt!(&) = token_stream.peek()? {
+        if let tt!(&) = parser.peek()? {
             reference = true;
-            token_stream.consume::<t!(&)>()?;
+            parser.consume::<t!(&)>()?;
         }
 
-        if let tt!(mut) = token_stream.peek()? {
+        if let tt!(mut) = parser.peek()? {
             mutable = true;
-            token_stream.consume::<t!(mut)>()?;
+            parser.consume::<t!(mut)>()?;
         }
 
-        let inner = if let tt!(boxed) = token_stream.peek()? {
-            token_stream.consume::<t!(boxed)>()?;
-            TypeInner::Boxed(Box::new(token_stream.parse::<Type>()?))
+        let inner = if let tt!(boxed) = parser.peek()? {
+            parser.consume::<t!(boxed)>()?;
+            TypeInner::Boxed(Box::new(parser.parse::<Type>()?))
         } else {
-            TypeInner::Base(token_stream.parse::<BaseType>()?)
+            TypeInner::Base(parser.parse::<BaseType>()?)
         };
 
         Ok(Self {
@@ -109,21 +106,24 @@ impl Parse for Type {
 mod tests {
     use crate::{
         lexer::Lexer,
-        parser::types::{BaseType, PrimitiveType, TypeInner},
+        parser::{
+            parser::Parser,
+            types::{BaseType, PrimitiveType, TypeInner},
+        },
     };
 
     use super::Type;
 
     #[test]
     fn test_type_parsing() {
-        let mut lexer = Lexer::new("mut boxed int").unwrap();
-        lexer.parse::<Type>().unwrap();
+        let mut parser = Parser::new(Lexer::new("mut boxed int").unwrap());
+        parser.parse::<Type>().unwrap();
     }
 
     #[test]
     fn test_nested_pointer_parsing() {
-        let mut lexer = Lexer::new("&boxed boxed &mut boxed mut str").unwrap();
-        let t = lexer.parse::<Type>().unwrap();
+        let mut parser = Parser::new(Lexer::new("&boxed boxed &mut boxed mut str").unwrap());
+        let t = parser.parse::<Type>().unwrap();
         assert_eq!(
             t,
             Type {

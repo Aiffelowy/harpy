@@ -1,6 +1,6 @@
 use crate::{
     lexer::tokens::Ident,
-    parser::{expr::Expr, parse_trait::Parse, types::Type},
+    parser::{expr::Expr, parse_trait::Parse, parser::Parser, types::Type},
     t,
 };
 
@@ -12,14 +12,14 @@ pub struct LetStmt {
 }
 
 impl Parse for LetStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(let)>()?;
-        let var = token_stream.consume::<t!(ident)>()?;
-        token_stream.consume::<t!(:)>()?;
-        let ttype = token_stream.parse::<Type>()?;
-        token_stream.consume::<t!(=)>()?;
-        let rhs = token_stream.parse::<Expr>()?;
-        token_stream.consume::<t!(;)>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(let)>()?;
+        let var = parser.consume::<t!(ident)>()?;
+        parser.consume::<t!(:)>()?;
+        let ttype = parser.parse::<Type>()?;
+        parser.consume::<t!(=)>()?;
+        let rhs = parser.parse::<Expr>()?;
+        parser.consume::<t!(;)>()?;
 
         Ok(Self { var, ttype, rhs })
     }
@@ -27,13 +27,13 @@ impl Parse for LetStmt {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::Lexer;
+    use crate::{lexer::Lexer, parser::parser::Parser};
 
     use super::LetStmt;
 
     #[test]
     fn test_let_stmt() {
-        let mut lexer = Lexer::new("let var: mut int = (7 + 3) * 4;").unwrap();
-        lexer.parse::<LetStmt>().unwrap();
+        let mut parser = Parser::new(Lexer::new("let var: mut int = (7 + 3) * 4;").unwrap());
+        parser.parse::<LetStmt>().unwrap();
     }
 }

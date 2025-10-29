@@ -1,5 +1,6 @@
+use crate::parser::parser::Parser;
+use crate::parser::Parse;
 use crate::tt;
-use crate::{lexer::err::LexerError, parser::Parse};
 
 use super::binding_power::Bp;
 
@@ -24,8 +25,8 @@ impl PrefixOp {
 }
 
 impl Parse for PrefixOp {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let s = match token_stream.peek()? {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let s = match parser.peek()? {
             tt!(+) => Self::Plus,
             tt!(-) => Self::Minus,
             tt!(!) => Self::Neg,
@@ -33,15 +34,11 @@ impl Parse for PrefixOp {
             tt!(*) => Self::Star,
             tt!(box) => Self::Box,
             _ => {
-                return Err(LexerError::UnexpectedToken(
-                    "prefix operator",
-                    token_stream.next_token()?,
-                )
-                .into())
+                return parser.unexpected("prefix operator");
             }
         };
 
-        token_stream.next_token()?;
+        parser.discard_next()?;
 
         Ok(s)
     }

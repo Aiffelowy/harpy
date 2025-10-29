@@ -1,3 +1,4 @@
+use crate::parser::parser::Parser;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::{t, tt};
 
@@ -10,13 +11,13 @@ pub enum ElseStmt {
 }
 
 impl Parse for ElseStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(else)>()?;
-        if let tt!(if) = token_stream.peek()? {
-            return Ok(Self::If(Box::new(token_stream.parse::<IfStmt>()?)));
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(else)>()?;
+        if let tt!(if) = parser.peek()? {
+            return Ok(Self::If(Box::new(parser.parse::<IfStmt>()?)));
         }
 
-        Ok(Self::Block(token_stream.parse::<BlockStmt>()?))
+        Ok(Self::Block(parser.parse::<BlockStmt>()?))
     }
 }
 
@@ -28,13 +29,13 @@ pub struct IfStmt {
 }
 
 impl Parse for IfStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        token_stream.consume::<t!(if)>()?;
-        let expr = token_stream.parse::<Expr>()?;
-        let block = token_stream.parse::<BlockStmt>()?;
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(if)>()?;
+        let expr = parser.parse::<Expr>()?;
+        let block = parser.parse::<BlockStmt>()?;
 
-        let else_stmt = if let tt!(else) = token_stream.peek()? {
-            Some(token_stream.parse::<ElseStmt>()?)
+        let else_stmt = if let tt!(else) = parser.peek()? {
+            Some(parser.parse::<ElseStmt>()?)
         } else {
             None
         };

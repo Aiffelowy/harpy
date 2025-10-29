@@ -1,7 +1,7 @@
 use std::io::{BufReader, Read};
 
 use aliases::Result;
-use parser::func_decl::FuncDelc;
+use parser::{func_decl::FuncDelc, parser::Parser};
 
 pub mod aliases;
 pub mod err;
@@ -12,9 +12,10 @@ fn main() -> Result<()> {
     let mut reader = BufReader::new(std::fs::File::open("code.hrpy")?);
     let mut buffer = String::new();
     reader.read_to_string(&mut buffer)?;
-    let mut lexer = lexer::Lexer::new(&buffer)?;
+    let lexer = lexer::Lexer::new(&buffer)?;
+    let mut parser = Parser::new(lexer);
 
-    println!("{:?}", lexer.parse::<FuncDelc>()?);
+    println!("{:?}", parser.parse::<FuncDelc>()?);
 
     Ok(())
 }

@@ -1,3 +1,4 @@
+use crate::parser::parser::Parser;
 use crate::parser::{parse_trait::Parse, statements::Stmt};
 use crate::{t, tt};
 
@@ -7,19 +8,19 @@ pub struct BlockStmt {
 }
 
 impl Parse for BlockStmt {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         let mut stmts = vec![];
-        token_stream.consume::<t!("{")>()?;
+        parser.consume::<t!("{")>()?;
 
         loop {
-            if let tt!("}") = token_stream.peek()? {
+            if let tt!("}") = parser.peek()? {
                 break;
             }
 
-            stmts.push(token_stream.parse::<Stmt>()?);
+            stmts.push(parser.parse::<Stmt>()?);
         }
 
-        token_stream.consume::<t!("}")>()?;
+        parser.consume::<t!("}")>()?;
         Ok(Self { stmts })
     }
 }

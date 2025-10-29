@@ -1,5 +1,6 @@
+use crate::parser::parser::Parser;
+use crate::parser::Parse;
 use crate::tt;
-use crate::{lexer::err::LexerError, parser::Parse};
 
 use super::binding_power::Bp;
 
@@ -32,8 +33,8 @@ impl InfixOp {
 }
 
 impl Parse for InfixOp {
-    fn parse(token_stream: &mut crate::lexer::Lexer) -> crate::aliases::Result<Self> {
-        let s = match token_stream.peek()? {
+    fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
+        let s = match parser.peek()? {
             tt!(+) => Self::Plus,
             tt!(-) => Self::Minus,
             tt!(*) => Self::Mult,
@@ -46,15 +47,11 @@ impl Parse for InfixOp {
             tt!(>=) => Self::GtEq,
             tt!(<=) => Self::LtEq,
             _ => {
-                return Err(LexerError::UnexpectedToken(
-                    "infix operator",
-                    token_stream.next_token()?,
-                )
-                .into())
+                return parser.unexpected("infix operator");
             }
         };
 
-        token_stream.next_token()?;
+        parser.discard_next()?;
 
         Ok(s)
     }
