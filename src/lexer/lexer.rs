@@ -1,8 +1,8 @@
-use crate::{aliases::Result, parser::Parse};
+use crate::aliases::Result;
 
 use super::{
     span::{Position, Span},
-    tokens::{Token, TokenType, Tokenize},
+    tokens::{Token, TokenType},
 };
 
 #[derive(Debug, Clone)]
@@ -65,28 +65,6 @@ impl<'lexer> Lexer<'lexer> {
         }
 
         Ok(())
-    }
-
-    pub fn consume<Tok: Tokenize>(&mut self) -> Result<Tok> {
-        Tok::tokenize(self)
-    }
-
-    pub fn parse<T: Parse>(&mut self) -> Result<T> {
-        T::parse(self)
-    }
-
-    pub fn fork(&self) -> Self {
-        self.clone()
-    }
-
-    pub fn try_parse<T: Parse>(&mut self) -> Option<T> {
-        let mut fork = self.fork();
-        if let Ok(parsed) = T::parse(&mut fork) {
-            *self = fork;
-            return Some(parsed);
-        }
-
-        return None;
     }
 
     pub fn next_token(&mut self) -> Result<Token> {
@@ -321,20 +299,5 @@ mod tests {
             lexer.next_token().unwrap().t,
             TokenType::Literal(Lit::LitBool(false))
         );
-    }
-
-    #[test]
-    fn test_type_erased_lexer() {
-        use crate::lexer::tokens::*;
-        let mut lexer = Lexer::new("let var :int = 5;").unwrap();
-        lexer.consume::<Let>().unwrap();
-        let ident = lexer.consume::<Ident>().unwrap();
-        assert_eq!(ident.value(), "var");
-        lexer.consume::<Colon>().unwrap();
-        lexer.consume::<Int>().unwrap();
-        lexer.consume::<Assign>().unwrap();
-        let var = lexer.consume::<LitInt>().unwrap();
-        assert_eq!(var.value(), &5);
-        lexer.consume::<Semi>().unwrap();
     }
 }
