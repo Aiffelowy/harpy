@@ -5,6 +5,7 @@ use crate::{
         tokens::{TokenType, Tokenize},
         Lexer,
     },
+    tt,
 };
 
 use super::Parse;
@@ -60,5 +61,18 @@ impl<'parser> Parser<'parser> {
         return Err(HarpyError::LexerError(
             crate::lexer::err::LexerError::UnexpectedToken(expected, self.lexer.next_token()?),
         ));
+    }
+
+    pub fn report_error(&mut self, error: HarpyError) -> Result<()> {
+        self.errors.push(error);
+
+        while let Ok(t) = self.lexer.peek() {
+            match t {
+                tt!(;) | tt!("}") => break,
+                _ => self.discard_next()?,
+            }
+        }
+
+        Ok(())
     }
 }

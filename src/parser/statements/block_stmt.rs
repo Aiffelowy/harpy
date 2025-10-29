@@ -17,7 +17,10 @@ impl Parse for BlockStmt {
                 break;
             }
 
-            stmts.push(parser.parse::<Stmt>()?);
+            match parser.parse::<Stmt>() {
+                Ok(s) => stmts.push(s),
+                Err(e) => parser.report_error(e)?,
+            }
         }
 
         parser.consume::<t!("}")>()?;
