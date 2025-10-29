@@ -4,10 +4,11 @@ fn tetorysta(sus1:int, sus2: &mut str) -> bool {
     return true;
   }
 
-  let sus
-  fuck;
+  let sus :int some random bullshit;
 
   mogus = 5 +;
+  huh +=;
+  let epic :false = 5;
 
   return false;
 }

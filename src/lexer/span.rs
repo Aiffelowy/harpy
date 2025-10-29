@@ -26,3 +26,12 @@ impl Span {
         Self { start, end }
     }
 }
+
+impl Default for Span {
+    fn default() -> Self {
+        Self {
+            start: Position::default(),
+            end: Position::default(),
+        }
+    }
+}

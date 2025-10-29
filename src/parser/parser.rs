@@ -59,37 +59,43 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(in crate::parser) fn unexpected<P: Parse>(&mut self, expected: &'static str) -> Result<P> {
-        return Err(HarpyError::LexerError(
-            crate::lexer::err::LexerError::UnexpectedToken(expected, self.lexer.next_token()?),
-        ));
+        let t = self.lexer.next_token()?;
+        let span = t.span();
+        return HarpyError::lexer(
+            crate::lexer::err::LexerError::UnexpectedToken(expected, t),
+            span,
+        );
     }
 
     pub(in crate::parser) fn report_error(&mut self, error: HarpyError) -> Result<()> {
         self.errors.push(error);
 
         while let Ok(t) = self.lexer.next_token() {
+            println!("discarding {:?}", t);
             match t.kind() {
                 tt!(;) | tt!("}") | tt!(eof) => break,
                 _ => (),
             }
         }
 
+        println!("STOPPED DISCARDING\n\n\n");
+
         Ok(())
     }
 
-    pub fn build_ast(mut self) -> Result<Program> {
+    pub fn build_ast(mut self) -> std::result::Result<Program, Vec<HarpyError>> {
         match self.parse::<Program>() {
             Ok(p) => {
                 if self.errors.is_empty() {
                     return Ok(p);
                 }
 
-                return Err(HarpyError::ParserError(self.errors));
+                return Err(self.errors);
             }
 
             Err(e) => {
                 self.errors.push(e);
-                return Err(HarpyError::ParserError(self.errors));
+                return Err(self.errors);
             }
         }
     }

@@ -1,7 +1,9 @@
 use crate::aliases::Result;
+use crate::err::HarpyError;
 use crate::lexer::err::LexerError;
 use crate::lexer::span::Span;
 use crate::lexer::Lexer;
+use std::fmt::Display;
 
 pub trait Tokenize
 where
@@ -17,6 +19,14 @@ macro_rules! define_keywords_enum {
         pub enum Key {
             $($keyword_ident,)+
         }
+
+        impl Display for Key {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    $(Key::$keyword_ident => $keyword_lit,)+
+                })
+            }
+        }
     };
 }
 
@@ -27,6 +37,17 @@ macro_rules! define_symbols_enum {
         pub enum Sym {
             $($symbol_ident, $($follow_up_ident,)*)+
         }
+
+        impl Display for Sym {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    $(
+                        Sym::$symbol_ident => $symbol_char,
+                        $(Sym::$follow_up_ident => $follow_up_char,)*
+                    )+
+                })
+            }
+        }
     };
 }
 
@@ -36,6 +57,14 @@ macro_rules! define_literals_enum {
         #[derive(Debug, Clone, PartialEq)]
         pub enum Lit {
             $($literal_ident$(($literal_type))?,)+
+        }
+
+        impl Display for Lit {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    $(Lit::$literal_ident(l) => l.to_string(),)+
+                })
+            }
         }
     };
 }
@@ -55,8 +84,8 @@ macro_rules! define_token_struct {
                 if let TokenType::$($token_type)+ = token.t {
                     return Ok(Self { span: token.span, $($value)? });
                 }
-
-                return Err(LexerError::UnexpectedToken(stringify!($name), token).into());
+                let span = token.span.clone();
+                return HarpyError::lexer(LexerError::UnexpectedToken(stringify!($name), token), span);
             }
         }
 
@@ -88,6 +117,18 @@ macro_rules! define_tokens {
             Eof,
         }
 
+        impl Display for TokenType {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", match self {
+                    Self::Keyword(k) => k.to_string(),
+                    Self::Symbol(s) => s.to_string(),
+                    Self::Literal(l) => l.to_string(),
+                    Self::Ident(_) => "identifier".to_string(),
+                    Self::Eof => "eof".to_string()
+                })
+            }
+        }
+
         #[allow(unused)]
         #[derive(Debug, Clone, PartialEq)]
         pub struct Token {
@@ -97,7 +138,9 @@ macro_rules! define_tokens {
 
         impl Token {
             pub fn kind(&self) -> &TokenType { &self.t }
+            pub fn span(&self) -> Span { self.span }
             fn parse_number(l: &mut Lexer) -> Result<TokenType> {
+                let start = l.position();
                 let mut result = String::with_capacity(4);
                 let mut is_float = false;
 
@@ -124,12 +167,20 @@ macro_rules! define_tokens {
                     }
                 }
 
+                let span = Span::new(start, l.position());
+
                 if is_float {
-                    let value: f64 = result.parse().map_err(|e| LexerError::InvalidFloat(e))?;
+                    let value: f64 = match result.parse() {
+                        Ok(f) => f,
+                        Err(e) => return HarpyError::lexer(LexerError::InvalidFloat(e), span),
+                    };
                     return Ok(TokenType::Literal(Lit::LitFloat(value)))
                 }
 
-                let value: u64 = result.parse().map_err(|e| LexerError::InvalidInt(e))?;
+                let value: u64 = match result.parse() {
+                    Ok(i) => i,
+                    Err(e) => return HarpyError::lexer(LexerError::InvalidInt(e), span)
+                };
                 Ok(TokenType::Literal(Lit::LitInt(value)))
             }
 
@@ -156,7 +207,9 @@ macro_rules! define_tokens {
                 l.next_char()?; //discard first "
                 let mut result = String::with_capacity(10);
                 loop {
-                    let Some(c) = l.next_char()? else { return Err(LexerError::UnclosedStr(Span::new(l.position(), l.position())).into()) };
+                    let Some(c) = l.next_char()? else {
+                        return HarpyError::lexer(LexerError::UnclosedStr, Span::new(l.position(), l.position()));
+                    };
                     if c == '"' { break; }
                     result.push(c);
                 }
@@ -191,7 +244,7 @@ macro_rules! define_tokens {
                         },
                     )+
                     '"' => Self::parse_str(l)?,
-                    _ => return Err(LexerError::UnknownToken(Span::new(position_start, l.position())).into()),
+                    _ => return HarpyError::lexer(LexerError::UnknownToken, Span::new(position_start, l.position())),
                 }};
 
                 Ok(Self { t: token_type, span: Span::new(position_start, l.position()) })

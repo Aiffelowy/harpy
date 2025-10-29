@@ -1,35 +1,39 @@
-use std::num::{ParseFloatError, ParseIntError};
+use std::{
+    fmt::Display,
+    num::{ParseFloatError, ParseIntError},
+};
 
-use crate::err::HarpyError;
+use crate::color::Color;
 
-use super::{span::Span, tokens::Token};
+use super::tokens::Token;
 
 #[derive(Debug)]
 pub enum LexerError {
-    UnknownToken(Span),
+    UnknownToken,
     InvalidInt(ParseIntError),
     InvalidFloat(ParseFloatError),
-    UnclosedStr(Span),
+    UnclosedStr,
     UnexpectedToken(&'static str, Token),
-    IO(std::io::Error),
 }
 
-/*
-impl Into<HarpyError> for LexerError {
-    fn into(self) -> HarpyError {
-        HarpyError::LexerError(self)
-    }
-}
-*/
+impl Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::UnknownToken => "Unknown token",
+            Self::InvalidInt(_) => "Invalid integer",
+            Self::InvalidFloat(_) => "Invalid float",
+            Self::UnclosedStr => "Unclosed String",
+            Self::UnexpectedToken(expected, got) => &format!(
+                "expected {}{}{}, got {}\"{}\"{}",
+                Color::Green,
+                expected,
+                Color::Reset,
+                Color::Red,
+                got.t,
+                Color::Reset
+            ),
+        };
 
-impl From<std::io::Error> for HarpyError {
-    fn from(value: std::io::Error) -> Self {
-        HarpyError::LexerError(LexerError::IO(value))
-    }
-}
-
-impl From<LexerError> for HarpyError {
-    fn from(value: LexerError) -> Self {
-        HarpyError::LexerError(value)
+        write!(f, "{s}")
     }
 }
