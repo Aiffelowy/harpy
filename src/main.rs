@@ -1,7 +1,7 @@
 use std::io::{BufReader, Read};
 
 use aliases::Result;
-use parser::{func_decl::FuncDelc, parser::Parser};
+use parser::parser::Parser;
 
 pub mod aliases;
 pub mod err;
@@ -13,9 +13,9 @@ fn main() -> Result<()> {
     let mut buffer = String::new();
     reader.read_to_string(&mut buffer)?;
     let lexer = lexer::Lexer::new(&buffer)?;
-    let mut parser = Parser::new(lexer);
+    let parser = Parser::new(lexer);
 
-    println!("{:?}", parser.parse::<FuncDelc>()?);
+    println!("{:?}", parser.build_ast()?);
 
     Ok(())
 }

@@ -76,4 +76,21 @@ impl<'parser> Parser<'parser> {
 
         Ok(())
     }
+
+    pub fn build_ast(mut self) -> Result<Program> {
+        match self.parse::<Program>() {
+            Ok(p) => {
+                if self.errors.is_empty() {
+                    return Ok(p);
+                }
+
+                return Err(HarpyError::ParserError(self.errors));
+            }
+
+            Err(e) => {
+                self.errors.push(e);
+                return Err(HarpyError::ParserError(self.errors));
+            }
+        }
+    }
 }
