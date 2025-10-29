@@ -1,0 +1,13 @@
+fn tetorysta(sus1:int, sus2: &mut str) -> bool {
+  if sus1 < len(sus2) {
+    trim(sus2, sus1);
+    return true;
+  }
+
+  let sus
+  fuck;
+
+  mogus = 5 +;
+
+  return false;
+}
