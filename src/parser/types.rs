@@ -1,5 +1,3 @@
-use crate::lexer::err::LexerError;
-
 use crate::lexer::tokens::Ident;
 use crate::t;
 use crate::tt;

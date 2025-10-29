@@ -1,9 +1,5 @@
 use super::{parser::Parser, statements::BlockStmt, types::Type, Parse};
-use crate::{
-    aliases::Result,
-    lexer::{tokens::Ident, Lexer},
-    t, tt,
-};
+use crate::{aliases::Result, lexer::tokens::Ident, t, tt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Param {
