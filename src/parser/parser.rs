@@ -8,8 +8,9 @@ use crate::{
     tt,
 };
 
-use super::Parse;
+use super::{program::Program, Parse};
 
+#[derive(Debug)]
 pub struct Parser<'parser> {
     lexer: Lexer<'parser>,
     errors: Vec<HarpyError>,
@@ -66,10 +67,10 @@ impl<'parser> Parser<'parser> {
     pub(in crate::parser) fn report_error(&mut self, error: HarpyError) -> Result<()> {
         self.errors.push(error);
 
-        while let Ok(t) = self.lexer.peek() {
-            match t {
-                tt!(;) | tt!("}") => break,
-                _ => self.discard_next()?,
+        while let Ok(t) = self.lexer.next_token() {
+            match t.kind() {
+                tt!(;) | tt!("}") | tt!(eof) => break,
+                _ => (),
             }
         }
 

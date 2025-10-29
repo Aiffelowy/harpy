@@ -13,7 +13,7 @@ impl Parse for BlockStmt {
         parser.consume::<t!("{")>()?;
 
         loop {
-            if let tt!("}") = parser.peek()? {
+            if let tt!("}") | tt!(eof) = parser.peek()? {
                 break;
             }
 

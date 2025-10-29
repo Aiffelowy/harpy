@@ -96,6 +96,7 @@ macro_rules! define_tokens {
         }
 
         impl Token {
+            pub fn kind(&self) -> &TokenType { &self.t }
             fn parse_number(l: &mut Lexer) -> Result<TokenType> {
                 let mut result = String::with_capacity(4);
                 let mut is_float = false;
@@ -640,5 +641,8 @@ macro_rules! tt {
     };
     (..) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Range)
+    };
+    (eof) => {
+        $crate::lexer::tokens::TokenType::Eof
     };
 }

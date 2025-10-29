@@ -3,7 +3,9 @@ use crate::{
     t, tt,
 };
 
-use super::{AssignStmt, BlockStmt, ForStmt, IfStmt, LetStmt, LoopStmt, ReturnStmt, WhileStmt};
+use super::{
+    assign_stmt::AssignOp, BlockStmt, ForStmt, IfStmt, LetStmt, LoopStmt, ReturnStmt, WhileStmt,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
@@ -13,7 +15,7 @@ pub enum Stmt {
     WhileStmt(WhileStmt),
     LoopStmt(LoopStmt),
     ReturnStmt(ReturnStmt),
-    AssignStmt(Expr, AssignStmt),
+    AssignStmt(Expr, AssignOp, Expr),
     BlockStmt(BlockStmt),
     Expr(Expr),
 }
@@ -30,8 +32,8 @@ impl Parse for Stmt {
             tt!(return) => Self::ReturnStmt(ReturnStmt::parse(parser)?),
             _ => {
                 let expr = parser.parse::<Expr>()?;
-                if let Some(assign) = parser.try_parse::<AssignStmt>() {
-                    Self::AssignStmt(expr, assign)
+                if let Some(assign) = parser.try_parse::<AssignOp>() {
+                    Self::AssignStmt(expr, assign, parser.parse::<Expr>()?)
                 } else {
                     parser.consume::<t!(;)>()?;
                     Self::Expr(expr)
