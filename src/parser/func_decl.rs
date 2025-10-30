@@ -29,11 +29,11 @@ impl FuncDelc {
         let first = parser.parse::<Param>()?;
         params.push(first);
         loop {
-            parser.consume::<t!(,)>()?;
-            params.push(parser.parse::<Param>()?);
             if let tt!(")") = parser.peek()? {
                 break;
             }
+            parser.consume::<t!(,)>()?;
+            params.push(parser.parse::<Param>()?);
         }
 
         Ok(())

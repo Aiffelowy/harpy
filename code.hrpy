@@ -1,18 +1,10 @@
-fn tetorysta(sus1:int, sus2: &mut str) -> bool {
-  if sus1 < len(sus2) {
-    trim(sus2, sus1);
-    return true;
-  }
 
-  let sus :int some random bullshit;
 
-  mogus = 5 + );
-  huh +=;
-  let epic :false = 5;
-
-  return false;
+fn tetorysta(a: int) -> int {
+  return a;
 }
 
-fn tetorize(var:int var:bool) -> int {
-  return +
+fn main() {
+  let a :int = 2;
+  tetorysta(a);
 }

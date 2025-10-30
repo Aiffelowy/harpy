@@ -1,18 +1,24 @@
 use crate::parser::parser::Parser;
 use crate::parser::{expr::Expr, parse_trait::Parse};
-use crate::t;
+use crate::{t, tt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnStmt {
-    expr: Expr,
+    expr: Option<Expr>,
 }
 
 impl Parse for ReturnStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         parser.consume::<t!(return)>()?;
+
+        if let tt!(;) = parser.peek()? {
+            parser.consume::<t!(;)>()?;
+            return Ok(Self { expr: None });
+        }
+
         let expr = parser.parse::<Expr>()?;
         parser.consume::<t!(;)>()?;
-        Ok(Self { expr })
+        Ok(Self { expr: Some(expr) })
     }
 }
 

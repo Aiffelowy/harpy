@@ -5,7 +5,7 @@ use crate::{
         err::LexerError,
         span::{Position, Span},
     },
-    source::{self, SourceFile},
+    source::SourceFile,
 };
 
 #[derive(Debug)]
