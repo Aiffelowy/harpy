@@ -2,7 +2,6 @@ use crate::lexer::tokens::Ident;
 use crate::t;
 use crate::tt;
 
-use super::expr::PrefixOp;
 use super::parse_trait::Parse;
 use super::parser::Parser;
 

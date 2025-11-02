@@ -1,5 +1,5 @@
 use std::{
-    cell::{Ref, RefCell},
+    cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
 };
@@ -27,6 +27,7 @@ pub struct Scope {
     pub(in crate::semantic_analyzer) parent: Option<Weak<RefCell<Scope>>>,
     pub(in crate::semantic_analyzer) children: Vec<ScopeRc>,
     idx: usize,
+    visited: bool,
     kind: ScopeKind,
 }
 
@@ -37,6 +38,7 @@ impl Scope {
             parent: parent.map(|p| Rc::downgrade(p)),
             symbols: HashMap::new(),
             children: vec![],
+            visited: false,
             idx: 0,
         }
     }
@@ -61,6 +63,16 @@ impl Scope {
         self.idx += 1;
 
         Ok(())
+    }
+
+    pub(in crate::semantic_analyzer) fn next_unvisited_child(&mut self) -> Option<ScopeRc> {
+        for child in &self.children {
+            if !child.borrow().visited {
+                child.borrow_mut().visited = true;
+                return Some(child.clone());
+            }
+        }
+        None
     }
 
     pub(in crate::semantic_analyzer) fn lookup(&self, ident: &Ident) -> Result<SymbolInfoRef> {
