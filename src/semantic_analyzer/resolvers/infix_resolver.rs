@@ -59,7 +59,11 @@ impl InfixResolver {
                     )
                 }
 
-                InfixOpKind::Eq | InfixOpKind::Lt | InfixOpKind::Gt => {
+                InfixOpKind::Eq
+                | InfixOpKind::Lt
+                | InfixOpKind::Gt
+                | InfixOpKind::GtEq
+                | InfixOpKind::LtEq => {
                     matches!(
                         (lhs_p, rhs_p),
                         (PrimitiveType::Int, PrimitiveType::Int)
@@ -70,8 +74,6 @@ impl InfixResolver {
                 InfixOpKind::And | InfixOpKind::Or => {
                     matches!((lhs_p, rhs_p), (PrimitiveType::Bool, PrimitiveType::Bool))
                 }
-
-                _ => false,
             },
 
             _ => false,
@@ -89,10 +91,10 @@ impl InfixResolver {
             InfixOpKind::Eq
             | InfixOpKind::Lt
             | InfixOpKind::Gt
+            | InfixOpKind::LtEq
+            | InfixOpKind::GtEq
             | InfixOpKind::And
             | InfixOpKind::Or => Type::primitive_bool(),
-
-            _ => lhs.clone(),
         }
     }
 }

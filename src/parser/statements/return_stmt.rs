@@ -1,24 +1,62 @@
+use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
+use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
-use crate::{t, tt};
+use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::err::SemanticError;
+use crate::{resolve_expr, t, tt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnStmt {
+    span: Span,
     expr: Option<Expr>,
 }
 
 impl Parse for ReturnStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
-        parser.consume::<t!(return)>()?;
+        let span = parser.consume::<t!(return)>()?.span();
 
         if let tt!(;) = parser.peek()? {
             parser.consume::<t!(;)>()?;
-            return Ok(Self { expr: None });
+            return Ok(Self { expr: None, span });
         }
 
         let expr = parser.parse::<Expr>()?;
         parser.consume::<t!(;)>()?;
-        Ok(Self { expr: Some(expr) })
+        Ok(Self {
+            expr: Some(expr),
+            span,
+        })
+    }
+}
+
+impl Analyze for ReturnStmt {
+    fn build(&self, _builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {}
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+        let Some(rt) = analyzer.get_func_return_type() else {
+            analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
+            return;
+        };
+
+        let Some(ref expr) = self.expr else {
+            if rt != Type::void() {
+                analyzer.report_semantic_error(
+                    SemanticError::ReturnTypeMismatch(Type::void(), rt),
+                    self.span,
+                );
+            }
+
+            return;
+        };
+
+        resolve_expr!(analyzer, expr_type, &expr);
+
+        if expr_type != rt {
+            analyzer.report_semantic_error(
+                SemanticError::ReturnTypeMismatch(expr_type, rt),
+                expr.span(),
+            );
+        }
     }
 }
 

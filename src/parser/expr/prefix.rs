@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
@@ -32,6 +34,22 @@ impl PrefixOp {
 
     pub fn span(&self) -> Span {
         self.span
+    }
+}
+
+impl Display for PrefixOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use PrefixOpKind::*;
+        let s = match self.op {
+            Minus => "-",
+            Plus => "+",
+            Neg => "-",
+            Ref => "&",
+            Star => "*",
+            Box => "box ",
+        };
+
+        write!(f, "{s}")
     }
 }
 

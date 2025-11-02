@@ -1,9 +1,10 @@
+use std::fmt::Display;
+
+use super::binding_power::Bp;
 use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
 use crate::tt;
-
-use super::binding_power::Bp;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum InfixOpKind {
@@ -44,6 +45,27 @@ impl InfixOp {
 
     pub fn span(&self) -> Span {
         self.span
+    }
+}
+
+impl Display for InfixOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use InfixOpKind::*;
+        let s = match self.op {
+            Plus => "add",
+            Minus => "subtract",
+            Mult => "multiply",
+            Div => "divide",
+            And => "&&",
+            Or => "||",
+            Gt => ">",
+            Lt => "<",
+            Eq => "==",
+            GtEq => ">=",
+            LtEq => "<=",
+        };
+
+        write!(f, "{s}")
     }
 }
 

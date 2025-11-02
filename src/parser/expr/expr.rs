@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::lexer::span::Span;
 use crate::lexer::tokens::Ident;
 use crate::parser::parser::Parser;
@@ -120,6 +122,27 @@ impl Expr {
 impl Parse for Expr {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         Expr::parse_expr(parser, 0)
+    }
+}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Expr::Literal(l) => format!("{}", l.value()),
+            Expr::Ident(i) => format!("{}", i.value()),
+            Expr::Call(i, params) => {
+                let mut s = format!("{}(", i.value());
+                for param in params {
+                    s.push_str(&format!("{},", param));
+                }
+                s.push(')');
+                s
+            }
+            Expr::Prefix(op, expr) => format!("{op}{expr}"),
+            Expr::Infix(lhs, op, rhs) => format!("{lhs} {op} {rhs}"),
+        };
+
+        write!(f, "{s}")
     }
 }
 

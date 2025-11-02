@@ -28,13 +28,13 @@ impl ExprResolver {
         }
     }
 
-    fn resolve_ident(ident: &Ident, analyzer: &Analyzer) -> Result<Type> {
+    fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
         Ok(symbol.kind.get_type().clone())
     }
 
-    fn resolve_call(ident: &Ident, params: &[Expr], analyzer: &Analyzer) -> Result<Type> {
+    fn resolve_call(ident: &Ident, params: &[Expr], analyzer: &mut Analyzer) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
 
@@ -68,18 +68,23 @@ impl ExprResolver {
         Ok(func_info.return_type.clone())
     }
 
-    fn resolve_prefix(op: &PrefixOp, rhs: &Expr, analyzer: &Analyzer) -> Result<Type> {
+    fn resolve_prefix(op: &PrefixOp, rhs: &Expr, analyzer: &mut Analyzer) -> Result<Type> {
         let rhs_type = Self::resolve_expr(rhs, analyzer)?;
         PrefixResolver::resolve(op, &rhs_type)
     }
 
-    fn resolve_infix(lhs: &Expr, op: &InfixOp, rhs: &Expr, analyzer: &Analyzer) -> Result<Type> {
+    fn resolve_infix(
+        lhs: &Expr,
+        op: &InfixOp,
+        rhs: &Expr,
+        analyzer: &mut Analyzer,
+    ) -> Result<Type> {
         let lhs_type = Self::resolve_expr(lhs, analyzer)?;
         let rhs_type = Self::resolve_expr(rhs, analyzer)?;
         InfixResolver::resolve(op, &lhs_type, &rhs_type)
     }
 
-    pub fn resolve_expr(expr: &Expr, analyzer: &Analyzer) -> Result<Type> {
+    pub fn resolve_expr(expr: &Expr, analyzer: &mut Analyzer) -> Result<Type> {
         match expr {
             Expr::Literal(l) => Ok(Self::resolve_lit(l)),
             Expr::Ident(i) => Self::resolve_ident(i, analyzer),
@@ -88,4 +93,11 @@ impl ExprResolver {
             Expr::Infix(lhs, op, rhs) => Self::resolve_infix(lhs, op, rhs, analyzer),
         }
     }
+}
+
+#[macro_export]
+macro_rules! resolve_expr {
+    ($analyzer:ident, $name: ident, $($expr:tt)+) => {
+        let Some($name) = $analyzer.resolve_expr($($expr)+) else { return };
+    };
 }

@@ -32,6 +32,10 @@ impl From<std::io::Error> for HarpyError {
 }
 
 impl HarpyError {
+    pub fn new(kind: HarpyErrorKind, span: Span) -> Self {
+        Self { kind, span }
+    }
+
     pub fn lexer<S>(err: LexerError, span: Span) -> Result<S> {
         return Err(Self {
             kind: HarpyErrorKind::LexerError(err),

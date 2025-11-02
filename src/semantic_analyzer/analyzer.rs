@@ -1,10 +1,19 @@
 use crate::aliases::{Result, SymbolInfoRef};
+use crate::err::HarpyErrorKind;
+use crate::lexer::span::Span;
 use crate::parser::expr::Expr;
+use crate::parser::program::Program;
 use crate::parser::types::Type;
 use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 
+use super::analyze_trait::Analyze;
+use super::err::SemanticError;
 use super::resolvers::expr_resolver::ExprResolver;
+use super::scope::ScopeKind;
+use super::scope_builder::ScopeBuilder;
 
+#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Analyzer {
     errors: Vec<HarpyError>,
     scopes: ScopeRc,
@@ -22,7 +31,7 @@ impl Analyzer {
 
     pub fn enter_scope(&mut self) {
         let current = self.current_scope.clone();
-        if let Some(next) = current.borrow_mut().next_unvisited_child() {
+        if let Some(next) = (*current).borrow_mut().next_unvisited_child() {
             self.current_scope = next.clone();
         };
     }
@@ -38,16 +47,61 @@ impl Analyzer {
         }
     }
 
-    pub fn report_error(&mut self, error: HarpyError) -> &mut Self {
-        self.errors.push(error);
+    pub fn report_semantic_error(&mut self, error: SemanticError, span: Span) -> &mut Self {
+        self.errors
+            .push(HarpyError::new(HarpyErrorKind::SemanticError(error), span));
         self
     }
 
-    pub fn get_symbol(&self, ident: &Ident) -> Result<SymbolInfoRef> {
+    pub fn report_error(&mut self, error: HarpyError) {
+        self.errors.push(error);
+    }
+
+    pub fn get_symbol(&mut self, ident: &Ident) -> Result<SymbolInfoRef> {
         (*self.current_scope).borrow_mut().lookup(ident)
     }
 
-    pub fn resolve_expr(&self, expr: &Expr) -> Result<Type> {
-        ExprResolver::resolve_expr(expr, self)
+    pub fn in_scopekind(&self, kind: ScopeKind) -> bool {
+        (*self.current_scope).borrow().in_scopekind(kind)
     }
+
+    pub fn get_func_return_type(&self) -> Option<Type> {
+        (*self.current_scope).borrow().get_func_return_type()
+    }
+
+    pub fn resolve_expr(&mut self, expr: &Expr) -> Option<Type> {
+        match ExprResolver::resolve_expr(expr, self) {
+            Ok(t) => Some(t),
+            Err(e) => {
+                self.errors.push(e);
+                None
+            }
+        }
+    }
+
+    pub fn main_exists(&self) -> bool {
+        (*self.current_scope).borrow().main_exists()
+    }
+
+    pub fn analyze(program: &Program) -> std::result::Result<(), Vec<HarpyError>> {
+        let mut s = ScopeBuilder::build_analyzer(program)?;
+        program.analyze_semantics(&mut s);
+
+        if !s.errors.is_empty() {
+            return Err(s.errors);
+        }
+
+        Ok(())
+    }
+}
+
+#[macro_export]
+macro_rules! get_symbol {
+    ($analyzer:ident, $name:ident, $($symbol:tt)+) => {
+        let $name = match $analyzer.get_symbol(&$($symbol)+) {
+            Ok(s) => s,
+            Err(e) => { $analyzer.report_error(e); return; }
+        };
+        let mut $name = (*$name).borrow_mut();
+    };
 }

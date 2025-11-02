@@ -27,6 +27,7 @@ mod boxed {
     pub(super) fn validate(op: &PrefixOp) -> bool {
         match op.op {
             PrefixOpKind::Star => true,
+            PrefixOpKind::Box => true,
             _ => false,
         }
     }
@@ -105,6 +106,8 @@ mod type_inner {
             TypeInner::Base(b) => base::validate(op, b),
             TypeInner::Boxed(_) => boxed::validate(op),
             TypeInner::Ref(t) => refr::validate(op, t),
+            TypeInner::Unknown => false,
+            TypeInner::Void => false,
         }
     }
 }
@@ -137,6 +140,8 @@ mod ttype {
                 TypeInner::Base(_) => unreachable!(),
                 TypeInner::Boxed(t) => *t.clone(),
                 TypeInner::Ref(t) => *t.clone(),
+                TypeInner::Unknown => unreachable!(),
+                TypeInner::Void => unreachable!(),
             },
 
             _ => ttype.clone(),

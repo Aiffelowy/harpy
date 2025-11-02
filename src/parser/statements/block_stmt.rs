@@ -1,5 +1,7 @@
 use crate::parser::parser::Parser;
 use crate::parser::{parse_trait::Parse, statements::Stmt};
+use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::scope::ScopeKind;
 use crate::{t, tt};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,5 +27,23 @@ impl Parse for BlockStmt {
 
         parser.consume::<t!("}")>()?;
         Ok(Self { stmts })
+    }
+}
+
+impl Analyze for BlockStmt {
+    fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
+        builder.push_scope(ScopeKind::Block);
+        for stmt in &self.stmts {
+            stmt.build(builder)
+        }
+        builder.pop_scope();
+    }
+
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+        analyzer.enter_scope();
+        for stmt in &self.stmts {
+            stmt.analyze_semantics(analyzer)
+        }
+        analyzer.exit_scope();
     }
 }

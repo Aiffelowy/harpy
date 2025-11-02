@@ -1,9 +1,10 @@
 use std::fmt::Display;
 
 use crate::{
+    color::Color,
     lexer::tokens::Ident,
     parser::{
-        expr::{infix::InfixOp, prefix::PrefixOp},
+        expr::{infix::InfixOp, prefix::PrefixOp, Expr},
         types::Type,
     },
 };
@@ -17,12 +18,155 @@ pub enum SemanticError {
     ArgTypeMismatch(Type, Type),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
+    LetTypeMismatch(Ident, Type),
+    ForTypeMismatch(Type, Type),
+    WhileTypeMismatch(Type),
+    IfTypeMismatch(Type),
+    ReturnNotInFunc,
+    ReturnTypeMismatch(Type, Type),
+    AssignTypeMismatch(Type, Type),
+    AssignToConst(Expr),
+    MissingMain,
 }
 
 impl Display for SemanticError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use SemanticError::*;
+
         let s = match self {
-            _ => "sus",
+            DuplicateSymbol(i) => format!(
+                "redefinition of symbol {}{}{}",
+                Color::Red,
+                i.value(),
+                Color::Reset
+            ),
+            MissingSymbol(i) => format!(
+                "use of undeclared symbol {}{}{}",
+                Color::Red,
+                i.value(),
+                Color::Reset
+            ),
+            NotAFunc(i) => format!("\"{}\" is not a function", i.value()),
+
+            ArgCountMismatch(_i, got, expected) => format!(
+                "expected {}{}{} arguments, got {}{}{}",
+                Color::Green,
+                expected,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            ArgTypeMismatch(got, expected) => format!(
+                "incorrect arguments; expected {}{}{} got {}{}{}",
+                Color::Green,
+                expected,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            PrefixTypeMismatch(op, ty) => {
+                format!(
+                    "cannot apply {}{}{} to {}{}{}",
+                    Color::Green,
+                    op,
+                    Color::Reset,
+                    Color::Red,
+                    ty,
+                    Color::Reset
+                )
+            }
+
+            InfixTypeMismatch(op, lhs, rhs) => format!(
+                "cannot {}{} {}{}{} to {}{}{}",
+                Color::Green,
+                op,
+                Color::Red,
+                lhs,
+                Color::Reset,
+                Color::Red,
+                rhs,
+                Color::Reset
+            ),
+
+            LetTypeMismatch(i, ty) => format!(
+                "cannot assign {}{}{} to {}{}{}",
+                Color::Red,
+                ty,
+                Color::Reset,
+                Color::Green,
+                i.value(),
+                Color::Reset
+            ),
+
+            ForTypeMismatch(got, expected) => format!(
+                "type mismatch, expected {}{}{} got {}{}{}",
+                Color::Green,
+                expected,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            WhileTypeMismatch(got) => format!(
+                "type mismatch, expected {}bool{} got {}{}{}",
+                Color::Green,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            IfTypeMismatch(got) => format!(
+                "type mismatch, expected {}bool{} got {}{}{}",
+                Color::Green,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            ReturnNotInFunc => format!(
+                "{}return{} used outside a {}function{}",
+                Color::Red,
+                Color::Reset,
+                Color::Green,
+                Color::Reset
+            ),
+
+            ReturnTypeMismatch(got, expected) => format!(
+                "expected {}{}{} because of return type, got {}{}{}",
+                Color::Green,
+                expected,
+                Color::Reset,
+                Color::Red,
+                got,
+                Color::Reset,
+            ),
+
+            AssignTypeMismatch(got, expected) => format!(
+                "cannot assign {}{}{} to {}{}{}",
+                Color::Red,
+                got,
+                Color::Reset,
+                Color::Green,
+                expected,
+                Color::Reset,
+            ),
+
+            AssignToConst(expr) => format!(
+                "{}{}{} is not {}mutable{}",
+                Color::Red,
+                expr,
+                Color::Reset,
+                Color::Green,
+                Color::Reset
+            ),
+            MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
         };
 
         write!(f, "{s}")

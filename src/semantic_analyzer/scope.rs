@@ -8,6 +8,7 @@ use crate::{
     aliases::{Result, ScopeRc, SymbolInfoRef},
     err::HarpyError,
     lexer::tokens::Ident,
+    parser::types::Type,
 };
 
 use super::{
@@ -15,13 +16,15 @@ use super::{
     symbol_info::{SymbolInfo, SymbolInfoKind},
 };
 
+#[derive(Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
-    Function,
+    Function(Type),
     Loop,
     Block,
 }
 
+#[derive(Debug)]
 pub struct Scope {
     symbols: HashMap<String, SymbolInfoRef>,
     pub(in crate::semantic_analyzer) parent: Option<Weak<RefCell<Scope>>>,
@@ -87,5 +90,35 @@ impl Scope {
         }
 
         HarpyError::semantic(SemanticError::MissingSymbol(ident.clone()), ident.span())
+    }
+
+    pub(in crate::semantic_analyzer) fn in_scopekind(&self, kind: ScopeKind) -> bool {
+        if kind == self.kind {
+            return true;
+        }
+
+        if let Some(parent_rc) = self.parent.as_ref().and_then(|p| p.upgrade()) {
+            let parent = (*parent_rc).borrow_mut();
+            return parent.in_scopekind(kind);
+        }
+
+        false
+    }
+
+    pub(in crate::semantic_analyzer) fn get_func_return_type(&self) -> Option<Type> {
+        if let ScopeKind::Function(rt) = &self.kind {
+            return Some(rt.clone());
+        }
+
+        if let Some(parent_rc) = self.parent.as_ref().and_then(|p| p.upgrade()) {
+            let parent = (*parent_rc).borrow_mut();
+            return parent.get_func_return_type();
+        }
+
+        None
+    }
+
+    pub(in crate::semantic_analyzer) fn main_exists(&self) -> bool {
+        self.symbols.contains_key("main")
     }
 }

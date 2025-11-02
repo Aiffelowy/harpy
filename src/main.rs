@@ -2,6 +2,7 @@ use std::io::BufReader;
 
 use aliases::Result;
 use parser::parser::Parser;
+use semantic_analyzer::analyzer::Analyzer;
 use source::SourceFile;
 
 pub mod aliases;
@@ -19,12 +20,23 @@ fn main() -> Result<()> {
     let lexer = lexer::Lexer::new(&source)?;
     let parser = Parser::new(lexer);
 
-    match parser.build_ast() {
-        Ok(ast) => println!("AST: {:?}", ast),
+    let ast = match parser.build_ast() {
+        Ok(ast) => ast,
         Err(errors) => {
             for err in errors {
                 err.show(&source);
             }
+            return Ok(());
+        }
+    };
+
+    match Analyzer::analyze(&ast) {
+        Ok(()) => (),
+        Err(errors) => {
+            for err in errors {
+                err.show(&source);
+            }
+            return Ok(());
         }
     }
 

@@ -1,5 +1,14 @@
 use super::{parser::Parser, statements::BlockStmt, types::Type, Parse};
-use crate::{aliases::Result, lexer::tokens::Ident, t, tt};
+use crate::{
+    aliases::Result,
+    lexer::tokens::Ident,
+    semantic_analyzer::{
+        analyze_trait::Analyze,
+        scope::ScopeKind,
+        symbol_info::{FunctionInfo, VariableInfo},
+    },
+    t, tt,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Param {
@@ -20,7 +29,7 @@ impl Parse for Param {
 pub struct FuncDelc {
     name: Ident,
     params: Vec<Param>,
-    return_type: Option<Type>,
+    return_type: Type,
     block: BlockStmt,
 }
 
@@ -56,11 +65,11 @@ impl Parse for FuncDelc {
 
         parser.consume::<t!(")")>()?;
 
-        let mut return_type = None;
+        let mut return_type = Type::void();
 
         if let tt!(->) = parser.peek()? {
             parser.consume::<t!(->)>()?;
-            return_type = Some(parser.parse::<Type>()?);
+            return_type = parser.parse::<Type>()?;
         }
 
         let block = parser.parse::<BlockStmt>()?;
@@ -71,5 +80,36 @@ impl Parse for FuncDelc {
             return_type,
             block,
         })
+    }
+}
+
+impl Analyze for FuncDelc {
+    fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
+        builder.define_func(
+            &self.name,
+            FunctionInfo {
+                params: self.params.iter().map(|p| p.ttype.clone()).collect(),
+                return_type: self.return_type.clone(),
+            },
+        );
+        builder.push_scope(ScopeKind::Function(self.return_type.clone()));
+        for param in &self.params {
+            builder.define_var(
+                &param.name,
+                VariableInfo {
+                    ttype: param.ttype.clone(),
+                    initialized: true,
+                },
+            );
+        }
+
+        self.block.build(builder);
+        builder.pop_scope();
+    }
+
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+        analyzer.enter_scope();
+        self.block.analyze_semantics(analyzer);
+        analyzer.exit_scope();
     }
 }

@@ -42,4 +42,11 @@ impl SymbolInfo {
             ref_count: 0,
         }
     }
+
+    pub fn infer_type(&mut self, ttype: Type) {
+        match &mut self.kind {
+            SymbolInfoKind::Function(_) => (),
+            SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype,
+        }
+    }
 }

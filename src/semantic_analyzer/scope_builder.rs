@@ -1,6 +1,7 @@
-use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
+use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident, parser::program::Program};
 
 use super::{
+    analyze_trait::Analyze,
     analyzer::Analyzer,
     scope::{Scope, ScopeKind},
     symbol_info::{FunctionInfo, SymbolInfoKind, VariableInfo},
@@ -64,12 +65,15 @@ impl ScopeBuilder {
     }
 
     pub(in crate::semantic_analyzer) fn build_analyzer(
-        self,
+        program: &Program,
     ) -> std::result::Result<Analyzer, Vec<HarpyError>> {
-        if !self.errors.is_empty() {
-            return Err(self.errors);
+        let mut s = Self::new();
+        program.build(&mut s);
+
+        if !s.errors.is_empty() {
+            return Err(s.errors);
         }
 
-        Ok(Analyzer::new(self.scopes))
+        Ok(Analyzer::new(s.scopes))
     }
 }
