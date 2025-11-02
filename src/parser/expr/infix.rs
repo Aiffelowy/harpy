@@ -1,3 +1,4 @@
+use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
 use crate::tt;
@@ -5,7 +6,7 @@ use crate::tt;
 use super::binding_power::Bp;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum InfixOp {
+pub enum InfixOpKind {
     Plus,
     Minus,
     Mult,
@@ -19,40 +20,54 @@ pub enum InfixOp {
     LtEq,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct InfixOp {
+    pub op: InfixOpKind,
+    span: Span,
+}
+
 impl InfixOp {
     pub fn bp(&self) -> Bp {
-        match self {
-            Self::Mult | Self::Div => (60, 61),
-            Self::Plus | Self::Minus => (50, 51),
-            Self::GtEq | Self::LtEq | Self::Eq | Self::Lt | Self::Gt => (40, 41),
-            Self::And => (30, 31),
-            Self::Or => (20, 21),
+        match self.op {
+            InfixOpKind::Mult | InfixOpKind::Div => (60, 61),
+            InfixOpKind::Plus | InfixOpKind::Minus => (50, 51),
+            InfixOpKind::GtEq
+            | InfixOpKind::LtEq
+            | InfixOpKind::Eq
+            | InfixOpKind::Lt
+            | InfixOpKind::Gt => (40, 41),
+            InfixOpKind::And => (30, 31),
+            InfixOpKind::Or => (20, 21),
         }
         .into()
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
 impl Parse for InfixOp {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
-        let s = match parser.peek()? {
-            tt!(+) => Self::Plus,
-            tt!(-) => Self::Minus,
-            tt!(*) => Self::Mult,
-            tt!(/) => Self::Div,
-            tt!(&&) => Self::And,
-            tt!(||) => Self::Or,
-            tt!(>) => Self::Gt,
-            tt!(<) => Self::Lt,
-            tt!(==) => Self::Eq,
-            tt!(>=) => Self::GtEq,
-            tt!(<=) => Self::LtEq,
+        let op = match parser.peek()? {
+            tt!(+) => InfixOpKind::Plus,
+            tt!(-) => InfixOpKind::Minus,
+            tt!(*) => InfixOpKind::Mult,
+            tt!(/) => InfixOpKind::Div,
+            tt!(&&) => InfixOpKind::And,
+            tt!(||) => InfixOpKind::Or,
+            tt!(>) => InfixOpKind::Gt,
+            tt!(<) => InfixOpKind::Lt,
+            tt!(==) => InfixOpKind::Eq,
+            tt!(>=) => InfixOpKind::GtEq,
+            tt!(<=) => InfixOpKind::LtEq,
             _ => {
                 return parser.unexpected("infix operator");
             }
         };
 
-        parser.discard_next()?;
+        let t = parser.discard_next()?;
 
-        Ok(s)
+        Ok(Self { op, span: t.span() })
     }
 }

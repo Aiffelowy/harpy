@@ -9,6 +9,7 @@ pub mod color;
 pub mod err;
 pub mod lexer;
 pub mod parser;
+pub mod semantic_analyzer;
 pub mod source;
 
 fn main() -> Result<()> {

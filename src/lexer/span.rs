@@ -22,7 +22,7 @@ pub struct Span {
 }
 
 impl Span {
-    pub(super) fn new(start: Position, end: Position) -> Self {
+    pub fn new(start: Position, end: Position) -> Self {
         Self { start, end }
     }
 }

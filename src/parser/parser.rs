@@ -2,7 +2,7 @@ use crate::{
     aliases::Result,
     err::HarpyError,
     lexer::{
-        tokens::{TokenType, Tokenize},
+        tokens::{Token, TokenType, Tokenize},
         Lexer,
     },
     tt,
@@ -32,9 +32,8 @@ impl<'parser> Parser<'parser> {
         Tok::tokenize(&mut self.lexer)
     }
 
-    pub(in crate::parser) fn discard_next(&mut self) -> Result<()> {
-        self.lexer.next_token()?;
-        Ok(())
+    pub(in crate::parser) fn discard_next(&mut self) -> Result<Token> {
+        self.lexer.next_token()
     }
 
     pub(in crate::parser) fn parse<P: Parse>(&mut self) -> Result<P> {

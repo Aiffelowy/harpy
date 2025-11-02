@@ -2,6 +2,7 @@ use crate::lexer::tokens::Ident;
 use crate::t;
 use crate::tt;
 
+use super::expr::PrefixOp;
 use super::parse_trait::Parse;
 use super::parser::Parser;
 
@@ -61,23 +62,25 @@ impl Parse for BaseType {
 pub enum TypeInner {
     Base(BaseType),
     Boxed(Box<Type>),
+    Ref(Box<Type>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Type {
     pub mutable: bool,
-    pub reference: bool,
     pub inner: TypeInner,
 }
 
 impl Parse for Type {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         let mut mutable = false;
-        let mut reference = false;
 
         if let tt!(&) = parser.peek()? {
-            reference = true;
             parser.consume::<t!(&)>()?;
+            return Ok(Self {
+                inner: TypeInner::Ref(Box::new(parser.parse::<Type>()?)),
+                mutable: false,
+            });
         }
 
         if let tt!(mut) = parser.peek()? {
@@ -92,11 +95,7 @@ impl Parse for Type {
             TypeInner::Base(parser.parse::<BaseType>()?)
         };
 
-        Ok(Self {
-            mutable,
-            reference,
-            inner,
-        })
+        Ok(Self { mutable, inner })
     }
 }
 

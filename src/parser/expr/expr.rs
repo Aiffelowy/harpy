@@ -1,3 +1,4 @@
+use crate::lexer::span::Span;
 use crate::lexer::tokens::Ident;
 use crate::parser::parser::Parser;
 use crate::t;
@@ -17,6 +18,35 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Expr::Literal(l) => l.span(),
+            Expr::Ident(i) => i.span(),
+            Expr::Call(ident, params) => {
+                let start = ident.span();
+                let end = if let Some(p) = params.last() {
+                    p.span()
+                } else {
+                    start
+                };
+
+                Span::new(start.start, end.end)
+            }
+            Expr::Prefix(op, expr) => {
+                let start = op.span();
+                let end = expr.span();
+
+                Span::new(start.start, end.end)
+            }
+            Expr::Infix(lhs, _, rhs) => {
+                let start = lhs.span();
+                let end = rhs.span();
+
+                Span::new(start.start, end.end)
+            }
+        }
+    }
+
     fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
         let mut lhs = Expr::parse_null_den(parser)?;
 

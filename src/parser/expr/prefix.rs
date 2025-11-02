@@ -1,3 +1,4 @@
+use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
 use crate::tt;
@@ -5,7 +6,7 @@ use crate::tt;
 use super::binding_power::Bp;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum PrefixOp {
+pub enum PrefixOpKind {
     Minus,
     Plus,
     Neg,
@@ -14,32 +15,42 @@ pub enum PrefixOp {
     Box,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefixOp {
+    span: Span,
+    pub op: PrefixOpKind,
+}
+
 impl PrefixOp {
     pub fn bp(&self) -> Bp {
-        match self {
-            Self::Box => (0, 19),
+        match self.op {
+            PrefixOpKind::Box => (0, 19),
             _ => (0, 70),
         }
         .into()
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
 impl Parse for PrefixOp {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
-        let s = match parser.peek()? {
-            tt!(+) => Self::Plus,
-            tt!(-) => Self::Minus,
-            tt!(!) => Self::Neg,
-            tt!(&) => Self::Ref,
-            tt!(*) => Self::Star,
-            tt!(box) => Self::Box,
+        let op = match parser.peek()? {
+            tt!(+) => PrefixOpKind::Plus,
+            tt!(-) => PrefixOpKind::Minus,
+            tt!(!) => PrefixOpKind::Neg,
+            tt!(&) => PrefixOpKind::Ref,
+            tt!(*) => PrefixOpKind::Star,
+            tt!(box) => PrefixOpKind::Box,
             _ => {
                 return parser.unexpected("prefix operator");
             }
         };
 
-        parser.discard_next()?;
+        let t = parser.discard_next()?;
 
-        Ok(s)
+        Ok(Self { op, span: t.span() })
     }
 }

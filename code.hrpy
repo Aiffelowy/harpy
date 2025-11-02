@@ -1,10 +1,8 @@
-
-
-fn tetorysta(a: int) -> int {
+fn func(a: int) -> int {
   return a;
 }
 
 fn main() {
   let a :int = 2;
-  tetorysta(a);
+  func(a);
 }

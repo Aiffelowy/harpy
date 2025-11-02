@@ -1,6 +1,6 @@
 mod binding_power;
 pub mod expr;
-mod infix;
-mod prefix;
+pub mod infix;
+pub mod prefix;
 
 pub use expr::Expr;

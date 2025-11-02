@@ -5,6 +5,7 @@ use crate::{
         err::LexerError,
         span::{Position, Span},
     },
+    semantic_analyzer::err::SemanticError,
     source::SourceFile,
 };
 
@@ -17,6 +18,7 @@ pub struct HarpyError {
 #[derive(Debug)]
 pub enum HarpyErrorKind {
     LexerError(LexerError),
+    SemanticError(SemanticError),
     IO(std::io::Error),
 }
 
@@ -33,6 +35,13 @@ impl HarpyError {
     pub fn lexer<S>(err: LexerError, span: Span) -> Result<S> {
         return Err(Self {
             kind: HarpyErrorKind::LexerError(err),
+            span,
+        });
+    }
+
+    pub fn semantic<S>(err: SemanticError, span: Span) -> Result<S> {
+        return Err(Self {
+            kind: HarpyErrorKind::SemanticError(err),
             span,
         });
     }
@@ -184,6 +193,7 @@ impl HarpyError {
     pub fn show(&self, source: &SourceFile) {
         let msg = match &self.kind {
             HarpyErrorKind::LexerError(e) => e.to_string(),
+            HarpyErrorKind::SemanticError(e) => e.to_string(),
             HarpyErrorKind::IO(e) => self.io_msg(e),
         };
 
