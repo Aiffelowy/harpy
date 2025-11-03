@@ -6,7 +6,7 @@ use crate::t;
 
 use super::BlockStmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct LoopStmt {
     block: BlockStmt,
 }

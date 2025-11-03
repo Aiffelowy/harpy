@@ -4,7 +4,7 @@ use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::{t, tt};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BlockStmt {
     stmts: Vec<Stmt>,
 }

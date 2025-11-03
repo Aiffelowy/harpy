@@ -1,4 +1,5 @@
 use crate::lexer::tokens::Ident;
+use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
@@ -10,23 +11,23 @@ use crate::{get_symbol, t};
 
 use super::BlockStmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct IterExpr {
-    from: Expr,
-    to: Expr,
+    from: Node<Expr>,
+    to: Node<Expr>,
 }
 
 impl Parse for IterExpr {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
-        let from = parser.parse::<Expr>()?;
+        let from = parser.parse_node::<Expr>()?;
         parser.consume::<t!(..)>()?;
-        let to = parser.parse::<Expr>()?;
+        let to = parser.parse_node::<Expr>()?;
 
         Ok(Self { from, to })
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ForStmt {
     var: Ident,
     iter: IterExpr,

@@ -1,15 +1,15 @@
 use crate::{
     lexer::tokens::Ident,
-    parser::{expr::Expr, parse_trait::Parse, parser::Parser, types::Type},
+    parser::{expr::Expr, node::Node, parse_trait::Parse, parser::Parser, types::Type},
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::VariableInfo},
     t,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct LetStmt {
     var: Ident,
     ttype: Type,
-    rhs: Expr,
+    rhs: Node<Expr>,
 }
 
 impl Parse for LetStmt {
@@ -19,7 +19,7 @@ impl Parse for LetStmt {
         parser.consume::<t!(:)>()?;
         let ttype = parser.parse::<Type>()?;
         parser.consume::<t!(=)>()?;
-        let rhs = parser.parse::<Expr>()?;
+        let rhs = parser.parse_node::<Expr>()?;
         parser.consume::<t!(;)>()?;
 
         Ok(Self { var, ttype, rhs })

@@ -1,4 +1,4 @@
-use super::{parser::Parser, statements::BlockStmt, types::Type, Parse};
+use super::{node::Node, parser::Parser, statements::BlockStmt, types::Type, Parse};
 use crate::{
     aliases::Result,
     lexer::tokens::Ident,
@@ -25,24 +25,24 @@ impl Parse for Param {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct FuncDelc {
     name: Ident,
-    params: Vec<Param>,
+    params: Vec<Node<Param>>,
     return_type: Type,
     block: BlockStmt,
 }
 
 impl FuncDelc {
-    fn parse_params(parser: &mut Parser, params: &mut Vec<Param>) -> Result<()> {
-        let first = parser.parse::<Param>()?;
+    fn parse_params(parser: &mut Parser, params: &mut Vec<Node<Param>>) -> Result<()> {
+        let first = parser.parse_node::<Param>()?;
         params.push(first);
         loop {
             if let tt!(")") = parser.peek()? {
                 break;
             }
             parser.consume::<t!(,)>()?;
-            params.push(parser.parse::<Param>()?);
+            params.push(parser.parse_node::<Param>()?);
         }
 
         Ok(())

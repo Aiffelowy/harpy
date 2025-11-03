@@ -4,6 +4,7 @@ use crate::{
     lexer::tokens::{Ident, Lit, Literal},
     parser::{
         expr::{infix::InfixOp, prefix::PrefixOp, Expr},
+        node::Node,
         types::{BaseType, PrimitiveType, Type, TypeInner},
     },
     semantic_analyzer::{analyzer::Analyzer, err::SemanticError, symbol_info::SymbolInfoKind},
@@ -34,7 +35,7 @@ impl ExprResolver {
         Ok(symbol.kind.get_type().clone())
     }
 
-    fn resolve_call(ident: &Ident, params: &[Expr], analyzer: &mut Analyzer) -> Result<Type> {
+    fn resolve_call(ident: &Ident, params: &[Node<Expr>], analyzer: &mut Analyzer) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
 

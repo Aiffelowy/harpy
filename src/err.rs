@@ -165,31 +165,7 @@ impl HarpyError {
             Self::highlight_err(line, span)
         )
     }
-    /*
-        fn format_error(source: &SourceFile, span: Span, err_msg: &str) -> String {
-            let start = span.start.line.saturating_sub(1);
-            let end = span.end.line.min(source.line_count());
 
-            let lines: Vec<&str> = buffer.lines().skip(start).take(end).collect();
-            if lines.is_empty() {
-                return "Invalid Error Format!".to_owned();
-            }
-
-            if lines.len() > 1 {
-                return Self::format_multiline(lines, span);
-            }
-
-            let line = lines[0];
-
-            format!(
-                "{}{}Error!{} {err_msg}:\n{} {err_msg}\n\n",
-                Color::Bold,
-                Color::Red,
-                Color::Reset,
-                Self::highlight_err(line, span)
-            )
-        }
-    */
     fn io_msg(&self, err: &std::io::Error) -> String {
         format!("IO Error: {:?}", err)
     }

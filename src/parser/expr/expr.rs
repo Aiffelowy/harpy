@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-use crate::lexer::span::Span;
 use crate::lexer::tokens::Ident;
+use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::t;
 use crate::tt;
@@ -10,45 +10,16 @@ use crate::{aliases::Result, lexer::tokens::Literal, parser::Parse};
 use super::infix::InfixOp;
 use super::prefix::PrefixOp;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>),
     Prefix(PrefixOp, Box<Expr>),
     Literal(Literal),
     Ident(Ident),
-    Call(Ident, Vec<Expr>),
+    Call(Ident, Vec<Node<Expr>>),
 }
 
 impl Expr {
-    pub fn span(&self) -> Span {
-        match self {
-            Expr::Literal(l) => l.span(),
-            Expr::Ident(i) => i.span(),
-            Expr::Call(ident, params) => {
-                let start = ident.span();
-                let end = if let Some(p) = params.last() {
-                    p.span()
-                } else {
-                    start
-                };
-
-                Span::new(start.start, end.end)
-            }
-            Expr::Prefix(op, expr) => {
-                let start = op.span();
-                let end = expr.span();
-
-                Span::new(start.start, end.end)
-            }
-            Expr::Infix(lhs, _, rhs) => {
-                let start = lhs.span();
-                let end = rhs.span();
-
-                Span::new(start.start, end.end)
-            }
-        }
-    }
-
     fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
         let mut lhs = Expr::parse_null_den(parser)?;
 
@@ -91,7 +62,7 @@ impl Expr {
                         break;
                     }
 
-                    args.push(Expr::parse_expr(parser, 0)?);
+                    args.push(parser.parse_node::<Expr>()?);
                     if *parser.peek()? == tt!(,) {
                         parser.consume::<t!(,)>()?;
                     } else {

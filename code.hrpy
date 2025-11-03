@@ -5,7 +5,7 @@ fn main() {
 
 
 fn fibonacci(a:int) -> int {
-  if 1 < "" {
+  if a <= 1 {
     return a;
   }
 

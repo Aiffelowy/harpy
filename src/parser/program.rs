@@ -1,21 +1,21 @@
-use super::{func_decl::FuncDelc, statements::LetStmt, Parse};
+use super::{func_decl::FuncDelc, node::Node, statements::LetStmt, Parse};
 use crate::{
     lexer::span::Span,
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
     tt,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum SubProgram {
-    Let(LetStmt),
-    FuncDecl(FuncDelc),
+    Let(Node<LetStmt>),
+    FuncDecl(Node<FuncDelc>),
 }
 
 impl Parse for SubProgram {
     fn parse(parser: &mut super::parser::Parser) -> crate::aliases::Result<Self> {
         let s = match parser.peek()? {
-            tt!(let) => Self::Let(parser.parse::<LetStmt>()?),
-            tt!(fn) => Self::FuncDecl(parser.parse::<FuncDelc>()?),
+            tt!(let) => Self::Let(parser.parse_node::<LetStmt>()?),
+            tt!(fn) => Self::FuncDecl(parser.parse_node::<FuncDelc>()?),
             _ => return parser.unexpected("let statement or a function declaration"),
         };
 
@@ -23,7 +23,7 @@ impl Parse for SubProgram {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Program {
     parts: Vec<SubProgram>,
 }

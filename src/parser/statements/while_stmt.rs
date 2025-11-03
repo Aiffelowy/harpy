@@ -1,3 +1,4 @@
+use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
@@ -8,16 +9,16 @@ use crate::t;
 
 use super::BlockStmt;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct WhileStmt {
-    expr: Expr,
+    expr: Node<Expr>,
     block: BlockStmt,
 }
 
 impl Parse for WhileStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         parser.consume::<t!(while)>()?;
-        let expr = parser.parse::<Expr>()?;
+        let expr = parser.parse_node::<Expr>()?;
         let block = parser.parse::<BlockStmt>()?;
 
         Ok(Self { expr, block })

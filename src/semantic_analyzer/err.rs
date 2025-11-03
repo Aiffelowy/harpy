@@ -5,6 +5,7 @@ use crate::{
     lexer::tokens::Ident,
     parser::{
         expr::{infix::InfixOp, prefix::PrefixOp, Expr},
+        node::Node,
         types::Type,
     },
 };
@@ -25,7 +26,7 @@ pub enum SemanticError {
     ReturnNotInFunc,
     ReturnTypeMismatch(Type, Type),
     AssignTypeMismatch(Type, Type),
-    AssignToConst(Expr),
+    AssignToConst(Node<Expr>),
     MissingMain,
 }
 

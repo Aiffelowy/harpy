@@ -50,7 +50,7 @@ impl<'lexer> Lexer<'lexer> {
         return Ok(None);
     }
 
-    pub(in crate::lexer) fn position(&self) -> Position {
+    pub fn position(&self) -> Position {
         self.position
     }
 

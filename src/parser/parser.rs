@@ -2,18 +2,24 @@ use crate::{
     aliases::Result,
     err::HarpyError,
     lexer::{
+        span::Span,
         tokens::{Token, TokenType, Tokenize},
         Lexer,
     },
     tt,
 };
 
-use super::{program::Program, Parse};
+use super::{
+    node::{Node, NodeId},
+    program::Program,
+    Parse,
+};
 
 #[derive(Debug)]
 pub struct Parser<'parser> {
     lexer: Lexer<'parser>,
     errors: Vec<HarpyError>,
+    next_id: NodeId,
 }
 
 impl<'parser> Parser<'parser> {
@@ -21,7 +27,14 @@ impl<'parser> Parser<'parser> {
         Self {
             lexer,
             errors: vec![],
+            next_id: NodeId(0),
         }
+    }
+
+    fn next_id(&mut self) -> NodeId {
+        let i = self.next_id;
+        self.next_id.0 += 1;
+        i
     }
 
     pub(in crate::parser) fn peek(&mut self) -> Result<&TokenType> {
@@ -34,6 +47,14 @@ impl<'parser> Parser<'parser> {
 
     pub(in crate::parser) fn discard_next(&mut self) -> Result<Token> {
         self.lexer.next_token()
+    }
+
+    pub(in crate::parser) fn parse_node<P: Parse>(&mut self) -> Result<Node<P>> {
+        let start = self.lexer.position();
+        let value = P::parse(self)?;
+        let end = self.lexer.position();
+
+        Ok(Node::<P>::new(self.next_id(), Span::new(start, end), value))
     }
 
     pub(in crate::parser) fn parse<P: Parse>(&mut self) -> Result<P> {
@@ -54,6 +75,7 @@ impl<'parser> Parser<'parser> {
         Self {
             lexer: self.lexer.clone(),
             errors: vec![],
+            next_id: self.next_id,
         }
     }
 

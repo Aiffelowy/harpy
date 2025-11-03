@@ -8,7 +8,6 @@ mod return_stmt;
 mod stmt;
 mod while_stmt;
 
-pub use assign_stmt::AssignStmt;
 pub use block_stmt::BlockStmt;
 pub use for_stmt::ForStmt;
 pub use if_stmt::IfStmt;

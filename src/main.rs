@@ -1,6 +1,7 @@
 use std::io::BufReader;
 
 use aliases::Result;
+use err::HarpyError;
 use parser::parser::Parser;
 use semantic_analyzer::analyzer::Analyzer;
 use source::SourceFile;
@@ -13,6 +14,12 @@ pub mod parser;
 pub mod semantic_analyzer;
 pub mod source;
 
+fn print_errors(errors: Vec<HarpyError>, source: &SourceFile) {
+    for err in errors {
+        err.show(&source);
+    }
+}
+
 fn main() -> Result<()> {
     let reader = BufReader::new(std::fs::File::open("code.hrpy")?);
     let source = SourceFile::new(reader)?;
@@ -23,9 +30,7 @@ fn main() -> Result<()> {
     let ast = match parser.build_ast() {
         Ok(ast) => ast,
         Err(errors) => {
-            for err in errors {
-                err.show(&source);
-            }
+            print_errors(errors, &source);
             return Ok(());
         }
     };
@@ -33,9 +38,7 @@ fn main() -> Result<()> {
     match Analyzer::analyze(&ast) {
         Ok(()) => (),
         Err(errors) => {
-            for err in errors {
-                err.show(&source);
-            }
+            print_errors(errors, &source);
             return Ok(());
         }
     }
