@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    aliases::{NodeInfo, ScopeRc},
+    aliases::{NodeInfo, ScopeRc, SymbolInfoRef},
     err::HarpyError,
     lexer::tokens::Ident,
     parser::{node::Node, program::Program},
@@ -11,7 +11,7 @@ use super::{
     analyze_trait::Analyze,
     analyzer::Analyzer,
     scope::{Scope, ScopeKind},
-    symbol_info::{FunctionInfo, SymbolInfoKind, VariableInfo},
+    symbol_info::{FunctionInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
 };
 
 pub struct ScopeBuilder {
@@ -59,10 +59,18 @@ impl ScopeBuilder {
     }
 
     fn define_symbol(&mut self, ident: &Node<Ident>, info: SymbolInfoKind) {
-        let r = (*self.current_scope).borrow_mut().define(ident, info);
+        let symbol = SymbolInfo::new(info, ident.id());
+        let symbol = SymbolInfoRef::new(symbol.into());
+
+        let r = (*self.current_scope)
+            .borrow_mut()
+            .define(ident, symbol.clone());
         if let Err(e) = r {
             self.report_error(e);
+            return;
         }
+
+        self.node_info.insert(ident.id(), symbol);
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {

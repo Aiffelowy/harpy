@@ -11,10 +11,7 @@ use crate::{
     parser::{node::Node, types::Type},
 };
 
-use super::{
-    err::SemanticError,
-    symbol_info::{SymbolInfo, SymbolInfoKind},
-};
+use super::err::SemanticError;
 
 #[derive(Debug, PartialEq)]
 pub enum ScopeKind {
@@ -47,16 +44,13 @@ impl Scope {
     pub(in crate::semantic_analyzer) fn define(
         &mut self,
         node: &Node<Ident>,
-        symbol: SymbolInfoKind,
+        symbol: SymbolInfoRef,
     ) -> Result<()> {
         if self.symbols.contains_key(node.value()) {
             return HarpyError::semantic(SemanticError::DuplicateSymbol(node.clone()), node.span());
         }
 
-        self.symbols.insert(
-            node.value().to_owned(),
-            SymbolInfoRef::new(SymbolInfo::new(symbol, node.id()).into()),
-        );
+        self.symbols.insert(node.value().to_owned(), symbol);
 
         Ok(())
     }
