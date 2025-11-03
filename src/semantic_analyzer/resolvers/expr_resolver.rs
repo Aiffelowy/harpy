@@ -94,10 +94,3 @@ impl ExprResolver {
         }
     }
 }
-
-#[macro_export]
-macro_rules! resolve_expr {
-    ($analyzer:ident, $name: ident, $($expr:tt)+) => {
-        let Some($name) = $analyzer.resolve_expr($($expr)+) else { return };
-    };
-}

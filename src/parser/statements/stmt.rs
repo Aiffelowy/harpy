@@ -1,6 +1,5 @@
 use crate::{
     parser::{expr::Expr, parser::Parser, Parse},
-    resolve_expr,
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
     t, tt,
 };
@@ -80,8 +79,12 @@ impl Analyze for Stmt {
                 }
             }
             AssignStmt(lhs, _, rhs) => {
-                resolve_expr!(analyzer, lhs_type, lhs);
-                resolve_expr!(analyzer, rhs_type, rhs);
+                let Some(lhs_type) = analyzer.resolve_expr(lhs) else {
+                    return;
+                };
+                let Some(rhs_type) = analyzer.resolve_expr(rhs) else {
+                    return;
+                };
 
                 if !lhs_type.mutable {
                     analyzer.report_semantic_error(

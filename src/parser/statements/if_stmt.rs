@@ -3,7 +3,7 @@ use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
-use crate::{resolve_expr, t, tt};
+use crate::{t, tt};
 
 use super::BlockStmt;
 
@@ -60,10 +60,13 @@ impl Analyze for IfStmt {
 
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
         analyzer.enter_scope();
-        resolve_expr!(analyzer, expr_type, &self.expr);
-        if expr_type != Type::bool() {
-            analyzer
-                .report_semantic_error(SemanticError::IfTypeMismatch(expr_type), self.expr.span());
+        if let Some(expr_type) = analyzer.resolve_expr(&self.expr) {
+            if expr_type != Type::bool() {
+                analyzer.report_semantic_error(
+                    SemanticError::IfTypeMismatch(expr_type),
+                    self.expr.span(),
+                );
+            }
         }
 
         self.block.analyze_semantics(analyzer);

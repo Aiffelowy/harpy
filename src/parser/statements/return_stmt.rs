@@ -4,7 +4,7 @@ use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
-use crate::{resolve_expr, t, tt};
+use crate::{t, tt};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReturnStmt {
@@ -49,13 +49,13 @@ impl Analyze for ReturnStmt {
             return;
         };
 
-        resolve_expr!(analyzer, expr_type, &expr);
-
-        if expr_type != rt {
-            analyzer.report_semantic_error(
-                SemanticError::ReturnTypeMismatch(expr_type, rt),
-                expr.span(),
-            );
+        if let Some(expr_type) = analyzer.resolve_expr(expr) {
+            if expr_type != rt {
+                analyzer.report_semantic_error(
+                    SemanticError::ReturnTypeMismatch(expr_type, rt),
+                    expr.span(),
+                );
+            }
         }
     }
 }

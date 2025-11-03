@@ -6,7 +6,7 @@ use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::semantic_analyzer::symbol_info::VariableInfo;
-use crate::{get_symbol, resolve_expr, t};
+use crate::{get_symbol, t};
 
 use super::BlockStmt;
 
@@ -61,25 +61,28 @@ impl Analyze for ForStmt {
 
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
         analyzer.enter_scope();
-        resolve_expr!(analyzer, from_type, &self.iter.from);
-        resolve_expr!(analyzer, to_type, &self.iter.to);
 
-        if from_type != Type::int() {
-            analyzer.report_semantic_error(
-                SemanticError::ForTypeMismatch(from_type.clone(), Type::int()),
-                self.iter.to.span(),
-            );
+        if let Some(from_type) = analyzer.resolve_expr(&self.iter.from) {
+            if from_type != Type::int() {
+                analyzer.report_semantic_error(
+                    SemanticError::ForTypeMismatch(from_type.clone(), Type::int()),
+                    self.iter.to.span(),
+                );
+            }
+
+            if let Some(to_type) = analyzer.resolve_expr(&self.iter.to) {
+                if from_type != to_type {
+                    analyzer.report_semantic_error(
+                        SemanticError::ForTypeMismatch(from_type.clone(), to_type),
+                        self.iter.to.span(),
+                    );
+                }
+
+                get_symbol!((analyzer, self.var) var {
+                    var.infer_type(from_type);
+                });
+            }
         }
-
-        if from_type != to_type {
-            analyzer.report_semantic_error(
-                SemanticError::ForTypeMismatch(from_type.clone(), to_type),
-                self.iter.to.span(),
-            );
-        }
-
-        get_symbol!(analyzer, var, self.var);
-        var.infer_type(from_type);
 
         self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();

@@ -97,11 +97,15 @@ impl Analyzer {
 
 #[macro_export]
 macro_rules! get_symbol {
-    ($analyzer:ident, $name:ident, $($symbol:tt)+) => {
-        let $name = match $analyzer.get_symbol(&$($symbol)+) {
-            Ok(s) => s,
-            Err(e) => { $analyzer.report_error(e); return; }
-        };
-        let mut $name = (*$name).borrow_mut();
+    (($analyzer:ident, $($symbol:tt)+) $name:ident { $($code:tt)* }) => {
+        {
+            match $analyzer.get_symbol(&$($symbol)+) {
+                Err(e) => { $analyzer.report_error(e); }
+                Ok(s) => {
+                    let mut $name = (*s).borrow_mut();
+                    $($code)*
+                },
+            }
+        }
     };
 }
