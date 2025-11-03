@@ -10,15 +10,15 @@ use crate::{
     t, tt,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Param {
-    name: Ident,
+    name: Node<Ident>,
     ttype: Type,
 }
 
 impl Parse for Param {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
-        let name = parser.consume::<t!(ident)>()?;
+        let name = parser.parse_node()?;
         parser.consume::<t!(:)>()?;
         let ttype = parser.parse::<Type>()?;
         Ok(Self { name, ttype })
@@ -27,7 +27,7 @@ impl Parse for Param {
 
 #[derive(Debug, Clone)]
 pub struct FuncDelc {
-    name: Ident,
+    name: Node<Ident>,
     params: Vec<Node<Param>>,
     return_type: Type,
     block: BlockStmt,
@@ -52,7 +52,7 @@ impl FuncDelc {
 impl Parse for FuncDelc {
     fn parse(parser: &mut Parser) -> Result<Self> {
         parser.consume::<t!(fn)>()?;
-        let name = parser.consume::<t!(ident)>()?;
+        let name = parser.parse_node()?;
         parser.consume::<t!("(")>()?;
         let mut params = vec![];
 

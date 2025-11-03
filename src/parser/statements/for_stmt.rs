@@ -29,7 +29,7 @@ impl Parse for IterExpr {
 
 #[derive(Debug, Clone)]
 pub struct ForStmt {
-    var: Ident,
+    var: Node<Ident>,
     iter: IterExpr,
     block: BlockStmt,
 }
@@ -37,10 +37,10 @@ pub struct ForStmt {
 impl Parse for ForStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         parser.consume::<t!(for)>()?;
-        let var = parser.consume::<t!(ident)>()?;
+        let var = parser.parse_node()?;
         parser.consume::<t!(in)>()?;
-        let iter = parser.parse::<IterExpr>()?;
-        let block = parser.parse::<BlockStmt>()?;
+        let iter = parser.parse()?;
+        let block = parser.parse()?;
         Ok(Self { var, iter, block })
     }
 }

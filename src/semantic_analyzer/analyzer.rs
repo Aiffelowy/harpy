@@ -1,7 +1,8 @@
-use crate::aliases::{Result, SymbolInfoRef};
+use crate::aliases::{NodeInfo, Result, SymbolInfoRef};
 use crate::err::HarpyErrorKind;
 use crate::lexer::span::Span;
 use crate::parser::expr::Expr;
+use crate::parser::node::Node;
 use crate::parser::program::Program;
 use crate::parser::types::Type;
 use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
@@ -11,20 +12,29 @@ use super::err::SemanticError;
 use super::resolvers::expr_resolver::ExprResolver;
 use super::scope::ScopeKind;
 use super::scope_builder::ScopeBuilder;
+use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind};
 
-#[allow(dead_code)]
+#[derive(Debug)]
+pub struct AnalysisResult {
+    scope_tree: ScopeRc,
+    node_info: NodeInfo,
+}
+
 #[derive(Debug)]
 pub struct Analyzer {
     errors: Vec<HarpyError>,
+    #[allow(dead_code)]
     scopes: ScopeRc,
     current_scope: ScopeRc,
+    node_info: NodeInfo,
 }
 
 impl Analyzer {
-    pub fn new(scopes: ScopeRc) -> Self {
+    pub fn new(scopes: ScopeRc, node_info: NodeInfo) -> Self {
         Self {
             errors: vec![],
             current_scope: scopes.clone(),
+            node_info,
             scopes,
         }
     }
@@ -69,9 +79,17 @@ impl Analyzer {
         (*self.current_scope).borrow().get_func_return_type()
     }
 
-    pub fn resolve_expr(&mut self, expr: &Expr) -> Option<Type> {
+    pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<Type> {
         match ExprResolver::resolve_expr(expr, self) {
-            Ok(t) => Some(t),
+            Ok(t) => {
+                let info = ExprInfo { ttype: t.clone() };
+                let info = SymbolInfoKind::Expr(info);
+                let info = SymbolInfo::new(info, expr.id());
+
+                self.node_info
+                    .insert(expr.id(), SymbolInfoRef::new(info.into()));
+                Some(t)
+            }
             Err(e) => {
                 self.errors.push(e);
                 None
@@ -83,7 +101,7 @@ impl Analyzer {
         (*self.current_scope).borrow().main_exists()
     }
 
-    pub fn analyze(program: &Program) -> std::result::Result<(), Vec<HarpyError>> {
+    pub fn analyze(program: &Program) -> std::result::Result<AnalysisResult, Vec<HarpyError>> {
         let mut s = ScopeBuilder::build_analyzer(program)?;
         program.analyze_semantics(&mut s);
 
@@ -91,7 +109,10 @@ impl Analyzer {
             return Err(s.errors);
         }
 
-        Ok(())
+        Ok(AnalysisResult {
+            scope_tree: s.scopes,
+            node_info: s.node_info,
+        })
     }
 }
 

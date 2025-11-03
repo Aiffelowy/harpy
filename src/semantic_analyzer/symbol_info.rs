@@ -1,4 +1,4 @@
-use crate::parser::types::Type;
+use crate::parser::{node::NodeId, types::Type};
 
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
@@ -13,9 +13,15 @@ pub struct FunctionInfo {
 }
 
 #[derive(Debug, Clone)]
+pub struct ExprInfo {
+    pub ttype: Type,
+}
+
+#[derive(Debug, Clone)]
 pub enum SymbolInfoKind {
     Function(FunctionInfo),
     Variable(VariableInfo),
+    Expr(ExprInfo),
 }
 
 impl SymbolInfoKind {
@@ -23,6 +29,7 @@ impl SymbolInfoKind {
         match self {
             Self::Function(f) => &f.return_type,
             Self::Variable(v) => &v.ttype,
+            Self::Expr(e) => &e.ttype,
         }
     }
 }
@@ -30,16 +37,16 @@ impl SymbolInfoKind {
 #[derive(Debug, Clone)]
 pub struct SymbolInfo {
     pub kind: SymbolInfoKind,
-    pub index: usize,
     pub ref_count: usize,
+    pub node_id: NodeId,
 }
 
 impl SymbolInfo {
-    pub fn new(kind: SymbolInfoKind, index: usize) -> Self {
+    pub fn new(kind: SymbolInfoKind, node_id: NodeId) -> Self {
         Self {
             kind,
-            index,
             ref_count: 0,
+            node_id,
         }
     }
 
@@ -47,6 +54,7 @@ impl SymbolInfo {
         match &mut self.kind {
             SymbolInfoKind::Function(_) => (),
             SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype,
+            SymbolInfoKind::Expr(_) => (),
         }
     }
 }

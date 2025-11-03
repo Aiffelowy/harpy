@@ -12,14 +12,14 @@ use crate::{
 
 #[derive(Debug)]
 pub enum SemanticError {
-    DuplicateSymbol(Ident),
+    DuplicateSymbol(Node<Ident>),
     MissingSymbol(Ident),
     NotAFunc(Ident),
     ArgCountMismatch(Ident, usize, usize),
     ArgTypeMismatch(Type, Type),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
-    LetTypeMismatch(Ident, Type),
+    LetTypeMismatch(Node<Ident>, Type),
     ForTypeMismatch(Type, Type),
     WhileTypeMismatch(Type),
     IfTypeMismatch(Type),

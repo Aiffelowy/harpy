@@ -8,7 +8,7 @@ use crate::{
     aliases::{Result, ScopeRc, SymbolInfoRef},
     err::HarpyError,
     lexer::tokens::Ident,
-    parser::types::Type,
+    parser::{node::Node, types::Type},
 };
 
 use super::{
@@ -29,7 +29,6 @@ pub struct Scope {
     symbols: HashMap<String, SymbolInfoRef>,
     pub(in crate::semantic_analyzer) parent: Option<Weak<RefCell<Scope>>>,
     pub(in crate::semantic_analyzer) children: Vec<ScopeRc>,
-    idx: usize,
     visited: bool,
     kind: ScopeKind,
 }
@@ -42,28 +41,22 @@ impl Scope {
             symbols: HashMap::new(),
             children: vec![],
             visited: false,
-            idx: 0,
         }
     }
 
     pub(in crate::semantic_analyzer) fn define(
         &mut self,
-        ident: &Ident,
+        node: &Node<Ident>,
         symbol: SymbolInfoKind,
     ) -> Result<()> {
-        if self.symbols.contains_key(ident.value()) {
-            return HarpyError::semantic(
-                SemanticError::DuplicateSymbol(ident.clone()),
-                ident.span(),
-            );
+        if self.symbols.contains_key(node.value()) {
+            return HarpyError::semantic(SemanticError::DuplicateSymbol(node.clone()), node.span());
         }
 
         self.symbols.insert(
-            ident.value().to_owned(),
-            SymbolInfoRef::new(SymbolInfo::new(symbol, self.idx).into()),
+            node.value().to_owned(),
+            SymbolInfoRef::new(SymbolInfo::new(symbol, node.id()).into()),
         );
-
-        self.idx += 1;
 
         Ok(())
     }

@@ -1,4 +1,11 @@
-use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident, parser::program::Program};
+use std::collections::HashMap;
+
+use crate::{
+    aliases::{NodeInfo, ScopeRc},
+    err::HarpyError,
+    lexer::tokens::Ident,
+    parser::{node::Node, program::Program},
+};
 
 use super::{
     analyze_trait::Analyze,
@@ -11,6 +18,7 @@ pub struct ScopeBuilder {
     errors: Vec<HarpyError>,
     scopes: ScopeRc,
     current_scope: ScopeRc,
+    node_info: NodeInfo,
 }
 
 impl ScopeBuilder {
@@ -21,6 +29,7 @@ impl ScopeBuilder {
             errors: vec![],
             current_scope: root.clone(),
             scopes: root,
+            node_info: HashMap::new(),
         }
     }
 
@@ -49,18 +58,18 @@ impl ScopeBuilder {
         self
     }
 
-    fn define_symbol(&mut self, ident: &Ident, info: SymbolInfoKind) {
+    fn define_symbol(&mut self, ident: &Node<Ident>, info: SymbolInfoKind) {
         let r = (*self.current_scope).borrow_mut().define(ident, info);
         if let Err(e) = r {
             self.report_error(e);
         }
     }
 
-    pub fn define_var(&mut self, ident: &Ident, info: VariableInfo) {
+    pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {
         self.define_symbol(ident, SymbolInfoKind::Variable(info))
     }
 
-    pub fn define_func(&mut self, ident: &Ident, info: FunctionInfo) {
+    pub fn define_func(&mut self, ident: &Node<Ident>, info: FunctionInfo) {
         self.define_symbol(ident, SymbolInfoKind::Function(info))
     }
 
@@ -74,6 +83,6 @@ impl ScopeBuilder {
             return Err(s.errors);
         }
 
-        Ok(Analyzer::new(s.scopes))
+        Ok(Analyzer::new(s.scopes, s.node_info))
     }
 }

@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct LetStmt {
-    var: Ident,
+    var: Node<Ident>,
     ttype: Type,
     rhs: Node<Expr>,
 }
@@ -15,7 +15,7 @@ pub struct LetStmt {
 impl Parse for LetStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         parser.consume::<t!(let)>()?;
-        let var = parser.consume::<t!(ident)>()?;
+        let var = parser.parse_node::<Ident>()?;
         parser.consume::<t!(:)>()?;
         let ttype = parser.parse::<Type>()?;
         parser.consume::<t!(=)>()?;
