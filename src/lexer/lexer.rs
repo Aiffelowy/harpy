@@ -1,3 +1,5 @@
+use std::{iter::Peekable, str::Chars};
+
 use crate::{aliases::Result, source::SourceFile};
 
 use super::{
@@ -7,7 +9,7 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'lexer> {
-    buffer: &'lexer SourceFile,
+    chars: Peekable<Chars<'lexer>>,
     position: Position,
     next: Token,
 }
@@ -15,7 +17,7 @@ pub struct Lexer<'lexer> {
 impl<'lexer> Lexer<'lexer> {
     pub fn new(buffer: &'lexer SourceFile) -> Result<Self> {
         let mut l = Self {
-            buffer,
+            chars: buffer.text.chars().peekable(),
             position: Position::default(),
             next: Token {
                 t: crate::lexer::tokens::TokenType::Eof,
@@ -27,8 +29,8 @@ impl<'lexer> Lexer<'lexer> {
         Ok(l)
     }
 
-    pub(in crate::lexer) fn next_char(&mut self) -> Result<Option<char>> {
-        if let Some(c) = self.buffer[self.position.byte..].chars().next() {
+    pub(in crate::lexer) fn next_char(&mut self) -> Option<char> {
+        if let Some(c) = self.chars.next() {
             self.position.byte += c.len_utf8();
             if c == '\n' {
                 self.position.column = 1;
@@ -36,18 +38,14 @@ impl<'lexer> Lexer<'lexer> {
             } else {
                 self.position.column += 1;
             }
-            return Ok(Some(c));
+            return Some(c);
         }
 
-        return Ok(None);
+        return None;
     }
 
-    pub(in crate::lexer) fn peek_char(&mut self) -> Result<Option<char>> {
-        if let Some(c) = self.buffer[self.position.byte..].chars().next() {
-            return Ok(Some(c));
-        }
-
-        return Ok(None);
+    pub(in crate::lexer) fn peek_char(&mut self) -> Option<char> {
+        self.chars.peek().copied()
     }
 
     pub(in crate::lexer) fn position(&self) -> Position {
@@ -59,17 +57,15 @@ impl<'lexer> Lexer<'lexer> {
         self.next.span().start
     }
 
-    pub(in crate::lexer) fn skip_whitespace(&mut self) -> Result<()> {
-        while let Some(c) = self.peek_char()? {
+    pub(in crate::lexer) fn skip_whitespace(&mut self) {
+        while let Some(c) = self.peek_char() {
             if c.is_whitespace() {
-                self.next_char()?;
+                self.next_char();
                 continue;
             }
 
             break;
         }
-
-        Ok(())
     }
 
     pub fn next_token(&mut self) -> Result<Token> {

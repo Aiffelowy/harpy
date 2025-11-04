@@ -144,11 +144,11 @@ macro_rules! define_tokens {
                 let mut result = String::with_capacity(4);
                 let mut is_float = false;
 
-                while let Some(c) = l.peek_char()? {
+                while let Some(c) = l.peek_char() {
                     match c {
                         '0'..='9' => {
                             result.push(c);
-                            l.next_char()?;
+                            l.next_char();
                         }
                         '.' => {
                             if is_float {
@@ -156,11 +156,11 @@ macro_rules! define_tokens {
                             }
                             is_float = true;
                             result.push(c);
-                            l.next_char()?;
+                            l.next_char();
                         }
                         'f' | 'F' => {
                             is_float = true;
-                            l.next_char()?;
+                            l.next_char();
                             break;
                         }
                         _ => break,
@@ -184,30 +184,30 @@ macro_rules! define_tokens {
                 Ok(TokenType::Literal(Lit::LitInt(value)))
             }
 
-            fn parse_ident(l: &mut Lexer) -> Result<TokenType> {
+            fn parse_ident(l: &mut Lexer) -> TokenType {
                 let mut result = String::with_capacity(6);
 
-                while let Some(c) = l.peek_char()? {
+                while let Some(c) = l.peek_char() {
                     if !(c.is_alphanumeric() || c == '_') { break; }
 
-                    l.next_char()?;
+                    l.next_char();
                     result.push(c);
 
                 }
 
                 match result.as_str() {
-                    $( $keyword_lit => return Ok(TokenType::Keyword(Key::$keyword_ident)), )+
-                    "false" => return Ok(TokenType::Literal(Lit::LitBool(false))),
-                    "true" => return Ok(TokenType::Literal(Lit::LitBool(true))),
-                    _ => return Ok(TokenType::Ident(result))
+                    $( $keyword_lit => return TokenType::Keyword(Key::$keyword_ident), )+
+                    "false" => return TokenType::Literal(Lit::LitBool(false)),
+                    "true" => return TokenType::Literal(Lit::LitBool(true)),
+                    _ => return TokenType::Ident(result)
                 }
             }
 
             fn parse_str(l: &mut Lexer) -> Result<TokenType> {
-                l.next_char()?; //discard first "
+                l.next_char(); //discard first "
                 let mut result = String::with_capacity(10);
                 loop {
-                    let Some(c) = l.next_char()? else {
+                    let Some(c) = l.next_char() else {
                         return HarpyError::lexer(LexerError::UnclosedStr, Span::new(l.position(), l.position()));
                     };
                     if c == '"' { break; }
@@ -219,9 +219,9 @@ macro_rules! define_tokens {
 
 
             pub(super) fn parse(l: &mut Lexer) -> Result<Self> {
-                l.skip_whitespace()?;
+                l.skip_whitespace();
                 let position_start = l.position();
-                let Some(c) = l.peek_char()? else { return Ok(Self { t: TokenType::Eof, span: Span::new(position_start, position_start) }) };
+                let Some(c) = l.peek_char() else { return Ok(Self { t: TokenType::Eof, span: Span::new(position_start, position_start) }) };
 
                 let token_type =
 
@@ -230,15 +230,15 @@ macro_rules! define_tokens {
                 } else
 
                 if c == '_' || c.is_alphabetic() {
-                    Self::parse_ident(l)?
+                    Self::parse_ident(l)
                 } else {
 
                 match c {
                     $(
                         $symbol_char => {
-                            l.next_char()?;
-                            match l.peek_char()? {
-                                $(Some($follow_up_char) => { l.next_char()?; TokenType::Symbol(Sym::$follow_up_ident)})*
+                            l.next_char();
+                            match l.peek_char() {
+                                $(Some($follow_up_char) => { l.next_char(); TokenType::Symbol(Sym::$follow_up_ident)})*
                                 _ => TokenType::Symbol(Sym::$symbol_ident)
                             }
                         },
