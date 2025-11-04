@@ -50,8 +50,13 @@ impl<'lexer> Lexer<'lexer> {
         return Ok(None);
     }
 
-    pub fn position(&self) -> Position {
+    pub(in crate::lexer) fn position(&self) -> Position {
         self.position
+    }
+
+    //hacky, but works
+    pub fn current_position(&self) -> Position {
+        self.next.span().start
     }
 
     pub(in crate::lexer) fn skip_whitespace(&mut self) -> Result<()> {

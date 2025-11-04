@@ -300,7 +300,6 @@ define_tokens!(
 
         "boxed" => Boxed,
         "box" => Box,
-        "amogus" => Amogus,
     }
 
     [symbols] => {
