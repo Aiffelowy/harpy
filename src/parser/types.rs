@@ -160,19 +160,15 @@ impl Type {
     pub fn compatible(&self, other: &Type) -> bool {
         match (&self.inner, &other.inner) {
             (TypeInner::Base(lhs), TypeInner::Base(rhs)) => {
-                lhs == rhs && (!other.mutable || self.mutable)
+                lhs == rhs && (self.mutable || !other.mutable)
             }
 
             (TypeInner::Boxed(lhs), TypeInner::Boxed(rhs)) => {
-                (!other.mutable || self.mutable) && lhs.compatible(rhs)
+                (self.mutable || !other.mutable) && lhs.compatible(rhs)
             }
 
             (TypeInner::Ref(lhs), TypeInner::Ref(rhs)) => {
-                if self.mutable {
-                    rhs.mutable && lhs.compatible(rhs)
-                } else {
-                    lhs.compatible(rhs)
-                }
+                (self.mutable || !other.mutable) && lhs.compatible(rhs)
             }
 
             (TypeInner::Void, TypeInner::Void) => true,
@@ -180,26 +176,63 @@ impl Type {
         }
     }
 
-    pub fn compatible_less_strict(&self, other: &Type) -> bool {
+    pub fn strict_compatible(&self, other: &Type) -> bool {
         match (&self.inner, &other.inner) {
-            // Base types: ignore mutability
-            (TypeInner::Base(lhs), TypeInner::Base(rhs)) => lhs == rhs,
-
-            // Boxed types: check inner type recursively, ignore outer mut
-            (TypeInner::Boxed(lhs), TypeInner::Boxed(rhs)) => lhs.compatible_less_strict(rhs),
-
-            // References: LHS &T can accept any RHS; &mut T requires RHS to be mutable
-            (TypeInner::Ref(lhs), TypeInner::Ref(rhs)) => {
-                if self.mutable {
-                    rhs.mutable && lhs.compatible_less_strict(rhs)
-                } else {
-                    lhs.compatible_less_strict(rhs)
-                }
+            (TypeInner::Base(lhs), TypeInner::Base(rhs)) => {
+                lhs == rhs && self.mutable == other.mutable
             }
 
-            // Void types must match
-            (TypeInner::Void, TypeInner::Void) => true,
+            (TypeInner::Boxed(lhs), TypeInner::Boxed(rhs)) => {
+                self.mutable == other.mutable && lhs.strict_compatible(rhs)
+            }
 
+            (TypeInner::Ref(lhs), TypeInner::Ref(rhs)) => {
+                self.mutable == other.mutable && lhs.strict_compatible(rhs)
+            }
+
+            (TypeInner::Void, TypeInner::Void) => true,
+            _ => false,
+        }
+    }
+
+    pub fn param_compatible(&self, arg: &Type) -> bool {
+        match (&self.inner, &arg.inner) {
+            (TypeInner::Base(lhs), TypeInner::Base(rhs)) => lhs == rhs,
+
+            (TypeInner::Boxed(lhs), TypeInner::Boxed(arg_inner))
+            | (TypeInner::Ref(lhs), TypeInner::Ref(arg_inner)) => {
+                if lhs.mutable && !arg_inner.mutable {
+                    return false;
+                }
+                lhs.param_compatible(arg_inner)
+            }
+
+            (TypeInner::Void, TypeInner::Void) => true,
+            _ => false,
+        }
+    }
+
+    pub fn return_compatible(&self, other: &Type) -> bool {
+        match (&self.inner, &other.inner) {
+            (TypeInner::Base(lhs), TypeInner::Base(rhs)) => lhs == rhs,
+            (TypeInner::Boxed(lhs), TypeInner::Boxed(rhs)) => lhs.strict_compatible(rhs),
+            (TypeInner::Ref(lhs), TypeInner::Ref(rhs)) => lhs.strict_compatible(rhs),
+            (TypeInner::Void, TypeInner::Void) => true,
+            _ => false,
+        }
+    }
+
+    pub fn assign_compatible(&self, rhs: &Type) -> bool {
+        match (&self.inner, &rhs.inner) {
+            (TypeInner::Base(l), TypeInner::Base(r)) => l == r,
+            (TypeInner::Boxed(l), TypeInner::Boxed(r)) => l.assign_compatible(r),
+            (TypeInner::Ref(l), TypeInner::Ref(r)) => {
+                if self.mutable {
+                    r.mutable && l.assign_compatible(r)
+                } else {
+                    l.assign_compatible(r)
+                }
+            }
             _ => false,
         }
     }

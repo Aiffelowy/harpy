@@ -37,7 +37,11 @@ fn main() -> Result<()> {
     };
 
     match Analyzer::analyze(&ast) {
-        Ok(result) => println!("{:?}", result.type_table),
+        Ok(result) => {
+            println!("NODE INFO: \n{:?}\n\n\n", result.node_info);
+            println!("CONST POOL:\n{:?}\n\n\n", result.constants);
+            println!("TYPE TABLE:\n{:?}", result.type_table);
+        }
         Err(errors) => {
             print_errors(errors, &source);
             return Ok(());

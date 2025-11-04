@@ -47,8 +47,20 @@ impl TypeInfo {
         self.ttype.compatible(other)
     }
 
-    pub fn compatible_less_strict(&self, other: &Type) -> bool {
-        self.ttype.compatible_less_strict(other)
+    pub fn strict_compatible(&self, other: &Type) -> bool {
+        self.ttype.strict_compatible(other)
+    }
+
+    pub fn assign_compatible(&self, other: &Type) -> bool {
+        self.ttype.assign_compatible(other)
+    }
+
+    pub fn param_compatible(&self, other: &Type) -> bool {
+        self.ttype.param_compatible(other)
+    }
+
+    pub fn return_compatible(&self, other: &Type) -> bool {
+        self.ttype.return_compatible(other)
     }
 }
 

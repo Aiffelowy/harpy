@@ -43,7 +43,7 @@ impl Analyze for LetStmt {
             return;
         };
 
-        if !expr_type.compatible(&self.ttype) {
+        if !self.ttype.assign_compatible(&expr_type.ttype) {
             analyzer.report_semantic_error(
                 SemanticError::LetTypeMismatch(self.ttype.clone(), expr_type.clone()),
                 self.rhs.span(),

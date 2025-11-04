@@ -60,7 +60,7 @@ impl ExprResolver {
         for (param_expr, param_type) in params.iter().zip(&func_info.params) {
             let ttype = Self::resolve_expr(param_expr, analyzer)?;
             let param_t = &param_type.ttype;
-            if !ttype.compatible(param_t) {
+            if !param_t.param_compatible(&ttype) {
                 //fix
                 return HarpyError::semantic(
                     SemanticError::ArgTypeMismatch(ttype, param_type.clone()),

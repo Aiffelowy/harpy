@@ -1,14 +1,9 @@
 fn main() {
-  let n :int = 5;
-  let result :int = fibonacci(n);
+  let n :mut int = 5;
+  fibonacci(box n);
 }
 
 
-fn fibonacci(a:int) -> int {
-  if a <= 1 {
-    return a;
-  }
-
-  return fibonacci(a - 1) + fibonacci(a - 2);
+fn fibonacci(a: mut boxed int) -> boxed int {
+  return a;
 }
-
