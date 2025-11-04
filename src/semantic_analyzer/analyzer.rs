@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::aliases::{Result, SymbolInfoRef, TypeInfoRc};
 use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
@@ -17,7 +15,7 @@ use super::resolvers::expr_resolver::ExprResolver;
 use super::result::AnalysisResult;
 use super::scope::ScopeKind;
 use super::scope_builder::ScopeBuilder;
-use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind, TypeInfo};
+use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind};
 
 #[derive(Debug)]
 pub struct Analyzer {
@@ -96,16 +94,7 @@ impl Analyzer {
     }
 
     pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
-        if let Some(t) = self.result.type_info.get(ttype) {
-            t.clone()
-        } else {
-            let info = Rc::new(TypeInfo {
-                ttype: ttype.clone(),
-                size: ttype.calc_size(),
-            });
-            self.result.type_info.insert(ttype.clone(), info.clone());
-            info
-        }
+        self.result.type_table.register(ttype)
     }
 
     pub fn register_constant(&mut self, lit: Lit) {

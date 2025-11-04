@@ -1,12 +1,12 @@
-use crate::aliases::{NodeInfo, ScopeRc, TypeInfos};
+use crate::aliases::{NodeInfo, ScopeRc};
 
-use super::{const_pool::ConstPool, scope::Scope};
+use super::{const_pool::ConstPool, scope::Scope, type_table::TypeTable};
 
 #[derive(Debug)]
 pub struct AnalysisResult {
     pub scope_tree: ScopeRc,
     pub node_info: NodeInfo,
-    pub type_info: TypeInfos,
+    pub type_table: TypeTable,
     pub constants: ConstPool,
 }
 
@@ -17,7 +17,7 @@ impl AnalysisResult {
         Self {
             scope_tree: root,
             node_info: NodeInfo::new(),
-            type_info: TypeInfos::new(),
+            type_table: TypeTable::new(),
             constants: ConstPool::new(),
         }
     }

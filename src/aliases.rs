@@ -1,5 +1,5 @@
 use crate::{
-    parser::{node::NodeId, types::Type},
+    parser::node::NodeId,
     semantic_analyzer::{
         scope::Scope,
         symbol_info::{SymbolInfo, TypeInfo},
@@ -13,4 +13,3 @@ pub type SymbolInfoRef = std::rc::Rc<std::cell::RefCell<SymbolInfo>>;
 pub type TypeInfoRc = std::rc::Rc<TypeInfo>;
 
 pub type NodeInfo = std::collections::HashMap<NodeId, SymbolInfoRef>;
-pub type TypeInfos = std::collections::HashMap<Type, TypeInfoRc>;

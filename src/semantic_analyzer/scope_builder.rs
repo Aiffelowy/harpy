@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     aliases::{ScopeRc, SymbolInfoRef, TypeInfoRc},
     err::HarpyError,
@@ -13,7 +11,7 @@ use super::{
     analyzer::Analyzer,
     result::AnalysisResult,
     scope::{Scope, ScopeKind},
-    symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, TypeInfo, VariableInfo},
+    symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
 };
 
 pub struct ScopeBuilder {
@@ -91,16 +89,7 @@ impl ScopeBuilder {
     }
 
     pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
-        if let Some(t) = self.result.type_info.get(ttype) {
-            t.clone()
-        } else {
-            let info = Rc::new(TypeInfo {
-                ttype: ttype.clone(),
-                size: ttype.calc_size(),
-            });
-            self.result.type_info.insert(ttype.clone(), info.clone());
-            info
-        }
+        self.result.type_table.register(ttype)
     }
 
     pub(in crate::semantic_analyzer) fn build_analyzer(

@@ -7,3 +7,4 @@ pub mod result;
 pub mod scope;
 pub mod scope_builder;
 pub mod symbol_info;
+pub mod type_table;
