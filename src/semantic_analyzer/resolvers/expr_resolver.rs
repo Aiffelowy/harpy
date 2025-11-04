@@ -15,13 +15,15 @@ use super::{infix_resolver::InfixResolver, prefix_resolver::PrefixResolver};
 pub struct ExprResolver;
 
 impl ExprResolver {
-    fn resolve_lit(lit: &Literal) -> Type {
+    fn resolve_lit(lit: &Literal, analyzer: &mut Analyzer) -> Type {
         let inner = match lit.value() {
             Lit::LitInt(_) => BaseType::Primitive(PrimitiveType::Int),
             Lit::LitFloat(_) => BaseType::Primitive(PrimitiveType::Float),
             Lit::LitStr(_) => BaseType::Primitive(PrimitiveType::Str),
             Lit::LitBool(_) => BaseType::Primitive(PrimitiveType::Bool),
         };
+
+        analyzer.register_constant(lit.value().clone());
 
         Type {
             mutable: false,
@@ -88,7 +90,7 @@ impl ExprResolver {
 
     pub fn resolve_expr(expr: &Expr, analyzer: &mut Analyzer) -> Result<Type> {
         match expr {
-            Expr::Literal(l) => Ok(Self::resolve_lit(l)),
+            Expr::Literal(l) => Ok(Self::resolve_lit(l, analyzer)),
             Expr::Ident(i) => Self::resolve_ident(i, analyzer),
             Expr::Call(ident, params) => Self::resolve_call(ident, params, analyzer),
             Expr::Prefix(op, rhs) => Self::resolve_prefix(op, rhs, analyzer),

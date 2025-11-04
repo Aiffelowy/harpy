@@ -10,7 +10,8 @@ use crate::{
 
 use super::{
     analyze_trait::Analyze,
-    analyzer::{AnalysisResult, Analyzer},
+    analyzer::Analyzer,
+    result::AnalysisResult,
     scope::{Scope, ScopeKind},
     symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, TypeInfo, VariableInfo},
 };

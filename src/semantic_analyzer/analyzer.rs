@@ -1,9 +1,10 @@
 use std::rc::Rc;
 
-use crate::aliases::{NodeInfo, Result, SymbolInfoRef, TypeInfoRc, TypeInfos};
+use crate::aliases::{Result, SymbolInfoRef, TypeInfoRc};
 use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
+use crate::lexer::tokens::Lit;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
@@ -13,28 +14,10 @@ use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 use super::analyze_trait::Analyze;
 use super::err::SemanticError;
 use super::resolvers::expr_resolver::ExprResolver;
-use super::scope::{Scope, ScopeKind};
+use super::result::AnalysisResult;
+use super::scope::ScopeKind;
 use super::scope_builder::ScopeBuilder;
 use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind, TypeInfo};
-
-#[derive(Debug)]
-pub struct AnalysisResult {
-    pub scope_tree: ScopeRc,
-    pub node_info: NodeInfo,
-    pub type_info: TypeInfos,
-}
-
-impl AnalysisResult {
-    pub(in crate::semantic_analyzer) fn new() -> Self {
-        let root = Scope::new(super::scope::ScopeKind::Global, None);
-        let root = ScopeRc::new(root.into());
-        Self {
-            scope_tree: root,
-            node_info: NodeInfo::new(),
-            type_info: TypeInfos::new(),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct Analyzer {
@@ -123,6 +106,10 @@ impl Analyzer {
             self.result.type_info.insert(ttype.clone(), info.clone());
             info
         }
+    }
+
+    pub fn register_constant(&mut self, lit: Lit) {
+        self.result.constants.register(lit);
     }
 
     pub fn main_exists(&self) -> bool {

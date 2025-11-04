@@ -37,7 +37,7 @@ fn main() -> Result<()> {
     };
 
     match Analyzer::analyze(&ast) {
-        Ok(result) => println!("{:?}", result.type_info),
+        Ok(result) => println!("{:?}", result.constants),
         Err(errors) => {
             print_errors(errors, &source);
             return Ok(());

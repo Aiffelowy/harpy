@@ -52,11 +52,11 @@ macro_rules! define_symbols_enum {
 }
 
 macro_rules! define_literals_enum {
-    ($( $literal_ident:ident $(($literal_type:ident))? )+) => {
+    ($( $literal_ident:ident ( $($literal_type:tt)* ) )+) => {
         #[allow(unused)]
-        #[derive(Debug, Clone, PartialEq)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub enum Lit {
-            $($literal_ident$(($literal_type))?,)+
+            $($literal_ident($($literal_type)*),)+
         }
 
         impl Display for Lit {
@@ -100,12 +100,12 @@ macro_rules! define_tokens {
     (
         [keywords] => { $( $keyword_lit:literal => $keyword_ident:ident, )+ }
         [symbols] => { $( $symbol_char:literal => $symbol_ident:ident { $( $follow_up_char:literal => $follow_up_ident:ident, )* } )+ }
-        [literals] => { $( $literal_ident:ident ($literal_type:ident) )+ }
+        [literals] => { $( $literal_ident:ident ( $($literal_type:tt)* ) )+ }
     ) => {
 
         define_keywords_enum!($($keyword_lit => $keyword_ident,)+);
         define_symbols_enum!($( $symbol_char => $symbol_ident { $($follow_up_char => $follow_up_ident,)* } )+);
-        define_literals_enum!($( $literal_ident ($literal_type) )+);
+        define_literals_enum!($( $literal_ident ($($literal_type)*) )+);
 
         #[allow(unused)]
         #[derive(Debug, Clone, PartialEq)]
@@ -174,7 +174,7 @@ macro_rules! define_tokens {
                         Ok(f) => f,
                         Err(e) => return HarpyError::lexer(LexerError::InvalidFloat(e), span),
                     };
-                    return Ok(TokenType::Literal(Lit::LitFloat(value)))
+                    return Ok(TokenType::Literal(Lit::LitFloat(value.to_bits())))
                 }
 
                 let value: u64 = match result.parse() {
@@ -266,7 +266,7 @@ macro_rules! define_tokens {
         )+
 
         $(
-            define_token_struct!($literal_ident, { Literal(Lit::$literal_ident(value)) }, value: $literal_type);
+            define_token_struct!($literal_ident, { Literal(Lit::$literal_ident(value)) }, value: $($literal_type)*);
         )+
 
         define_token_struct!(Ident, { Ident(value) }, value: String);
@@ -365,7 +365,7 @@ define_tokens!(
 
     [literals] => {
         LitInt(u64)
-        LitFloat(f64)
+        LitFloat(u64)
         LitStr(String)
         LitBool(bool)
     }
