@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     aliases::{NodeInfo, ScopeRc, SymbolInfoRef},
     err::HarpyError,
+    extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
     parser::{node::Node, program::Program},
 };
@@ -35,19 +36,15 @@ impl ScopeBuilder {
 
     pub fn push_scope(&mut self, kind: ScopeKind) {
         let new_scope = ScopeRc::new(Scope::new(kind, Some(&self.current_scope)).into());
-        (*self.current_scope)
-            .borrow_mut()
+        self.current_scope
+            .get_mut()
             .children
             .push(new_scope.clone());
         self.current_scope = new_scope;
     }
 
     pub fn pop_scope(&mut self) {
-        let parent = {
-            let current = (*self.current_scope).borrow();
-            current.parent.as_ref().and_then(|p| p.upgrade())
-        };
-
+        let parent = self.current_scope.get().parent.upgrade();
         if let Some(parent) = parent {
             self.current_scope = parent
         }
@@ -62,9 +59,7 @@ impl ScopeBuilder {
         let symbol = SymbolInfo::new(info, ident.id());
         let symbol = SymbolInfoRef::new(symbol.into());
 
-        let r = (*self.current_scope)
-            .borrow_mut()
-            .define(ident, symbol.clone());
+        let r = self.current_scope.get_mut().define(ident, symbol.clone());
         if let Err(e) = r {
             self.report_error(e);
             return;
@@ -74,7 +69,13 @@ impl ScopeBuilder {
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {
-        self.define_symbol(ident, SymbolInfoKind::Variable(info))
+        let ttype = info.ttype.clone();
+        self.define_symbol(ident, SymbolInfoKind::Variable(info));
+
+        let Some(func) = self.current_scope.get().get_function_symbol() else {
+            return;
+        };
+        func.as_function_mut().unwrap().locals.push(ttype);
     }
 
     pub fn define_func(&mut self, ident: &Node<Ident>, info: FunctionInfo) {

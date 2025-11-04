@@ -90,9 +90,10 @@ impl Analyze for FuncDelc {
             FunctionInfo {
                 params: self.params.iter().map(|p| p.ttype.clone()).collect(),
                 return_type: self.return_type.clone(),
+                locals: vec![],
             },
         );
-        builder.push_scope(ScopeKind::Function(self.return_type.clone()));
+        builder.push_scope(ScopeKind::Function(self.name.value().clone()));
         for param in &self.params {
             builder.define_var(
                 &param.name,

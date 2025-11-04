@@ -9,6 +9,7 @@ use source::SourceFile;
 pub mod aliases;
 pub mod color;
 pub mod err;
+pub mod extensions;
 pub mod lexer;
 pub mod parser;
 pub mod semantic_analyzer;
@@ -36,7 +37,7 @@ fn main() -> Result<()> {
     };
 
     match Analyzer::analyze(&ast) {
-        Ok(result) => println!("{:?}", result),
+        Ok(result) => (),
         Err(errors) => {
             print_errors(errors, &source);
             return Ok(());

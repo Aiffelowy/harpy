@@ -1,3 +1,4 @@
+use crate::extensions::SymbolInfoRefExt;
 use crate::lexer::span::Span;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -34,15 +35,17 @@ impl Parse for ReturnStmt {
 impl Analyze for ReturnStmt {
     fn build(&self, _builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {}
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
-        let Some(rt) = analyzer.get_func_return_type() else {
+        let Some(rt) = analyzer.get_func_info() else {
             analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
             return;
         };
 
+        let rt = &rt.as_function().unwrap().return_type;
+
         let Some(ref expr) = self.expr else {
-            if rt != Type::void() {
+            if *rt != Type::void() {
                 analyzer.report_semantic_error(
-                    SemanticError::ReturnTypeMismatch(Type::void(), rt),
+                    SemanticError::ReturnTypeMismatch(Type::void(), rt.clone()),
                     self.span,
                 );
             }
@@ -51,9 +54,9 @@ impl Analyze for ReturnStmt {
         };
 
         if let Some(expr_type) = analyzer.resolve_expr(expr) {
-            if expr_type != rt {
+            if expr_type != *rt {
                 analyzer.report_semantic_error(
-                    SemanticError::ReturnTypeMismatch(expr_type, rt),
+                    SemanticError::ReturnTypeMismatch(expr_type, rt.clone()),
                     expr.span(),
                 );
             }

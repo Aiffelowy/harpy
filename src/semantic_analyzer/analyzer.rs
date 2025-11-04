@@ -1,5 +1,6 @@
 use crate::aliases::{NodeInfo, Result, SymbolInfoRef};
 use crate::err::HarpyErrorKind;
+use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
@@ -41,16 +42,13 @@ impl Analyzer {
 
     pub fn enter_scope(&mut self) {
         let current = self.current_scope.clone();
-        if let Some(next) = (*current).borrow_mut().next_unvisited_child() {
+        if let Some(next) = current.get_mut().next_unvisited_child() {
             self.current_scope = next.clone();
         };
     }
 
     pub fn exit_scope(&mut self) {
-        let parent = {
-            let current = (*self.current_scope).borrow();
-            current.parent.as_ref().and_then(|p| p.upgrade())
-        };
+        let parent = self.current_scope.get().parent.upgrade();
 
         if let Some(parent) = parent {
             self.current_scope = parent
@@ -68,15 +66,15 @@ impl Analyzer {
     }
 
     pub fn get_symbol(&mut self, ident: &Ident) -> Result<SymbolInfoRef> {
-        (*self.current_scope).borrow_mut().lookup(ident)
+        self.current_scope.get().lookup(ident)
     }
 
     pub fn in_scopekind(&self, kind: ScopeKind) -> bool {
-        (*self.current_scope).borrow().in_scopekind(kind)
+        self.current_scope.get().in_scopekind(kind)
     }
 
-    pub fn get_func_return_type(&self) -> Option<Type> {
-        (*self.current_scope).borrow().get_func_return_type()
+    pub fn get_func_info(&self) -> Option<SymbolInfoRef> {
+        self.current_scope.get().get_function_symbol()
     }
 
     pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<Type> {
@@ -98,7 +96,7 @@ impl Analyzer {
     }
 
     pub fn main_exists(&self) -> bool {
-        (*self.current_scope).borrow().main_exists()
+        self.current_scope.get().main_exists()
     }
 
     pub fn analyze(program: &Program) -> std::result::Result<AnalysisResult, Vec<HarpyError>> {

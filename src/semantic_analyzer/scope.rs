@@ -1,4 +1,5 @@
 use std::{
+    borrow::BorrowMut,
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
@@ -7,8 +8,9 @@ use std::{
 use crate::{
     aliases::{Result, ScopeRc, SymbolInfoRef},
     err::HarpyError,
+    extensions::{ScopeRcExt, WeakScopeExt},
     lexer::tokens::Ident,
-    parser::{node::Node, types::Type},
+    parser::node::Node,
 };
 
 use super::err::SemanticError;
@@ -16,7 +18,7 @@ use super::err::SemanticError;
 #[derive(Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
-    Function(Type),
+    Function(String),
     Loop,
     Block,
 }
@@ -57,8 +59,8 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn next_unvisited_child(&mut self) -> Option<ScopeRc> {
         for child in &self.children {
-            if !child.borrow().visited {
-                child.borrow_mut().visited = true;
+            if !child.get().visited {
+                child.get_mut().visited = true;
                 return Some(child.clone());
             }
         }
@@ -67,16 +69,14 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn lookup(&self, ident: &Ident) -> Result<SymbolInfoRef> {
         if let Some(s) = self.symbols.get(ident.value()) {
-            (**s).borrow_mut().ref_count += 1;
+            (**s).borrow_mut().borrow_mut().ref_count += 1;
             return Ok(s.clone());
         }
 
-        if let Some(parent_rc) = self.parent.as_ref().and_then(|p| p.upgrade()) {
-            let parent = (*parent_rc).borrow_mut();
-            return parent.lookup(ident);
+        match self.parent.upgrade().map(|p| p.get().lookup(ident)) {
+            Some(s) => s,
+            None => HarpyError::semantic(SemanticError::MissingSymbol(ident.clone()), ident.span()),
         }
-
-        HarpyError::semantic(SemanticError::MissingSymbol(ident.clone()), ident.span())
     }
 
     pub(in crate::semantic_analyzer) fn in_scopekind(&self, kind: ScopeKind) -> bool {
@@ -84,25 +84,20 @@ impl Scope {
             return true;
         }
 
-        if let Some(parent_rc) = self.parent.as_ref().and_then(|p| p.upgrade()) {
-            let parent = (*parent_rc).borrow_mut();
-            return parent.in_scopekind(kind);
-        }
-
-        false
+        self.parent
+            .upgrade()
+            .map(|p| p.get().in_scopekind(kind))
+            .unwrap_or(false)
     }
 
-    pub(in crate::semantic_analyzer) fn get_func_return_type(&self) -> Option<Type> {
-        if let ScopeKind::Function(rt) = &self.kind {
-            return Some(rt.clone());
+    pub(in crate::semantic_analyzer) fn get_function_symbol(&self) -> Option<SymbolInfoRef> {
+        if let ScopeKind::Function(name) = &self.kind {
+            return self.symbols.get(name).cloned();
         }
 
-        if let Some(parent_rc) = self.parent.as_ref().and_then(|p| p.upgrade()) {
-            let parent = (*parent_rc).borrow_mut();
-            return parent.get_func_return_type();
-        }
-
-        None
+        self.parent
+            .upgrade()
+            .and_then(|rc| rc.get().get_function_symbol())
     }
 
     pub(in crate::semantic_analyzer) fn main_exists(&self) -> bool {
