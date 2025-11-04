@@ -39,11 +39,11 @@ mod custom {
         lexer::tokens::Ident,
         parser::{
             expr::prefix::PrefixOp,
-            types::{PrimitiveType, Type},
+            types::{CustomType, PrimitiveType, Type},
         },
     };
 
-    pub(super) fn validate(op: &PrefixOp, ttype: &Ident) -> bool {
+    pub(super) fn validate(op: &PrefixOp, ttype: &CustomType) -> bool {
         false
     }
 }

@@ -1,5 +1,4 @@
 use std::{
-    borrow::BorrowMut,
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
@@ -18,7 +17,7 @@ use super::err::SemanticError;
 #[derive(Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
-    Function(Ident),
+    Function(String),
     Loop,
     Block,
 }
@@ -92,9 +91,7 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn get_function_symbol(&self) -> Option<SymbolInfoRef> {
         if let ScopeKind::Function(name) = &self.kind {
-            return self
-                .parent
-                .upgrade_then(|p| p.symbols.get(name.value()).cloned())?;
+            return self.parent.upgrade_then(|p| p.symbols.get(name).cloned())?;
         }
 
         self.parent.upgrade_then(|p| p.get_function_symbol())?

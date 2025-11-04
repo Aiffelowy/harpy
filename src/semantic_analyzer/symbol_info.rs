@@ -1,36 +1,80 @@
-use crate::parser::{node::NodeId, types::Type};
+use std::fmt::Display;
+
+use crate::{
+    aliases::TypeInfoRc,
+    parser::{node::NodeId, types::Type},
+};
+
+#[derive(Debug, Clone)]
+pub struct TypeInfo {
+    pub ttype: Type,
+    pub size: usize,
+}
 
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
-    pub ttype: Type,
+    pub ttype: TypeInfoRc,
     pub initialized: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionInfo {
-    pub params: Vec<Type>,
-    pub return_type: Type,
-    pub locals: Vec<Type>,
+    pub params: Vec<TypeInfoRc>,
+    pub return_type: TypeInfoRc,
+    pub locals: Vec<TypeInfoRc>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ExprInfo {
-    pub ttype: Type,
+    pub ttype: TypeInfoRc,
+}
+
+#[derive(Debug, Clone)]
+pub struct ParamInfo {
+    pub ttype: TypeInfoRc,
 }
 
 #[derive(Debug, Clone)]
 pub enum SymbolInfoKind {
     Function(FunctionInfo),
     Variable(VariableInfo),
+    Param(ParamInfo),
     Expr(ExprInfo),
 }
 
+impl TypeInfo {
+    pub fn compatible(&self, other: &Type) -> bool {
+        self.ttype.compatible(other)
+    }
+
+    pub fn compatible_less_strict(&self, other: &Type) -> bool {
+        self.ttype.compatible_less_strict(other)
+    }
+}
+
+impl Display for TypeInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.ttype)
+    }
+}
+
+impl FunctionInfo {
+    pub fn new(return_type: TypeInfoRc) -> Self {
+        Self {
+            params: vec![],
+            locals: vec![],
+            return_type,
+        }
+    }
+}
+
 impl SymbolInfoKind {
-    pub fn get_type(&self) -> &Type {
+    pub fn get_type(&self) -> &TypeInfoRc {
         match self {
             Self::Function(f) => &f.return_type,
             Self::Variable(v) => &v.ttype,
             Self::Expr(e) => &e.ttype,
+            Self::Param(p) => &p.ttype,
         }
     }
 }
@@ -51,10 +95,11 @@ impl SymbolInfo {
         }
     }
 
-    pub fn infer_type(&mut self, ttype: Type) {
+    pub fn infer_type(&mut self, ttype: &TypeInfoRc) {
         match &mut self.kind {
             SymbolInfoKind::Function(_) => (),
-            SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype,
+            SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype.clone(),
+            SymbolInfoKind::Param(_) => (),
             SymbolInfoKind::Expr(_) => (),
         }
     }

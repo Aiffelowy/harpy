@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::extensions::SymbolInfoRefExt;
 use crate::lexer::span::Span;
 use crate::parser::node::Node;
@@ -39,12 +41,19 @@ impl Analyze for ReturnStmt {
             analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
             return;
         };
+
         let rt = rt.as_function().unwrap().return_type.clone();
 
         let Some(ref expr) = self.expr else {
-            if rt != Type::void() {
+            if !rt.compatible(&Type::void()) {
                 analyzer.report_semantic_error(
-                    SemanticError::ReturnTypeMismatch(Type::void(), rt.clone()),
+                    SemanticError::ReturnTypeMismatch(
+                        Rc::new(crate::semantic_analyzer::symbol_info::TypeInfo {
+                            ttype: Type::void(),
+                            size: 0,
+                        }),
+                        rt.clone(),
+                    ),
                     self.span,
                 );
             }
@@ -53,7 +62,7 @@ impl Analyze for ReturnStmt {
         };
 
         if let Some(expr_type) = analyzer.resolve_expr(expr) {
-            if expr_type != rt {
+            if !rt.compatible(&expr_type.ttype) {
                 analyzer.report_semantic_error(
                     SemanticError::ReturnTypeMismatch(expr_type, rt.clone()),
                     expr.span(),

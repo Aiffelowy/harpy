@@ -32,7 +32,7 @@ impl ExprResolver {
     fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
-        Ok(symbol.kind.get_type().clone())
+        Ok(symbol.kind.get_type().ttype.clone())
     }
 
     fn resolve_call(ident: &Ident, params: &[Node<Expr>], analyzer: &mut Analyzer) -> Result<Type> {
@@ -57,7 +57,8 @@ impl ExprResolver {
 
         for (param_expr, param_type) in params.iter().zip(&func_info.params) {
             let ttype = Self::resolve_expr(param_expr, analyzer)?;
-            if ttype != *param_type {
+            let param_t = &param_type.ttype;
+            if !ttype.compatible(param_t) {
                 //fix
                 return HarpyError::semantic(
                     SemanticError::ArgTypeMismatch(ttype, param_type.clone()),
@@ -66,7 +67,7 @@ impl ExprResolver {
             }
         }
 
-        Ok(func_info.return_type.clone())
+        Ok(func_info.return_type.ttype.clone())
     }
 
     fn resolve_prefix(op: &PrefixOp, rhs: &Expr, analyzer: &mut Analyzer) -> Result<Type> {

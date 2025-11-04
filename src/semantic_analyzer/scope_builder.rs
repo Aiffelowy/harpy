@@ -1,36 +1,33 @@
-use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::{
-    aliases::{NodeInfo, ScopeRc, SymbolInfoRef},
+    aliases::{ScopeRc, SymbolInfoRef, TypeInfoRc},
     err::HarpyError,
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
-    parser::{node::Node, program::Program},
+    parser::{node::Node, program::Program, types::Type},
 };
 
 use super::{
     analyze_trait::Analyze,
-    analyzer::Analyzer,
+    analyzer::{AnalysisResult, Analyzer},
     scope::{Scope, ScopeKind},
-    symbol_info::{FunctionInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
+    symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, TypeInfo, VariableInfo},
 };
 
 pub struct ScopeBuilder {
     errors: Vec<HarpyError>,
-    scopes: ScopeRc,
     current_scope: ScopeRc,
-    node_info: NodeInfo,
+    result: AnalysisResult,
 }
 
 impl ScopeBuilder {
     pub fn new() -> Self {
-        let root = Scope::new(super::scope::ScopeKind::Global, None);
-        let root = ScopeRc::new(root.into());
+        let result = AnalysisResult::new();
         Self {
             errors: vec![],
-            current_scope: root.clone(),
-            scopes: root,
-            node_info: HashMap::new(),
+            current_scope: result.scope_tree.clone(),
+            result,
         }
     }
 
@@ -65,7 +62,17 @@ impl ScopeBuilder {
             return;
         }
 
-        self.node_info.insert(ident.id(), symbol);
+        self.result.node_info.insert(ident.id(), symbol);
+    }
+
+    pub fn define_param(&mut self, ident: &Node<Ident>, info: ParamInfo) {
+        let ttype = info.ttype.clone();
+        self.define_symbol(ident, SymbolInfoKind::Param(info));
+
+        let Some(func) = self.current_scope.get().get_function_symbol() else {
+            return;
+        };
+        func.as_function_mut().unwrap().params.push(ttype);
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {
@@ -82,6 +89,19 @@ impl ScopeBuilder {
         self.define_symbol(ident, SymbolInfoKind::Function(info))
     }
 
+    pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
+        if let Some(t) = self.result.type_info.get(ttype) {
+            t.clone()
+        } else {
+            let info = Rc::new(TypeInfo {
+                ttype: ttype.clone(),
+                size: ttype.calc_size(),
+            });
+            self.result.type_info.insert(ttype.clone(), info.clone());
+            info
+        }
+    }
+
     pub(in crate::semantic_analyzer) fn build_analyzer(
         program: &Program,
     ) -> std::result::Result<Analyzer, Vec<HarpyError>> {
@@ -92,6 +112,6 @@ impl ScopeBuilder {
             return Err(s.errors);
         }
 
-        Ok(Analyzer::new(s.scopes, s.node_info))
+        Ok(Analyzer::new(s.result))
     }
 }

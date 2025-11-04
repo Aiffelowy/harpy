@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::lexer::tokens::Ident;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -48,10 +50,13 @@ impl Parse for ForStmt {
 impl Analyze for ForStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
         builder.push_scope(ScopeKind::Loop);
+
+        let type_info = builder.register_type(&Type::unknown());
+
         builder.define_var(
             &self.var,
             VariableInfo {
-                ttype: Type::unknown(),
+                ttype: type_info,
                 initialized: true,
             },
         );
@@ -64,23 +69,29 @@ impl Analyze for ForStmt {
         analyzer.enter_scope();
 
         if let Some(from_type) = analyzer.resolve_expr(&self.iter.from) {
-            if from_type != Type::int() {
+            if !from_type.compatible(&Type::int()) {
                 analyzer.report_semantic_error(
-                    SemanticError::ForTypeMismatch(from_type.clone(), Type::int()),
+                    SemanticError::ForTypeMismatch(
+                        from_type.clone(),
+                        Rc::new(crate::semantic_analyzer::symbol_info::TypeInfo {
+                            ttype: Type::int(),
+                            size: 8,
+                        }),
+                    ),
                     self.iter.to.span(),
                 );
             }
 
             if let Some(to_type) = analyzer.resolve_expr(&self.iter.to) {
-                if from_type != to_type {
+                if from_type.compatible(&to_type.ttype) {
                     analyzer.report_semantic_error(
-                        SemanticError::ForTypeMismatch(from_type.clone(), to_type),
+                        SemanticError::ForTypeMismatch(from_type.clone(), to_type.clone()),
                         self.iter.to.span(),
                     );
                 }
 
                 get_symbol!((analyzer, self.var) var {
-                    var.infer_type(from_type);
+                    var.infer_type(&from_type);
                 });
             }
         }

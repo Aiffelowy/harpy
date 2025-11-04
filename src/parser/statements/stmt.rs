@@ -86,14 +86,14 @@ impl Analyze for Stmt {
                     return;
                 };
 
-                if !lhs_type.mutable {
+                if !lhs_type.ttype.mutable {
                     analyzer.report_semantic_error(
                         SemanticError::AssignToConst(lhs.clone()),
                         lhs.span(),
                     );
                 }
 
-                if lhs_type != rhs_type {
+                if !lhs_type.compatible(&rhs_type.ttype) {
                     analyzer.report_semantic_error(
                         SemanticError::AssignTypeMismatch(rhs_type, lhs_type),
                         rhs.span(),

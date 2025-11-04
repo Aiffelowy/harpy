@@ -5,7 +5,7 @@ use crate::{
     semantic_analyzer::{
         analyze_trait::Analyze,
         scope::ScopeKind,
-        symbol_info::{FunctionInfo, VariableInfo},
+        symbol_info::{FunctionInfo, ParamInfo},
     },
     t, tt,
 };
@@ -85,23 +85,12 @@ impl Parse for FuncDelc {
 
 impl Analyze for FuncDelc {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
-        builder.define_func(
-            &self.name,
-            FunctionInfo {
-                params: self.params.iter().map(|p| p.ttype.clone()).collect(),
-                return_type: self.return_type.clone(),
-                locals: vec![],
-            },
-        );
-        builder.push_scope(ScopeKind::Function((*self.name).clone()));
+        let return_info = builder.register_type(&self.return_type);
+        builder.define_func(&self.name, FunctionInfo::new(return_info));
+        builder.push_scope(ScopeKind::Function(self.name.value().clone()));
         for param in &self.params {
-            builder.define_var(
-                &param.name,
-                VariableInfo {
-                    ttype: param.ttype.clone(),
-                    initialized: true,
-                },
-            );
+            let param_info = builder.register_type(&param.ttype);
+            builder.define_param(&param.name, ParamInfo { ttype: param_info });
         }
 
         self.block.build(builder);

@@ -28,10 +28,11 @@ impl Parse for LetStmt {
 
 impl Analyze for LetStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
+        let type_info = builder.register_type(&self.ttype);
         builder.define_var(
             &self.var,
             VariableInfo {
-                ttype: self.ttype.clone(),
+                ttype: type_info,
                 initialized: true,
             },
         )
@@ -42,9 +43,9 @@ impl Analyze for LetStmt {
             return;
         };
 
-        if expr_type != self.ttype {
+        if !expr_type.compatible(&self.ttype) {
             analyzer.report_semantic_error(
-                SemanticError::LetTypeMismatch(self.var.clone(), expr_type.clone()),
+                SemanticError::LetTypeMismatch(self.ttype.clone(), expr_type.clone()),
                 self.rhs.span(),
             );
         }

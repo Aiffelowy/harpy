@@ -1,4 +1,6 @@
-use crate::aliases::{NodeInfo, Result, SymbolInfoRef};
+use std::rc::Rc;
+
+use crate::aliases::{NodeInfo, Result, SymbolInfoRef, TypeInfoRc, TypeInfos};
 use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
@@ -11,32 +13,43 @@ use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 use super::analyze_trait::Analyze;
 use super::err::SemanticError;
 use super::resolvers::expr_resolver::ExprResolver;
-use super::scope::ScopeKind;
+use super::scope::{Scope, ScopeKind};
 use super::scope_builder::ScopeBuilder;
-use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind};
+use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind, TypeInfo};
 
 #[derive(Debug)]
 pub struct AnalysisResult {
-    scope_tree: ScopeRc,
-    node_info: NodeInfo,
+    pub scope_tree: ScopeRc,
+    pub node_info: NodeInfo,
+    pub type_info: TypeInfos,
+}
+
+impl AnalysisResult {
+    pub(in crate::semantic_analyzer) fn new() -> Self {
+        let root = Scope::new(super::scope::ScopeKind::Global, None);
+        let root = ScopeRc::new(root.into());
+        Self {
+            scope_tree: root,
+            node_info: NodeInfo::new(),
+            type_info: TypeInfos::new(),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct Analyzer {
     errors: Vec<HarpyError>,
     #[allow(dead_code)]
-    scopes: ScopeRc,
     current_scope: ScopeRc,
-    node_info: NodeInfo,
+    result: AnalysisResult,
 }
 
 impl Analyzer {
-    pub fn new(scopes: ScopeRc, node_info: NodeInfo) -> Self {
+    pub fn new(result: AnalysisResult) -> Self {
         Self {
             errors: vec![],
-            current_scope: scopes.clone(),
-            node_info,
-            scopes,
+            current_scope: result.scope_tree.clone(),
+            result,
         }
     }
 
@@ -77,21 +90,38 @@ impl Analyzer {
         self.current_scope.get().get_function_symbol()
     }
 
-    pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<Type> {
+    pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<TypeInfoRc> {
         match ExprResolver::resolve_expr(expr, self) {
             Ok(t) => {
-                let info = ExprInfo { ttype: t.clone() };
+                let type_info = self.register_type(&t);
+                let info = ExprInfo {
+                    ttype: type_info.clone(),
+                };
                 let info = SymbolInfoKind::Expr(info);
                 let info = SymbolInfo::new(info, expr.id());
 
-                self.node_info
+                self.result
+                    .node_info
                     .insert(expr.id(), SymbolInfoRef::new(info.into()));
-                Some(t)
+                Some(type_info)
             }
             Err(e) => {
                 self.errors.push(e);
                 None
             }
+        }
+    }
+
+    pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
+        if let Some(t) = self.result.type_info.get(ttype) {
+            t.clone()
+        } else {
+            let info = Rc::new(TypeInfo {
+                ttype: ttype.clone(),
+                size: ttype.calc_size(),
+            });
+            self.result.type_info.insert(ttype.clone(), info.clone());
+            info
         }
     }
 
@@ -107,10 +137,7 @@ impl Analyzer {
             return Err(s.errors);
         }
 
-        Ok(AnalysisResult {
-            scope_tree: s.scopes,
-            node_info: s.node_info,
-        })
+        Ok(s.result)
     }
 }
 

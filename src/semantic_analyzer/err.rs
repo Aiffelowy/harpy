@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use crate::{
+    aliases::TypeInfoRc,
     color::Color,
     lexer::tokens::Ident,
     parser::{
@@ -16,16 +17,16 @@ pub enum SemanticError {
     MissingSymbol(Ident),
     NotAFunc(Ident),
     ArgCountMismatch(Ident, usize, usize),
-    ArgTypeMismatch(Type, Type),
+    ArgTypeMismatch(Type, TypeInfoRc),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
-    LetTypeMismatch(Node<Ident>, Type),
-    ForTypeMismatch(Type, Type),
-    WhileTypeMismatch(Type),
-    IfTypeMismatch(Type),
+    LetTypeMismatch(Type, TypeInfoRc),
+    ForTypeMismatch(TypeInfoRc, TypeInfoRc),
+    WhileTypeMismatch(TypeInfoRc),
+    IfTypeMismatch(TypeInfoRc),
     ReturnNotInFunc,
-    ReturnTypeMismatch(Type, Type),
-    AssignTypeMismatch(Type, Type),
+    ReturnTypeMismatch(TypeInfoRc, TypeInfoRc),
+    AssignTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignToConst(Node<Expr>),
     MissingMain,
 }
@@ -99,7 +100,7 @@ impl Display for SemanticError {
                 ty,
                 Color::Reset,
                 Color::Green,
-                i.value(),
+                i,
                 Color::Reset
             ),
 

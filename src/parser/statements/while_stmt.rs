@@ -35,9 +35,9 @@ impl Analyze for WhileStmt {
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
         analyzer.enter_scope();
         if let Some(expr_type) = analyzer.resolve_expr(&self.expr) {
-            if expr_type != Type::bool() {
+            if !expr_type.compatible(&Type::bool()) {
                 analyzer.report_semantic_error(
-                    SemanticError::WhileTypeMismatch(expr_type),
+                    SemanticError::WhileTypeMismatch(expr_type.clone()),
                     self.expr.span(),
                 );
             }
