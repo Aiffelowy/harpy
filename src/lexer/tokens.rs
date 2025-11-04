@@ -319,10 +319,13 @@ define_tokens!(
 
         '*' => Star {
             '=' => MultAssign,
+            '/' => BlockCommentStop,
         }
 
         '/' => Slash {
             '=' => DivAssign,
+            '/' => LineComment,
+            '*' => BlockComment,
         }
 
         '>' => Gt {
@@ -473,6 +476,15 @@ macro_rules! t {
     (/) => {
         $crate::lexer::tokens::Slash
     };
+    ("//") => {
+        $crate::lexer::tokens::LineComment
+    };
+    ("/*") => {
+        $crate::lexer::tokens::BlockComment
+    };
+    ("*/") => {
+        $crate::lexer::tokens::BlockCommentStop
+    };
     (/=) => {
         $crate::lexer::tokens::DivAssign
     };
@@ -620,6 +632,15 @@ macro_rules! tt {
 
     (/) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Slash)
+    };
+    ("//") => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::LineComment)
+    };
+    ("/*") => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::BlockComment)
+    };
+    ("*/") => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::BlockCommentStop)
     };
     (/=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::DivAssign)

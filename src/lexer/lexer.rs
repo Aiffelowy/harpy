@@ -1,6 +1,6 @@
 use std::{iter::Peekable, str::Chars};
 
-use crate::{aliases::Result, source::SourceFile};
+use crate::{aliases::Result, source::SourceFile, tt};
 
 use super::{
     span::{Position, Span},
@@ -57,6 +57,26 @@ impl<'lexer> Lexer<'lexer> {
         self.next.span().start
     }
 
+    pub(in crate::lexer) fn skip_line_comments(&mut self) {
+        while let Some(c) = self.next_char() {
+            if c == '\n' {
+                break;
+            }
+        }
+    }
+
+    pub(in crate::lexer) fn skip_multi_comments(&mut self) {
+        while let Some(c) = self.next_char() {
+            if c != '*' {
+                continue;
+            }
+
+            if let Some('/') = self.next_char() {
+                break;
+            }
+        }
+    }
+
     pub(in crate::lexer) fn skip_whitespace(&mut self) {
         while let Some(c) = self.peek_char() {
             if c.is_whitespace() {
@@ -69,9 +89,17 @@ impl<'lexer> Lexer<'lexer> {
     }
 
     pub fn next_token(&mut self) -> Result<Token> {
-        let next = Token::parse(self)?;
-        let current = std::mem::replace(&mut self.next, next);
-        Ok(current)
+        loop {
+            let next = Token::parse(self)?;
+            match next.t {
+                tt!("//") => self.skip_line_comments(),
+                tt!("/*") => self.skip_multi_comments(),
+                _ => {
+                    let current = std::mem::replace(&mut self.next, next);
+                    return Ok(current);
+                }
+            }
+        }
     }
 
     pub fn peek(&self) -> Result<&TokenType> {

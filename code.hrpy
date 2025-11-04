@@ -3,7 +3,7 @@ fn main() {
   fibonacci(box n);
 }
 
-
+//LINE COMMENT
 fn fibonacci(a: mut boxed int) -> boxed int {
-  return a;
+  return a; //HERE TOO
 }
