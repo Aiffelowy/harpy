@@ -39,11 +39,10 @@ impl Analyze for ReturnStmt {
             analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
             return;
         };
-
-        let rt = &rt.as_function().unwrap().return_type;
+        let rt = rt.as_function().unwrap().return_type.clone();
 
         let Some(ref expr) = self.expr else {
-            if *rt != Type::void() {
+            if rt != Type::void() {
                 analyzer.report_semantic_error(
                     SemanticError::ReturnTypeMismatch(Type::void(), rt.clone()),
                     self.span,
@@ -54,7 +53,7 @@ impl Analyze for ReturnStmt {
         };
 
         if let Some(expr_type) = analyzer.resolve_expr(expr) {
-            if expr_type != *rt {
+            if expr_type != rt {
                 analyzer.report_semantic_error(
                     SemanticError::ReturnTypeMismatch(expr_type, rt.clone()),
                     expr.span(),

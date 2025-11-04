@@ -93,7 +93,7 @@ impl Analyze for FuncDelc {
                 locals: vec![],
             },
         );
-        builder.push_scope(ScopeKind::Function(self.name.value().clone()));
+        builder.push_scope(ScopeKind::Function((*self.name).clone()));
         for param in &self.params {
             builder.define_var(
                 &param.name,

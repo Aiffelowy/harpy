@@ -18,7 +18,7 @@ use super::err::SemanticError;
 #[derive(Debug, PartialEq)]
 pub enum ScopeKind {
     Global,
-    Function(String),
+    Function(Ident),
     Loop,
     Block,
 }
@@ -69,7 +69,7 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn lookup(&self, ident: &Ident) -> Result<SymbolInfoRef> {
         if let Some(s) = self.symbols.get(ident.value()) {
-            (**s).borrow_mut().borrow_mut().ref_count += 1;
+            (**s).borrow_mut().ref_count += 1;
             return Ok(s.clone());
         }
 
@@ -92,12 +92,12 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn get_function_symbol(&self) -> Option<SymbolInfoRef> {
         if let ScopeKind::Function(name) = &self.kind {
-            return self.symbols.get(name).cloned();
+            return self
+                .parent
+                .upgrade_then(|p| p.symbols.get(name.value()).cloned())?;
         }
 
-        self.parent
-            .upgrade()
-            .and_then(|rc| rc.get().get_function_symbol())
+        self.parent.upgrade_then(|p| p.get_function_symbol())?
     }
 
     pub(in crate::semantic_analyzer) fn main_exists(&self) -> bool {

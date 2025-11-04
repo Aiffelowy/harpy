@@ -1,7 +1,4 @@
-use crate::{
-    aliases::SymbolInfoRef,
-    parser::{node::NodeId, types::Type},
-};
+use crate::parser::{node::NodeId, types::Type};
 
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
