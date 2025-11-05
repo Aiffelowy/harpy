@@ -194,7 +194,6 @@ impl Analyzer {
         if let Some(i) = expr.lvalue() {
             get_symbol!((self, i) info {
                 get_symbol!((self, lhs) lhs_info {
-                    println!("{:?} {:?}", info, lhs_info);
                     if lhs_info.scope_depth < info.scope_depth {
                         self.report_error(HarpyError::new(HarpyErrorKind::SemanticError(SemanticError::LifetimeMismatch), expr.span()));
                     }

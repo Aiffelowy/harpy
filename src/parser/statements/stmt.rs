@@ -100,8 +100,6 @@ impl Analyze for Stmt {
                     );
                 }
 
-                println!("{:?}", lhs.lvalue());
-
                 if let Some(i) = lhs.lvalue() {
                     analyzer.check_assign_borrow(i, rhs);
                 }
