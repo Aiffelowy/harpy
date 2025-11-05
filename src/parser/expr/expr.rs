@@ -14,7 +14,7 @@ use super::prefix::PrefixOp;
 pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>),
     Prefix(PrefixOp, Box<Expr>),
-    Literal(Literal),
+    Literal(Node<Literal>),
     Ident(Ident),
     Call(Ident, Vec<Node<Expr>>),
 }
@@ -46,7 +46,7 @@ impl Expr {
     fn parse_null_den(parser: &mut Parser) -> Result<Self> {
         match parser.peek()? {
             tt!(lit) => {
-                let val = parser.consume::<t!(lit)>()?;
+                let val = parser.parse_node()?;
                 return Ok(Expr::Literal(val));
             }
             tt!(ident) => {

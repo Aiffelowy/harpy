@@ -2,11 +2,11 @@ use crate::aliases::{Result, SymbolInfoRef, TypeInfoRc};
 use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
-use crate::lexer::tokens::Lit;
+use crate::lexer::tokens::{Lit, Literal};
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
-use crate::parser::types::TypeSpanned;
+use crate::parser::types::{Type, TypeSpanned};
 use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 
 use super::analyze_trait::Analyze;
@@ -15,7 +15,7 @@ use super::resolvers::expr_resolver::ExprResolver;
 use super::result::AnalysisResult;
 use super::scope::ScopeKind;
 use super::scope_builder::ScopeBuilder;
-use super::symbol_info::{ExprInfo, SymbolInfo, SymbolInfoKind};
+use super::symbol_info::{ExprInfo, LiteralInfo, SymbolInfo, SymbolInfoKind};
 
 #[derive(Debug)]
 pub struct Analyzer {
@@ -106,8 +106,19 @@ impl Analyzer {
         self.result.type_table.register(&ttype)
     }
 
-    pub fn register_constant(&mut self, lit: Lit) {
-        self.result.constants.register(lit);
+    fn register_type_unchecked(&mut self, ttype: &Type) -> TypeInfoRc {
+        self.result.type_table.register(&ttype)
+    }
+
+    pub fn register_constant(&mut self, lit: &Node<Literal>, ty: &Type) {
+        let const_idx = self.result.constants.register(lit.value().clone());
+        let ttype = self.register_type_unchecked(ty);
+        println!("{:?}", ttype);
+        let info = LiteralInfo { const_idx, ttype };
+        let info = SymbolInfoKind::Literal(info);
+        let info = SymbolInfo::new(info, lit.id());
+        let info = SymbolInfoRef::new(info.into());
+        self.result.node_info.insert(lit.id(), info);
     }
 
     pub fn main_exists(&self) -> bool {

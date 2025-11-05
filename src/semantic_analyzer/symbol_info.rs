@@ -8,7 +8,10 @@ use crate::{
     },
 };
 
-use super::type_table::{RuntimeTypeIndex, RuntimeTypeTable, TypeIndex};
+use super::{
+    const_pool::ConstIndex,
+    type_table::{RuntimeTypeIndex, RuntimeTypeTable, TypeIndex},
+};
 
 macro_rules! define_runtime_enum {
     (
@@ -93,6 +96,17 @@ pub struct RuntimeParamInfo {
     pub ttype: RuntimeTypeIndex,
 }
 
+#[derive(Debug, Clone)]
+pub struct LiteralInfo {
+    pub const_idx: ConstIndex,
+    pub ttype: TypeInfoRc,
+}
+
+#[derive(Debug, Clone)]
+pub struct RuntimeLiteralInfo {
+    pub const_idx: ConstIndex,
+}
+
 define_runtime_enum! {
 #[derive(Debug, Clone)]
 pub enum (SymbolInfoKind, RuntimeSymbolInfoKind) {
@@ -100,6 +114,7 @@ pub enum (SymbolInfoKind, RuntimeSymbolInfoKind) {
     Variable(VariableInfo, RuntimeVariableInfo),
     Param(ParamInfo, RuntimeParamInfo),
     Expr(ExprInfo, RuntimeExprInfo),
+    Literal(LiteralInfo, RuntimeLiteralInfo),
 }}
 
 impl TypeInfo {
@@ -154,6 +169,7 @@ impl SymbolInfoKind {
             Self::Variable(v) => &v.ttype,
             Self::Expr(e) => &e.ttype,
             Self::Param(p) => &p.ttype,
+            Self::Literal(l) => &l.ttype,
         }
     }
 
@@ -196,6 +212,9 @@ impl SymbolInfoKind {
             Self::Expr(_) => RuntimeSymbolInfoKind::Expr(RuntimeExprInfo { ttype }),
             Self::Variable(_) => RuntimeSymbolInfoKind::Variable(RuntimeVariableInfo { ttype }),
             Self::Param(_) => RuntimeSymbolInfoKind::Param(RuntimeParamInfo { ttype }),
+            Self::Literal(l) => RuntimeSymbolInfoKind::Literal(RuntimeLiteralInfo {
+                const_idx: l.const_idx,
+            }),
         }
     }
 }
@@ -228,6 +247,7 @@ impl SymbolInfo {
             SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype.clone(),
             SymbolInfoKind::Param(_) => (),
             SymbolInfoKind::Expr(_) => (),
+            SymbolInfoKind::Literal(_) => (),
         }
     }
 

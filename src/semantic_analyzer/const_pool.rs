@@ -19,14 +19,15 @@ impl ConstPool {
         }
     }
 
-    pub fn register(&mut self, lit: Lit) {
-        if self.map.contains_key(&lit) {
-            return;
+    pub fn register(&mut self, lit: Lit) -> ConstIndex {
+        if let Some(i) = self.map.get(&lit) {
+            return *i;
         }
 
-        let i = self.pool.len();
+        let i = ConstIndex(self.pool.len());
         self.pool.push(lit.clone());
-        self.map.insert(lit, ConstIndex(i));
+        self.map.insert(lit, i);
+        i
     }
 
     pub fn get(&self, id: ConstIndex) -> Option<&Lit> {

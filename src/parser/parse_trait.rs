@@ -1,4 +1,7 @@
-use crate::{aliases::Result, lexer::tokens::Ident};
+use crate::{
+    aliases::Result,
+    lexer::tokens::{Ident, Literal},
+};
 
 use super::parser::Parser;
 
@@ -11,6 +14,12 @@ where
 
 impl Parse for Ident {
     fn parse(parser: &mut Parser) -> Result<Self> {
-        parser.consume::<Ident>()
+        parser.consume()
+    }
+}
+
+impl Parse for Literal {
+    fn parse(parser: &mut Parser) -> Result<Self> {
+        parser.consume()
     }
 }

@@ -15,7 +15,7 @@ use super::{infix_resolver::InfixResolver, prefix_resolver::PrefixResolver};
 pub struct ExprResolver;
 
 impl ExprResolver {
-    fn resolve_lit(lit: &Literal, analyzer: &mut Analyzer) -> Type {
+    fn resolve_lit(lit: &Node<Literal>, analyzer: &mut Analyzer) -> Type {
         let inner = match lit.value() {
             Lit::LitInt(_) => BaseType::Primitive(PrimitiveType::Int),
             Lit::LitFloat(_) => BaseType::Primitive(PrimitiveType::Float),
@@ -23,12 +23,13 @@ impl ExprResolver {
             Lit::LitBool(_) => BaseType::Primitive(PrimitiveType::Bool),
         };
 
-        analyzer.register_constant(lit.value().clone());
-
-        Type {
+        let t = Type {
             mutable: false,
             inner: TypeInner::Base(inner),
-        }
+        };
+
+        analyzer.register_constant(&lit, &t);
+        t
     }
 
     fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer) -> Result<Type> {
