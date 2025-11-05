@@ -6,7 +6,7 @@ use crate::lexer::tokens::Lit;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
-use crate::parser::types::Type;
+use crate::parser::types::TypeSpanned;
 use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 
 use super::analyze_trait::Analyze;
@@ -74,7 +74,10 @@ impl Analyzer {
     pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<TypeInfoRc> {
         match ExprResolver::resolve_expr(expr, self) {
             Ok(t) => {
-                let type_info = self.register_type(&t);
+                let type_info = self.register_type(&TypeSpanned {
+                    ty: t,
+                    span: expr.span(),
+                });
                 let info = ExprInfo {
                     ttype: type_info.clone(),
                 };
@@ -93,8 +96,14 @@ impl Analyzer {
         }
     }
 
-    pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
-        self.result.type_table.register(ttype)
+    pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {
+        if !ttype.verify_pointers() {
+            self.report_error(HarpyError::new(
+                HarpyErrorKind::SemanticError(SemanticError::PointerToRef),
+                ttype.span(),
+            ));
+        }
+        self.result.type_table.register(&ttype)
     }
 
     pub fn register_constant(&mut self, lit: Lit) {

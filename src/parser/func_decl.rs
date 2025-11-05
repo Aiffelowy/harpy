@@ -1,4 +1,10 @@
-use super::{node::Node, parser::Parser, statements::BlockStmt, types::Type, Parse};
+use super::{
+    node::Node,
+    parser::Parser,
+    statements::BlockStmt,
+    types::{Type, TypeSpanned},
+    Parse,
+};
 use crate::{
     aliases::Result,
     lexer::tokens::Ident,
@@ -13,14 +19,14 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Param {
     name: Node<Ident>,
-    ttype: Type,
+    ttype: TypeSpanned,
 }
 
 impl Parse for Param {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         let name = parser.parse_node()?;
         parser.consume::<t!(:)>()?;
-        let ttype = parser.parse::<Type>()?;
+        let ttype = parser.parse()?;
         Ok(Self { name, ttype })
     }
 }
@@ -29,7 +35,7 @@ impl Parse for Param {
 pub struct FuncDelc {
     name: Node<Ident>,
     params: Vec<Node<Param>>,
-    return_type: Type,
+    return_type: TypeSpanned,
     block: BlockStmt,
 }
 
@@ -65,11 +71,11 @@ impl Parse for FuncDelc {
 
         parser.consume::<t!(")")>()?;
 
-        let mut return_type = Type::void();
+        let mut return_type = TypeSpanned::dummy(Type::void());
 
         if let tt!(->) = parser.peek()? {
             parser.consume::<t!(->)>()?;
-            return_type = parser.parse::<Type>()?;
+            return_type = parser.parse::<TypeSpanned>()?;
         }
 
         let block = parser.parse::<BlockStmt>()?;

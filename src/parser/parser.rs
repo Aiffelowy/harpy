@@ -50,15 +50,21 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(in crate::parser) fn parse_node<P: Parse>(&mut self) -> Result<Node<P>> {
-        let start = self.lexer.current_position();
-        let value = P::parse(self)?;
-        let end = self.lexer.current_position();
+        let (value, span) = self.parse_spanned()?;
 
-        Ok(Node::<P>::new(self.next_id(), Span::new(start, end), value))
+        Ok(Node::new(self.next_id(), span, value))
     }
 
     pub(in crate::parser) fn parse<P: Parse>(&mut self) -> Result<P> {
         P::parse(self)
+    }
+
+    pub(in crate::parser) fn parse_spanned<P: Parse>(&mut self) -> Result<(P, Span)> {
+        let start = self.lexer.current_position();
+        let value = P::parse(self)?;
+        let end = self.lexer.current_position();
+
+        Ok((value, Span::new(start, end)))
     }
 
     pub(in crate::parser) fn try_parse<T: Parse>(&mut self) -> Option<T> {

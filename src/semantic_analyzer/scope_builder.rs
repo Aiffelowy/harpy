@@ -1,14 +1,15 @@
 use crate::{
     aliases::{ScopeRc, SymbolInfoRef, TypeInfoRc},
-    err::HarpyError,
+    err::{HarpyError, HarpyErrorKind},
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
-    parser::{node::Node, program::Program, types::Type},
+    parser::{node::Node, program::Program, types::TypeSpanned},
 };
 
 use super::{
     analyze_trait::Analyze,
     analyzer::Analyzer,
+    err::SemanticError,
     result::AnalysisResult,
     scope::{Scope, ScopeKind},
     symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
@@ -87,8 +88,14 @@ impl ScopeBuilder {
         self.define_symbol(ident, SymbolInfoKind::Function(info))
     }
 
-    pub fn register_type(&mut self, ttype: &Type) -> TypeInfoRc {
-        self.result.type_table.register(ttype)
+    pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {
+        if !ttype.verify_pointers() {
+            self.report_error(HarpyError::new(
+                HarpyErrorKind::SemanticError(SemanticError::PointerToRef),
+                ttype.span(),
+            ));
+        }
+        self.result.type_table.register(&ttype)
     }
 
     pub(in crate::semantic_analyzer) fn build_analyzer(

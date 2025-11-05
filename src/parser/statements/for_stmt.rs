@@ -52,7 +52,8 @@ impl Analyze for ForStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
         builder.push_scope(ScopeKind::Loop);
 
-        let type_info = builder.register_type(&Type::unknown());
+        let type_info =
+            builder.register_type(&crate::parser::types::TypeSpanned::dummy(Type::unknown()));
 
         builder.define_var(
             &self.var,

@@ -1,5 +1,6 @@
 fn main() {
   let n :mut int = 5;
+  let b: boxed &int = 5;
   fibonacci(box n);
 }
 

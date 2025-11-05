@@ -1,11 +1,10 @@
-use std::fmt::Display;
-
 use super::{BaseType, PrimitiveType, RuntimeType};
 use crate::aliases::Result;
 use crate::err::HarpyError;
 use crate::lexer::span::Span;
 use crate::parser::{parser::Parser, Parse};
 use crate::{t, tt};
+use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeInner {
@@ -99,6 +98,19 @@ impl Type {
         }
 
         size
+    }
+
+    pub fn verify_pointers(&self) -> bool {
+        match &self.inner {
+            TypeInner::Boxed(b) => {
+                if let TypeInner::Ref(_) = &b.inner {
+                    return false;
+                }
+                b.verify_pointers()
+            }
+            TypeInner::Ref(r) => r.verify_pointers(),
+            _ => true,
+        }
     }
 
     pub fn compatible(&self, other: &Type) -> bool {

@@ -7,7 +7,7 @@ use crate::{
     parser::{
         expr::{infix::InfixOp, prefix::PrefixOp, Expr},
         node::Node,
-        types::Type,
+        types::{Type, TypeSpanned},
     },
 };
 
@@ -22,7 +22,7 @@ pub enum SemanticError {
     ArgTypeMismatch(Type, ParamInfo),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
-    LetTypeMismatch(Type, TypeInfoRc),
+    LetTypeMismatch(TypeSpanned, TypeInfoRc),
     ForTypeMismatch(TypeInfoRc, TypeInfoRc),
     WhileTypeMismatch(TypeInfoRc),
     IfTypeMismatch(TypeInfoRc),
@@ -32,6 +32,7 @@ pub enum SemanticError {
     AssignToConst(Node<Expr>),
     MissingMain,
     UnresolvedType,
+    PointerToRef,
 }
 
 impl Display for SemanticError {
@@ -173,6 +174,7 @@ impl Display for SemanticError {
             ),
             MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
             UnresolvedType => format!("internal error: unresolved type"),
+            PointerToRef => format!("cannot create a pointer to a reference"),
         };
 
         write!(f, "{s}")
