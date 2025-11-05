@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{aliases::TypeInfoRc, lexer::tokens::Lit};
 
-use super::type_table::{RuntimeTypeIndex, RuntimeTypeTable, TypeIndex};
+use super::type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex, TypeIndex};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ConstIndex(pub usize);
@@ -53,7 +53,7 @@ impl ConstPool {
 
     pub(in crate::semantic_analyzer) fn to_runtime(
         self,
-        type_table: &RuntimeTypeTable,
+        type_table: &RuntimeConversionTypeTable,
     ) -> RuntimeConstPool {
         let mut pool = Vec::with_capacity(self.pool.len());
         for entry in self.pool {

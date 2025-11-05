@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     const_pool::ConstIndex,
-    type_table::{RuntimeTypeIndex, RuntimeTypeTable, TypeIndex},
+    type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex, TypeIndex},
 };
 
 macro_rules! define_runtime_enum {
@@ -175,7 +175,7 @@ impl SymbolInfoKind {
 
     fn function_to_runtime(
         info: &FunctionInfo,
-        type_table: &RuntimeTypeTable,
+        type_table: &RuntimeConversionTypeTable,
     ) -> RuntimeFunctionInfo {
         let params = info
             .params
@@ -198,7 +198,7 @@ impl SymbolInfoKind {
 
     pub(in crate::semantic_analyzer) fn into_runtime(
         &self,
-        type_table: &RuntimeTypeTable,
+        type_table: &RuntimeConversionTypeTable,
     ) -> RuntimeSymbolInfoKind {
         if let Self::Function(ref f) = &self {
             return RuntimeSymbolInfoKind::Function(Self::function_to_runtime(f, type_table));
@@ -253,7 +253,7 @@ impl SymbolInfo {
 
     pub(in crate::semantic_analyzer) fn into_runtime(
         &self,
-        type_table: &RuntimeTypeTable,
+        type_table: &RuntimeConversionTypeTable,
     ) -> RuntimeSymbolInfo {
         RuntimeSymbolInfo {
             kind: self.kind.into_runtime(type_table),

@@ -45,12 +45,10 @@ impl TypeTable {
         rc
     }
 
-    pub fn get(&self, id: TypeIndex) -> Option<TypeInfoRc> {
-        self.pool.get(id.0).cloned()
-    }
-
-    pub fn into_runtime(self) -> Result<RuntimeTypeTable> {
-        let mut runtime_type_table = RuntimeTypeTable::new();
+    pub(in crate::semantic_analyzer) fn into_conversion(
+        self,
+    ) -> Result<RuntimeConversionTypeTable> {
+        let mut runtime_type_table = RuntimeConversionTypeTable::new();
         for ty in self.pool {
             runtime_type_table.register(ty)?;
         }
@@ -60,13 +58,13 @@ impl TypeTable {
 }
 
 #[derive(Debug)]
-pub struct RuntimeTypeTable {
+pub struct RuntimeConversionTypeTable {
     pool: Vec<RuntimeTypeInfo>,
     map: HashMap<RuntimeType, RuntimeTypeIndex>,
     runtime_mapping: HashMap<TypeIndex, RuntimeTypeIndex>,
 }
 
-impl RuntimeTypeTable {
+impl RuntimeConversionTypeTable {
     fn new() -> Self {
         Self {
             pool: vec![],
@@ -77,13 +75,13 @@ impl RuntimeTypeTable {
 
     fn register(&mut self, type_info: TypeInfoRc) -> Result<()> {
         let runtime_info = type_info.into_runtime()?;
-        let idx = RuntimeTypeIndex(self.pool.len());
 
-        if self.map.contains_key(&runtime_info.ttype) {
-            self.runtime_mapping.insert(type_info.idx, idx);
+        if let Some(idx) = self.map.get(&runtime_info.ttype) {
+            self.runtime_mapping.insert(type_info.idx, *idx);
             return Ok(());
         }
 
+        let idx = RuntimeTypeIndex(self.pool.len());
         let rttc = runtime_info.ttype.clone();
         self.pool.push(runtime_info);
         self.map.insert(rttc, idx);
@@ -91,10 +89,24 @@ impl RuntimeTypeTable {
         Ok(())
     }
 
-    pub fn get_mapping(&self, type_idx: &TypeIndex) -> RuntimeTypeIndex {
+    pub(in crate::semantic_analyzer) fn get_mapping(
+        &self,
+        type_idx: &TypeIndex,
+    ) -> RuntimeTypeIndex {
         self.runtime_mapping[type_idx]
     }
 
+    pub(in crate::semantic_analyzer) fn into_runtime(self) -> RuntimeTypeTable {
+        RuntimeTypeTable { pool: self.pool }
+    }
+}
+
+#[derive(Debug)]
+pub struct RuntimeTypeTable {
+    pool: Vec<RuntimeTypeInfo>,
+}
+
+impl RuntimeTypeTable {
     pub fn get(&self, type_idx: RuntimeTypeIndex) -> &RuntimeTypeInfo {
         &self.pool[type_idx.0]
     }

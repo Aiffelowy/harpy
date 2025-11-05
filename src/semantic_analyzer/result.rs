@@ -34,7 +34,7 @@ impl AnalysisResult {
     }
 
     pub fn into_runtime(self) -> Result<RuntimeAnalysisResult> {
-        let type_table = self.type_table.into_runtime()?;
+        let type_table = self.type_table.into_conversion()?;
         let node_info = self
             .node_info
             .iter()
@@ -44,7 +44,7 @@ impl AnalysisResult {
 
         Ok(RuntimeAnalysisResult {
             constants,
-            type_table,
+            type_table: type_table.into_runtime(),
             node_info,
         })
     }
