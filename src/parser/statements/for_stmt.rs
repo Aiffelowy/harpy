@@ -8,7 +8,6 @@ use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
-use crate::semantic_analyzer::symbol_info::VariableInfo;
 use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{get_symbol, t};
 
@@ -55,13 +54,7 @@ impl Analyze for ForStmt {
         let type_info =
             builder.register_type(&crate::parser::types::TypeSpanned::dummy(Type::unknown()));
 
-        builder.define_var(
-            &self.var,
-            VariableInfo {
-                ttype: type_info,
-                initialized: true,
-            },
-        );
+        builder.define_var(&self.var, type_info);
 
         self.block.build(builder);
         builder.pop_scope();

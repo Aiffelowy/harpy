@@ -10,33 +10,9 @@ use crate::{
 
 use super::{
     const_pool::ConstIndex,
+    scope::Depth,
     type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex, TypeIndex},
 };
-
-macro_rules! define_runtime_enum {
-    (
-        $(#[$enum_meta:meta])*
-        $vis:vis enum ($name:ident, $runtime_name:ident) {
-            $(
-                $variant:ident($inner:ty, $inner_runtime:ty),
-            )*
-        }
-    ) => {
-        $(#[$enum_meta])*
-        $vis enum $name {
-            $(
-                $variant($inner),
-            )*
-        }
-
-        $(#[$enum_meta])*
-        $vis enum $runtime_name {
-            $(
-                $variant($inner_runtime),
-            )*
-        }
-    };
-}
 
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
@@ -53,53 +29,36 @@ pub struct RuntimeTypeInfo {
 
 #[derive(Debug, Clone)]
 pub struct VariableInfo {
-    pub ttype: TypeInfoRc,
     pub initialized: bool,
+    pub mutably_borrowed: bool,
+    pub immutably_borrowed_count: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct RuntimeVariableInfo {
-    pub ttype: RuntimeTypeIndex,
+impl VariableInfo {
+    pub fn new() -> Self {
+        Self {
+            initialized: true,
+            mutably_borrowed: false,
+            immutably_borrowed_count: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionInfo {
-    pub params: Vec<ParamInfo>,
-    pub return_type: TypeInfoRc,
+    pub params: Vec<TypeInfoRc>,
     pub locals: Vec<TypeInfoRc>,
 }
 
 #[derive(Debug, Clone)]
 pub struct RuntimeFunctionInfo {
-    pub params: Vec<RuntimeParamInfo>,
-    pub return_type: RuntimeTypeIndex,
+    pub params: Vec<RuntimeTypeIndex>,
     pub locals: Vec<RuntimeTypeIndex>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ExprInfo {
-    pub ttype: TypeInfoRc,
-}
-
-#[derive(Debug, Clone)]
-pub struct RuntimeExprInfo {
-    pub ttype: RuntimeTypeIndex,
-}
-
-#[derive(Debug, Clone)]
-pub struct ParamInfo {
-    pub ttype: TypeInfoRc,
-}
-
-#[derive(Debug, Clone)]
-pub struct RuntimeParamInfo {
-    pub ttype: RuntimeTypeIndex,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiteralInfo {
     pub const_idx: ConstIndex,
-    pub ttype: TypeInfoRc,
 }
 
 #[derive(Debug, Clone)]
@@ -107,15 +66,23 @@ pub struct RuntimeLiteralInfo {
     pub const_idx: ConstIndex,
 }
 
-define_runtime_enum! {
 #[derive(Debug, Clone)]
-pub enum (SymbolInfoKind, RuntimeSymbolInfoKind) {
-    Function(FunctionInfo, RuntimeFunctionInfo),
-    Variable(VariableInfo, RuntimeVariableInfo),
-    Param(ParamInfo, RuntimeParamInfo),
-    Expr(ExprInfo, RuntimeExprInfo),
-    Literal(LiteralInfo, RuntimeLiteralInfo),
-}}
+pub enum SymbolInfoKind {
+    Function(FunctionInfo),
+    Variable(VariableInfo),
+    Literal(LiteralInfo),
+    Param,
+    Expr,
+}
+
+#[derive(Debug, Clone)]
+pub enum RuntimeSymbolInfoKind {
+    Function(RuntimeFunctionInfo),
+    Literal(RuntimeLiteralInfo),
+    Variable,
+    Param,
+    Expr,
+}
 
 impl TypeInfo {
     pub fn compatible(&self, other: &Type) -> bool {
@@ -153,26 +120,14 @@ impl Display for TypeInfo {
 }
 
 impl FunctionInfo {
-    pub fn new(return_type: TypeInfoRc) -> Self {
+    pub fn new() -> Self {
         Self {
             params: vec![],
             locals: vec![],
-            return_type,
         }
     }
 }
-
 impl SymbolInfoKind {
-    pub fn get_type(&self) -> &TypeInfoRc {
-        match self {
-            Self::Function(f) => &f.return_type,
-            Self::Variable(v) => &v.ttype,
-            Self::Expr(e) => &e.ttype,
-            Self::Param(p) => &p.ttype,
-            Self::Literal(l) => &l.ttype,
-        }
-    }
-
     fn function_to_runtime(
         info: &FunctionInfo,
         type_table: &RuntimeConversionTypeTable,
@@ -180,20 +135,14 @@ impl SymbolInfoKind {
         let params = info
             .params
             .iter()
-            .map(|param| RuntimeParamInfo {
-                ttype: type_table.get_mapping(&param.ttype.idx),
-            })
-            .collect::<Vec<RuntimeParamInfo>>();
+            .map(|info| type_table.get_mapping(&info.idx))
+            .collect();
         let locals = info
             .locals
             .iter()
             .map(|local| type_table.get_mapping(&local.idx))
             .collect::<Vec<RuntimeTypeIndex>>();
-        RuntimeFunctionInfo {
-            params,
-            locals,
-            return_type: type_table.get_mapping(&info.return_type.idx),
-        }
+        RuntimeFunctionInfo { params, locals }
     }
 
     pub(in crate::semantic_analyzer) fn into_runtime(
@@ -204,51 +153,48 @@ impl SymbolInfoKind {
             return RuntimeSymbolInfoKind::Function(Self::function_to_runtime(f, type_table));
         }
 
-        let idx = self.get_type().idx;
-        let ttype = type_table.get_mapping(&idx);
-
         match self {
-            Self::Function(_) => unreachable!(),
-            Self::Expr(_) => RuntimeSymbolInfoKind::Expr(RuntimeExprInfo { ttype }),
-            Self::Variable(_) => RuntimeSymbolInfoKind::Variable(RuntimeVariableInfo { ttype }),
-            Self::Param(_) => RuntimeSymbolInfoKind::Param(RuntimeParamInfo { ttype }),
+            Self::Function(ref f) => {
+                RuntimeSymbolInfoKind::Function(Self::function_to_runtime(f, type_table))
+            }
             Self::Literal(l) => RuntimeSymbolInfoKind::Literal(RuntimeLiteralInfo {
                 const_idx: l.const_idx,
             }),
+            Self::Variable(_) => RuntimeSymbolInfoKind::Variable,
+            Self::Expr => RuntimeSymbolInfoKind::Expr,
+            Self::Param => RuntimeSymbolInfoKind::Param,
         }
     }
 }
-
 #[derive(Debug, Clone)]
 pub struct SymbolInfo {
+    pub ty: TypeInfoRc,
     pub kind: SymbolInfoKind,
     pub ref_count: usize,
     pub node_id: NodeId,
+    pub scope_depth: Depth,
 }
 
 #[derive(Debug, Clone)]
 pub struct RuntimeSymbolInfo {
     pub kind: RuntimeSymbolInfoKind,
     pub node_id: NodeId,
+    pub ty: RuntimeTypeIndex,
 }
 
 impl SymbolInfo {
-    pub fn new(kind: SymbolInfoKind, node_id: NodeId) -> Self {
+    pub fn new(ty: TypeInfoRc, kind: SymbolInfoKind, node_id: NodeId, scope_depth: Depth) -> Self {
         Self {
+            ty,
             kind,
             ref_count: 0,
             node_id,
+            scope_depth,
         }
     }
 
     pub fn infer_type(&mut self, ttype: &TypeInfoRc) {
-        match &mut self.kind {
-            SymbolInfoKind::Function(_) => (),
-            SymbolInfoKind::Variable(ref mut v) => v.ttype = ttype.clone(),
-            SymbolInfoKind::Param(_) => (),
-            SymbolInfoKind::Expr(_) => (),
-            SymbolInfoKind::Literal(_) => (),
-        }
+        self.ty = ttype.clone()
     }
 
     pub(in crate::semantic_analyzer) fn into_runtime(
@@ -256,6 +202,7 @@ impl SymbolInfo {
         type_table: &RuntimeConversionTypeTable,
     ) -> RuntimeSymbolInfo {
         RuntimeSymbolInfo {
+            ty: type_table.get_mapping(&self.ty.idx),
             kind: self.kind.into_runtime(type_table),
             node_id: self.node_id,
         }

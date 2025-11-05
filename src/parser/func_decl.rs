@@ -8,11 +8,7 @@ use super::{
 use crate::{
     aliases::Result,
     lexer::tokens::Ident,
-    semantic_analyzer::{
-        analyze_trait::Analyze,
-        scope::ScopeKind,
-        symbol_info::{FunctionInfo, ParamInfo},
-    },
+    semantic_analyzer::{analyze_trait::Analyze, scope::ScopeKind},
     t, tt,
 };
 
@@ -92,11 +88,11 @@ impl Parse for FuncDelc {
 impl Analyze for FuncDelc {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
         let return_info = builder.register_type(&self.return_type);
-        builder.define_func(&self.name, FunctionInfo::new(return_info));
+        builder.define_func(&self.name, return_info);
         builder.push_scope(ScopeKind::Function(self.name.value().clone()));
         for param in &self.params {
             let param_info = builder.register_type(&param.ttype);
-            builder.define_param(&param.name, ParamInfo { ttype: param_info });
+            builder.define_param(&param.name, param_info);
         }
 
         self.block.build(builder);

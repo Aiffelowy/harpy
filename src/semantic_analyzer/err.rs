@@ -11,15 +11,13 @@ use crate::{
     },
 };
 
-use super::symbol_info::ParamInfo;
-
 #[derive(Debug)]
 pub enum SemanticError {
     DuplicateSymbol(Node<Ident>),
     MissingSymbol(Ident),
     NotAFunc(Ident),
     ArgCountMismatch(Ident, usize, usize),
-    ArgTypeMismatch(Type, ParamInfo),
+    ArgTypeMismatch(Type, TypeInfoRc),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
     LetTypeMismatch(TypeSpanned, TypeInfoRc),
@@ -30,9 +28,13 @@ pub enum SemanticError {
     ReturnTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignToConst(Node<Expr>),
+    CreatedImmutableBorrowWhileMutableBorrow,
+    CreatedMutableBorrowWhileImmutableBorrow,
     MissingMain,
     UnresolvedType,
     PointerToRef,
+    NotAVariable,
+    LifetimeMismatch,
 }
 
 impl Display for SemanticError {
@@ -175,6 +177,7 @@ impl Display for SemanticError {
             MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
             UnresolvedType => format!("internal error: unresolved type"),
             PointerToRef => format!("cannot create a pointer to a reference"),
+            _ => "sus".to_owned(),
         };
 
         write!(f, "{s}")

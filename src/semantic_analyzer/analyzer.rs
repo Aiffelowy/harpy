@@ -15,7 +15,7 @@ use super::resolvers::expr_resolver::ExprResolver;
 use super::result::AnalysisResult;
 use super::scope::ScopeKind;
 use super::scope_builder::ScopeBuilder;
-use super::symbol_info::{ExprInfo, LiteralInfo, SymbolInfo, SymbolInfoKind};
+use super::symbol_info::{LiteralInfo, SymbolInfo, SymbolInfoKind};
 
 #[derive(Debug)]
 pub struct Analyzer {
@@ -78,11 +78,12 @@ impl Analyzer {
                     ty: t,
                     span: expr.span(),
                 });
-                let info = ExprInfo {
-                    ttype: type_info.clone(),
-                };
-                let info = SymbolInfoKind::Expr(info);
-                let info = SymbolInfo::new(info, expr.id());
+                let info = SymbolInfo::new(
+                    type_info.clone(),
+                    SymbolInfoKind::Expr,
+                    expr.id(),
+                    self.current_scope.get().depth(),
+                );
 
                 self.result
                     .node_info
@@ -114,9 +115,9 @@ impl Analyzer {
         let ttype = self.register_type_unchecked(ty);
         let const_idx = self.result.constants.register(lit.value().clone(), &ttype);
 
-        let info = LiteralInfo { const_idx, ttype };
+        let info = LiteralInfo { const_idx };
         let info = SymbolInfoKind::Literal(info);
-        let info = SymbolInfo::new(info, lit.id());
+        let info = SymbolInfo::new(ttype, info, lit.id(), self.current_scope.get().depth());
         let info = SymbolInfoRef::new(info.into());
         self.result.node_info.insert(lit.id(), info);
     }

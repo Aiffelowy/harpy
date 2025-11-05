@@ -43,7 +43,7 @@ impl Analyze for ReturnStmt {
             return;
         };
 
-        let rt = rt.as_function().unwrap().return_type.clone();
+        let rt = rt.get().ty.clone();
 
         let Some(ref expr) = self.expr else {
             if !rt.compatible(&Type::void()) {

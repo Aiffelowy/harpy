@@ -35,7 +35,7 @@ impl ExprResolver {
     fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
-        Ok(symbol.kind.get_type().ttype.clone())
+        Ok(symbol.ty.ttype.clone())
     }
 
     fn resolve_call(ident: &Ident, params: &[Node<Expr>], analyzer: &mut Analyzer) -> Result<Type> {
@@ -70,7 +70,7 @@ impl ExprResolver {
             }
         }
 
-        Ok(func_info.return_type.ttype.clone())
+        Ok(symbol.ty.ttype.clone())
     }
 
     fn resolve_prefix(op: &PrefixOp, rhs: &Expr, analyzer: &mut Analyzer) -> Result<Type> {

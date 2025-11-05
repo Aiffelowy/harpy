@@ -12,7 +12,7 @@ use super::{
     err::SemanticError,
     result::AnalysisResult,
     scope::{Scope, ScopeKind},
-    symbol_info::{FunctionInfo, ParamInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
+    symbol_info::{FunctionInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
 };
 
 pub struct ScopeBuilder {
@@ -32,18 +32,21 @@ impl ScopeBuilder {
     }
 
     pub fn push_scope(&mut self, kind: ScopeKind) {
-        let new_scope = ScopeRc::new(Scope::new(kind, Some(&self.current_scope)).into());
-        self.current_scope
-            .get_mut()
-            .children
-            .push(new_scope.clone());
+        let new_scope = {
+            let mut current_scope = self.current_scope.get_mut();
+            let new_scope = ScopeRc::new(
+                Scope::new(kind, Some(&self.current_scope), current_scope.depth() + 1).into(),
+            );
+            current_scope.children.push(new_scope.clone());
+            new_scope
+        };
         self.current_scope = new_scope;
     }
 
     pub fn pop_scope(&mut self) {
         let parent = self.current_scope.get().parent.upgrade();
         if let Some(parent) = parent {
-            self.current_scope = parent
+            self.current_scope = parent;
         }
     }
 
@@ -52,8 +55,8 @@ impl ScopeBuilder {
         self
     }
 
-    fn define_symbol(&mut self, ident: &Node<Ident>, info: SymbolInfoKind) {
-        let symbol = SymbolInfo::new(info, ident.id());
+    fn define_symbol(&mut self, ident: &Node<Ident>, ty: TypeInfoRc, info: SymbolInfoKind) {
+        let symbol = SymbolInfo::new(ty, info, ident.id(), self.current_scope.get().depth());
         let symbol = SymbolInfoRef::new(symbol.into());
 
         let r = self.current_scope.get_mut().define(ident, symbol.clone());
@@ -65,27 +68,30 @@ impl ScopeBuilder {
         self.result.node_info.insert(ident.id(), symbol);
     }
 
-    pub fn define_param(&mut self, ident: &Node<Ident>, info: ParamInfo) {
-        self.define_symbol(ident, SymbolInfoKind::Param(info.clone()));
+    pub fn define_param(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
+        self.define_symbol(ident, ty.clone(), SymbolInfoKind::Param);
 
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().params.push(info);
+        func.as_function_mut().unwrap().params.push(ty);
     }
 
-    pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {
-        let ttype = info.ttype.clone();
-        self.define_symbol(ident, SymbolInfoKind::Variable(info));
+    pub fn define_var(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
+        self.define_symbol(
+            ident,
+            ty.clone(),
+            SymbolInfoKind::Variable(VariableInfo::new()),
+        );
 
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().locals.push(ttype);
+        func.as_function_mut().unwrap().locals.push(ty);
     }
 
-    pub fn define_func(&mut self, ident: &Node<Ident>, info: FunctionInfo) {
-        self.define_symbol(ident, SymbolInfoKind::Function(info))
+    pub fn define_func(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
+        self.define_symbol(ident, ty, SymbolInfoKind::Function(FunctionInfo::new()))
     }
 
     pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {

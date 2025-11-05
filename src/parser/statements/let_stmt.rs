@@ -1,7 +1,7 @@
 use crate::{
     lexer::tokens::Ident,
     parser::{expr::Expr, node::Node, parse_trait::Parse, parser::Parser, types::TypeSpanned},
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::VariableInfo},
+    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
     t,
 };
 
@@ -29,13 +29,7 @@ impl Parse for LetStmt {
 impl Analyze for LetStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
         let type_info = builder.register_type(&self.ttype);
-        builder.define_var(
-            &self.var,
-            VariableInfo {
-                ttype: type_info,
-                initialized: true,
-            },
-        )
+        builder.define_var(&self.var, type_info)
     }
 
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {

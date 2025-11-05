@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::HashMap,
+    ops::Add,
     rc::{Rc, Weak},
 };
 
@@ -13,6 +14,16 @@ use crate::{
 };
 
 use super::err::SemanticError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Depth(pub usize);
+
+impl Add<usize> for Depth {
+    type Output = Depth;
+    fn add(self, rhs: usize) -> Self::Output {
+        Depth(self.0 + rhs)
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub enum ScopeKind {
@@ -29,16 +40,22 @@ pub struct Scope {
     pub(in crate::semantic_analyzer) children: Vec<ScopeRc>,
     visited: bool,
     kind: ScopeKind,
+    depth: Depth,
 }
 
 impl Scope {
-    pub(in crate::semantic_analyzer) fn new(kind: ScopeKind, parent: Option<&ScopeRc>) -> Self {
+    pub(in crate::semantic_analyzer) fn new(
+        kind: ScopeKind,
+        parent: Option<&ScopeRc>,
+        depth: Depth,
+    ) -> Self {
         Self {
             kind,
             parent: parent.map(|p| Rc::downgrade(p)),
             symbols: HashMap::new(),
             children: vec![],
             visited: false,
+            depth,
         }
     }
 
@@ -99,5 +116,9 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn main_exists(&self) -> bool {
         self.symbols.contains_key("main")
+    }
+
+    pub(in crate::semantic_analyzer) fn depth(&self) -> Depth {
+        self.depth
     }
 }

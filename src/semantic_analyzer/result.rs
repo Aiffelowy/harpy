@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     const_pool::{ConstPool, RuntimeConstPool},
-    scope::Scope,
+    scope::{Depth, Scope},
     symbol_info::RuntimeSymbolInfo,
     type_table::{RuntimeTypeTable, TypeTable},
 };
@@ -23,7 +23,7 @@ pub struct AnalysisResult {
 
 impl AnalysisResult {
     pub(in crate::semantic_analyzer) fn new() -> Self {
-        let root = Scope::new(super::scope::ScopeKind::Global, None);
+        let root = Scope::new(super::scope::ScopeKind::Global, None, Depth(0));
         let root = ScopeRc::new(root.into());
         Self {
             scope_tree: root,
