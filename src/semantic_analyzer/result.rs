@@ -1,6 +1,17 @@
-use crate::aliases::{NodeInfo, ScopeRc};
+use crate::extensions::SymbolInfoRefExt;
+use std::collections::HashMap;
 
-use super::{const_pool::ConstPool, scope::Scope, type_table::TypeTable};
+use crate::{
+    aliases::{NodeInfo, Result, ScopeRc},
+    parser::node::NodeId,
+};
+
+use super::{
+    const_pool::ConstPool,
+    scope::Scope,
+    symbol_info::RuntimeSymbolInfo,
+    type_table::{RuntimeTypeTable, TypeTable},
+};
 
 #[derive(Debug)]
 pub struct AnalysisResult {
@@ -21,4 +32,26 @@ impl AnalysisResult {
             constants: ConstPool::new(),
         }
     }
+
+    pub fn into_runtime(self) -> Result<RuntimeAnalysisResult> {
+        let type_table = self.type_table.into_runtime()?;
+        let node_info = self
+            .node_info
+            .iter()
+            .map(|(k, v)| (*k, v.get().into_runtime(&type_table)))
+            .collect();
+
+        Ok(RuntimeAnalysisResult {
+            constants: self.constants,
+            type_table,
+            node_info,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct RuntimeAnalysisResult {
+    pub node_info: HashMap<NodeId, RuntimeSymbolInfo>,
+    pub type_table: RuntimeTypeTable,
+    pub constants: ConstPool,
 }

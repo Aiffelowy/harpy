@@ -1,5 +1,8 @@
 use std::fmt::Display;
 
+use crate::aliases::Result;
+use crate::err::HarpyError;
+use crate::lexer::span::Span;
 use crate::lexer::tokens::Ident;
 use crate::t;
 use crate::tt;
@@ -236,6 +239,23 @@ impl Type {
             _ => false,
         }
     }
+
+    pub fn to_runtime(&self) -> Result<RuntimeType> {
+        let new = match &self.inner {
+            TypeInner::Void => RuntimeType::Void,
+            TypeInner::Unknown => {
+                return HarpyError::semantic(
+                    crate::semantic_analyzer::err::SemanticError::UnresolvedType,
+                    Span::default(),
+                )
+            }
+            TypeInner::Ref(t) => RuntimeType::Ref(Box::new(t.to_runtime()?)),
+            TypeInner::Boxed(t) => RuntimeType::Boxed(Box::new(t.to_runtime()?)),
+            TypeInner::Base(b) => RuntimeType::Base(b.clone()),
+        };
+
+        Ok(new)
+    }
 }
 
 impl Display for PrimitiveType {
@@ -286,6 +306,14 @@ impl Display for Type {
 
         write!(f, "{s}")
     }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum RuntimeType {
+    Base(BaseType),
+    Boxed(Box<RuntimeType>),
+    Ref(Box<RuntimeType>),
+    Void,
 }
 
 #[cfg(test)]

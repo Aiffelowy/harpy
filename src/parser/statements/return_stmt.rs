@@ -8,6 +8,7 @@ use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
+use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{t, tt};
 
 #[derive(Debug, Clone)]
@@ -51,6 +52,7 @@ impl Analyze for ReturnStmt {
                         Rc::new(crate::semantic_analyzer::symbol_info::TypeInfo {
                             ttype: Type::void(),
                             size: 0,
+                            idx: TypeIndex(0),
                         }),
                         rt.clone(),
                     ),

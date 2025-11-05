@@ -65,13 +65,12 @@ impl ScopeBuilder {
     }
 
     pub fn define_param(&mut self, ident: &Node<Ident>, info: ParamInfo) {
-        let ttype = info.ttype.clone();
-        self.define_symbol(ident, SymbolInfoKind::Param(info));
+        self.define_symbol(ident, SymbolInfoKind::Param(info.clone()));
 
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().params.push(ttype);
+        func.as_function_mut().unwrap().params.push(info);
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, info: VariableInfo) {

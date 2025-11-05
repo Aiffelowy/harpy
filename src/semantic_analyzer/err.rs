@@ -11,13 +11,15 @@ use crate::{
     },
 };
 
+use super::symbol_info::ParamInfo;
+
 #[derive(Debug)]
 pub enum SemanticError {
     DuplicateSymbol(Node<Ident>),
     MissingSymbol(Ident),
     NotAFunc(Ident),
     ArgCountMismatch(Ident, usize, usize),
-    ArgTypeMismatch(Type, TypeInfoRc),
+    ArgTypeMismatch(Type, ParamInfo),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
     LetTypeMismatch(Type, TypeInfoRc),
@@ -29,6 +31,7 @@ pub enum SemanticError {
     AssignTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignToConst(Node<Expr>),
     MissingMain,
+    UnresolvedType,
 }
 
 impl Display for SemanticError {
@@ -63,7 +66,7 @@ impl Display for SemanticError {
             ArgTypeMismatch(got, expected) => format!(
                 "incorrect arguments; expected {}{}{} got {}{}{}",
                 Color::Green,
-                expected,
+                expected.ttype,
                 Color::Reset,
                 Color::Red,
                 got,
@@ -169,6 +172,7 @@ impl Display for SemanticError {
                 Color::Reset
             ),
             MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
+            UnresolvedType => format!("internal error: unresolved type"),
         };
 
         write!(f, "{s}")

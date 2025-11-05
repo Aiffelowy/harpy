@@ -1,11 +1,14 @@
+use std::cell::Ref;
+
 use crate::{
     aliases::SymbolInfoRef,
-    semantic_analyzer::symbol_info::{FunctionInfo, SymbolInfoKind},
+    semantic_analyzer::symbol_info::{FunctionInfo, SymbolInfo, SymbolInfoKind},
 };
 
 pub trait SymbolInfoRefExt {
     fn as_function(&self) -> Option<std::cell::Ref<FunctionInfo>>;
     fn as_function_mut(&self) -> Option<std::cell::RefMut<FunctionInfo>>;
+    fn get(&self) -> Ref<SymbolInfo>;
 }
 
 impl SymbolInfoRefExt for SymbolInfoRef {
@@ -27,5 +30,9 @@ impl SymbolInfoRefExt for SymbolInfoRef {
             None
         })
         .ok()
+    }
+
+    fn get(&self) -> Ref<SymbolInfo> {
+        (**self).borrow()
     }
 }

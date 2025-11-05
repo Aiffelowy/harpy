@@ -38,6 +38,7 @@ fn main() -> Result<()> {
 
     match Analyzer::analyze(&ast) {
         Ok(result) => {
+            let result = result.into_runtime()?;
             println!("NODE INFO: \n{:?}\n\n\n", result.node_info);
             println!("CONST POOL:\n{:?}\n\n\n", result.constants);
             println!("TYPE TABLE:\n{:?}", result.type_table);

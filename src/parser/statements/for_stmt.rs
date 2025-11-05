@@ -9,6 +9,7 @@ use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::semantic_analyzer::symbol_info::VariableInfo;
+use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{get_symbol, t};
 
 use super::BlockStmt;
@@ -76,6 +77,7 @@ impl Analyze for ForStmt {
                         Rc::new(crate::semantic_analyzer::symbol_info::TypeInfo {
                             ttype: Type::int(),
                             size: 8,
+                            idx: TypeIndex(0),
                         }),
                     ),
                     self.iter.to.span(),
