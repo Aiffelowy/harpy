@@ -12,6 +12,7 @@ pub struct Lexer<'lexer> {
     chars: Peekable<Chars<'lexer>>,
     position: Position,
     next: Token,
+    last_position: Position,
 }
 
 impl<'lexer> Lexer<'lexer> {
@@ -23,6 +24,7 @@ impl<'lexer> Lexer<'lexer> {
                 t: crate::lexer::tokens::TokenType::Eof,
                 span: Span::new(Position::default(), Position::default()),
             },
+            last_position: Position::default(),
         };
 
         l.next_token()?;
@@ -53,7 +55,11 @@ impl<'lexer> Lexer<'lexer> {
     }
 
     //hacky, but works
-    pub fn current_position(&self) -> Position {
+    pub fn current_position_end(&self) -> Position {
+        self.last_position
+    }
+
+    pub fn current_position_start(&self) -> Position {
         self.next.span().start
     }
 
@@ -96,6 +102,7 @@ impl<'lexer> Lexer<'lexer> {
                 tt!("/*") => self.skip_multi_comments(),
                 _ => {
                     let current = std::mem::replace(&mut self.next, next);
+                    self.last_position = current.span().end;
                     return Ok(current);
                 }
             }

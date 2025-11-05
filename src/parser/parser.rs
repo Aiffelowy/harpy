@@ -60,9 +60,9 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(in crate::parser) fn parse_spanned<P: Parse>(&mut self) -> Result<(P, Span)> {
-        let start = self.lexer.current_position();
+        let start = self.lexer.current_position_start();
         let value = P::parse(self)?;
-        let end = self.lexer.current_position();
+        let end = self.lexer.current_position_end();
 
         Ok((value, Span::new(start, end)))
     }

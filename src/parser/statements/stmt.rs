@@ -88,6 +88,7 @@ impl Analyze for Stmt {
 
                 if lhs.lvalue().is_none() {
                     analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
+                    return;
                 }
 
                 let lhs_type = lhs_type.deref();

@@ -246,7 +246,6 @@ macro_rules! define_tokens {
                     '"' => Self::parse_str(l)?,
                     _ => return HarpyError::lexer(LexerError::UnknownToken, Span::new(position_start, l.position())),
                 }};
-
                 Ok(Self { t: token_type, span: Span::new(position_start, l.position()) })
 
             }
