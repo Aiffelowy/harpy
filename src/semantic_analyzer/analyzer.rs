@@ -2,7 +2,7 @@ use crate::aliases::{Result, SymbolInfoRef, TypeInfoRc};
 use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
-use crate::lexer::tokens::{Lit, Literal};
+use crate::lexer::tokens::Literal;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
@@ -111,9 +111,9 @@ impl Analyzer {
     }
 
     pub fn register_constant(&mut self, lit: &Node<Literal>, ty: &Type) {
-        let const_idx = self.result.constants.register(lit.value().clone());
         let ttype = self.register_type_unchecked(ty);
-        println!("{:?}", ttype);
+        let const_idx = self.result.constants.register(lit.value().clone(), &ttype);
+
         let info = LiteralInfo { const_idx, ttype };
         let info = SymbolInfoKind::Literal(info);
         let info = SymbolInfo::new(info, lit.id());

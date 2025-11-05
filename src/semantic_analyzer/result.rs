@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    const_pool::ConstPool,
+    const_pool::{ConstPool, RuntimeConstPool},
     scope::Scope,
     symbol_info::RuntimeSymbolInfo,
     type_table::{RuntimeTypeTable, TypeTable},
@@ -40,9 +40,10 @@ impl AnalysisResult {
             .iter()
             .map(|(k, v)| (*k, v.get().into_runtime(&type_table)))
             .collect();
+        let constants = self.constants.to_runtime(&type_table);
 
         Ok(RuntimeAnalysisResult {
-            constants: self.constants,
+            constants,
             type_table,
             node_info,
         })
@@ -53,5 +54,5 @@ impl AnalysisResult {
 pub struct RuntimeAnalysisResult {
     pub node_info: HashMap<NodeId, RuntimeSymbolInfo>,
     pub type_table: RuntimeTypeTable,
-    pub constants: ConstPool,
+    pub constants: RuntimeConstPool,
 }
