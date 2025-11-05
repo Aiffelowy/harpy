@@ -1,9 +1,4 @@
 fn main() {
-  let n :mut int = 5;
-  fibonacci(box n);
-}
-
-//LINE COMMENT
-fn fibonacci(a: mut boxed int) -> boxed int {
-  return a; //HERE TOO
+  let a :int = 5;
+  let ref :&mut int = &a;
 }

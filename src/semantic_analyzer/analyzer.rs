@@ -13,9 +13,39 @@ use super::analyze_trait::Analyze;
 use super::err::SemanticError;
 use super::resolvers::expr_resolver::ExprResolver;
 use super::result::AnalysisResult;
-use super::scope::ScopeKind;
+use super::scope::{Depth, ScopeKind};
 use super::scope_builder::ScopeBuilder;
-use super::symbol_info::{LiteralInfo, SymbolInfo, SymbolInfoKind};
+use super::symbol_info::{BorrowInfo, LiteralInfo, SymbolInfo, SymbolInfoKind};
+
+#[macro_export]
+macro_rules! get_symbol {
+    (($analyzer:ident, $($symbol:tt)+) $name:ident { $($code:tt)* }) => {
+        {
+            match $analyzer.get_symbol(&$($symbol)+) {
+                Err(e) => { $analyzer.report_error(e); }
+                Ok(s) => {
+                    let $name = (*s).borrow();
+                    $($code)*
+                },
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! get_symbol_mut {
+    (($analyzer:ident, $($symbol:tt)+) $name:ident { $($code:tt)* }) => {
+        {
+            match $analyzer.get_symbol(&$($symbol)+) {
+                Err(e) => { $analyzer.report_error(e); }
+                Ok(s) => {
+                    let mut $name = (*s).borrow_mut();
+                    $($code)*
+                },
+            }
+        }
+    };
+}
 
 #[derive(Debug)]
 pub struct Analyzer {
@@ -43,8 +73,12 @@ impl Analyzer {
 
     pub fn exit_scope(&mut self) {
         let parent = self.current_scope.get().parent.upgrade();
-
         if let Some(parent) = parent {
+            let r = self.current_scope.get().resolve_borrows();
+            match r {
+                Ok(()) => (),
+                Err(e) => self.report_error(e),
+            }
             self.current_scope = parent
         }
     }
@@ -122,6 +156,14 @@ impl Analyzer {
         self.result.node_info.insert(lit.id(), info);
     }
 
+    pub(in crate::semantic_analyzer) fn current_depth(&self) -> Depth {
+        self.current_scope.get().depth()
+    }
+
+    pub(in crate::semantic_analyzer) fn register_borrow(&self, info: BorrowInfo) {
+        self.current_scope.get_mut().register_borrow(info);
+    }
+
     pub fn main_exists(&self) -> bool {
         self.current_scope.get().main_exists()
     }
@@ -136,19 +178,28 @@ impl Analyzer {
 
         Ok(s.result)
     }
-}
 
-#[macro_export]
-macro_rules! get_symbol {
-    (($analyzer:ident, $($symbol:tt)+) $name:ident { $($code:tt)* }) => {
-        {
-            match $analyzer.get_symbol(&$($symbol)+) {
-                Err(e) => { $analyzer.report_error(e); }
-                Ok(s) => {
-                    let mut $name = (*s).borrow_mut();
-                    $($code)*
-                },
-            }
+    pub fn check_return_borrow(&mut self, id: &Ident) {
+        get_symbol!((self, id) var_info {
+        if var_info.scope_depth >= self.current_depth() {
+            self.report_error(HarpyError::new(
+                HarpyErrorKind::SemanticError(SemanticError::ReturnRefToLocal),
+                id.span(),
+            ));
         }
-    };
+        })
+    }
+
+    pub fn check_assign_borrow(&mut self, lhs: &Ident, expr: &Node<Expr>) {
+        if let Some(i) = expr.lvalue() {
+            get_symbol!((self, i) info {
+                get_symbol!((self, lhs) lhs_info {
+                    println!("{:?} {:?}", info, lhs_info);
+                    if lhs_info.scope_depth < info.scope_depth {
+                        self.report_error(HarpyError::new(HarpyErrorKind::SemanticError(SemanticError::LifetimeMismatch), expr.span()));
+                    }
+                })
+            });
+        }
+    }
 }

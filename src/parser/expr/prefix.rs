@@ -12,7 +12,6 @@ pub enum PrefixOpKind {
     Minus,
     Plus,
     Neg,
-    Ref,
     Star,
     Box,
 }
@@ -44,7 +43,6 @@ impl Display for PrefixOp {
             Minus => "-",
             Plus => "+",
             Neg => "-",
-            Ref => "&",
             Star => "*",
             Box => "box ",
         };
@@ -59,7 +57,6 @@ impl Parse for PrefixOp {
             tt!(+) => PrefixOpKind::Plus,
             tt!(-) => PrefixOpKind::Minus,
             tt!(!) => PrefixOpKind::Neg,
-            tt!(&) => PrefixOpKind::Ref,
             tt!(*) => PrefixOpKind::Star,
             tt!(box) => PrefixOpKind::Box,
             _ => {

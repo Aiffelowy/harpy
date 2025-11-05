@@ -8,12 +8,12 @@ use std::{
 use crate::{
     aliases::{Result, ScopeRc, SymbolInfoRef},
     err::HarpyError,
-    extensions::{ScopeRcExt, WeakScopeExt},
+    extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
     parser::node::Node,
 };
 
-use super::err::SemanticError;
+use super::{err::SemanticError, symbol_info::BorrowInfo};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Depth(pub usize);
@@ -41,6 +41,7 @@ pub struct Scope {
     visited: bool,
     kind: ScopeKind,
     depth: Depth,
+    borrows: Vec<BorrowInfo>,
 }
 
 impl Scope {
@@ -56,6 +57,7 @@ impl Scope {
             children: vec![],
             visited: false,
             depth,
+            borrows: vec![],
         }
     }
 
@@ -120,5 +122,32 @@ impl Scope {
 
     pub(in crate::semantic_analyzer) fn depth(&self) -> Depth {
         self.depth
+    }
+
+    pub(in crate::semantic_analyzer) fn register_borrow(&mut self, info: BorrowInfo) {
+        self.borrows.push(info);
+    }
+
+    pub(in crate::semantic_analyzer) fn resolve_borrows(&self) -> Result<()> {
+        for borrow in &self.borrows {
+            {
+                let orig = borrow.original.get();
+                if orig.scope_depth == self.depth && borrow.depth != self.depth {
+                    return HarpyError::semantic(
+                        SemanticError::LifetimeMismatch,
+                        borrow.borrow_span,
+                    );
+                }
+            }
+
+            let mut var = borrow.original.as_variable_mut().unwrap();
+            if var.mutably_borrowed {
+                var.mutably_borrowed = false;
+            } else {
+                var.immutably_borrowed_count -= 1;
+            }
+        }
+
+        Ok(())
     }
 }

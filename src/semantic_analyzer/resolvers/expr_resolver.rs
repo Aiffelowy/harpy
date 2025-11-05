@@ -1,13 +1,18 @@
 use crate::{
     aliases::Result,
     err::HarpyError,
+    extensions::SymbolInfoRefExt,
     lexer::tokens::{Ident, Lit, Literal},
     parser::{
-        expr::{infix::InfixOp, prefix::PrefixOp, Expr},
+        expr::{expr::SpannedExpr, infix::InfixOp, prefix::PrefixOp, Expr},
         node::Node,
         types::{BaseType, PrimitiveType, Type, TypeInner},
     },
-    semantic_analyzer::{analyzer::Analyzer, err::SemanticError, symbol_info::SymbolInfoKind},
+    semantic_analyzer::{
+        analyzer::Analyzer,
+        err::SemanticError,
+        symbol_info::{BorrowInfo, SymbolInfoKind},
+    },
 };
 
 use super::{infix_resolver::InfixResolver, prefix_resolver::PrefixResolver};
@@ -78,6 +83,55 @@ impl ExprResolver {
         PrefixResolver::resolve(op, &rhs_type)
     }
 
+    fn resolve_borrow(expr: &SpannedExpr, mutable: bool, analyzer: &mut Analyzer) -> Result<Type> {
+        let Expr::Ident(ref i) = **expr else {
+            return HarpyError::semantic(SemanticError::InvalidBorrow, expr.span());
+        };
+        let symbol = analyzer.get_symbol(i)?;
+        let ttype = symbol.get().ty.clone();
+
+        if mutable && !ttype.mutable {
+            return HarpyError::semantic(SemanticError::BorrowMutNonMutable, expr.span());
+        }
+
+        let mut var = symbol.as_variable_mut().ok_or_else(|| {
+            HarpyError::new(
+                crate::err::HarpyErrorKind::SemanticError(SemanticError::InvalidVarBorrow(
+                    symbol.get().kind.clone(),
+                )),
+                expr.span(),
+            )
+        })?;
+
+        if mutable && var.immutably_borrowed_count != 0 {
+            return HarpyError::semantic(
+                SemanticError::CreatedMutableBorrowWhileImmutableBorrow,
+                expr.span(),
+            );
+        }
+
+        if var.mutably_borrowed {
+            return HarpyError::semantic(SemanticError::AlreadyMutablyBorrowed, expr.span());
+        }
+
+        if mutable {
+            var.mutably_borrowed = true;
+        } else {
+            var.immutably_borrowed_count += 1;
+        }
+
+        analyzer.register_borrow(BorrowInfo {
+            depth: analyzer.current_depth(),
+            original: symbol.clone(),
+            borrow_span: expr.span(),
+        });
+
+        Ok(Type {
+            mutable,
+            inner: TypeInner::Ref(Box::new(ttype.ttype.clone())),
+        })
+    }
+
     fn resolve_infix(
         lhs: &Expr,
         op: &InfixOp,
@@ -96,6 +150,7 @@ impl ExprResolver {
             Expr::Call(ident, params) => Self::resolve_call(ident, params, analyzer),
             Expr::Prefix(op, rhs) => Self::resolve_prefix(op, rhs, analyzer),
             Expr::Infix(lhs, op, rhs) => Self::resolve_infix(lhs, op, rhs, analyzer),
+            Expr::Borrow(expr, mutable) => Self::resolve_borrow(expr, *mutable, analyzer),
         }
     }
 }

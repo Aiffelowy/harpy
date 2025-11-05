@@ -9,7 +9,7 @@ use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::semantic_analyzer::type_table::TypeIndex;
-use crate::{get_symbol, t};
+use crate::{get_symbol_mut, t};
 
 use super::BlockStmt;
 
@@ -86,7 +86,7 @@ impl Analyze for ForStmt {
                     );
                 }
 
-                get_symbol!((analyzer, self.var) var {
+                get_symbol_mut!((analyzer, self.var) var {
                     var.infer_type(&from_type);
                 });
             }

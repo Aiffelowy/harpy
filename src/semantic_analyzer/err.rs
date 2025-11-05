@@ -11,6 +11,8 @@ use crate::{
     },
 };
 
+use super::symbol_info::SymbolInfoKind;
+
 #[derive(Debug)]
 pub enum SemanticError {
     DuplicateSymbol(Node<Ident>),
@@ -28,13 +30,16 @@ pub enum SemanticError {
     ReturnTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignToConst(Node<Expr>),
-    CreatedImmutableBorrowWhileMutableBorrow,
     CreatedMutableBorrowWhileImmutableBorrow,
+    AlreadyMutablyBorrowed,
+    InvalidBorrow,
+    InvalidVarBorrow(SymbolInfoKind),
+    BorrowMutNonMutable,
     MissingMain,
     UnresolvedType,
     PointerToRef,
-    NotAVariable,
     LifetimeMismatch,
+    ReturnRefToLocal,
 }
 
 impl Display for SemanticError {
@@ -177,7 +182,15 @@ impl Display for SemanticError {
             MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
             UnresolvedType => format!("internal error: unresolved type"),
             PointerToRef => format!("cannot create a pointer to a reference"),
-            _ => "sus".to_owned(),
+            CreatedMutableBorrowWhileImmutableBorrow => {
+                format!("cannot borrow as mutable; already borrowed as immutable")
+            }
+            AlreadyMutablyBorrowed => format!("cannot borrow; already borrowed as mutable"),
+            InvalidBorrow => format!("cannot borrow this value"),
+            BorrowMutNonMutable => format!("cannot borrow immutable value as mutable"),
+            LifetimeMismatch => format!("borrow outlives base variable"),
+            InvalidVarBorrow(k) => format!("cannot borrow {k}s"),
+            ReturnRefToLocal => format!("cannot return a reference to a local variable"),
         };
 
         write!(f, "{s}")

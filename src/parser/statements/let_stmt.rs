@@ -43,6 +43,8 @@ impl Analyze for LetStmt {
                 self.rhs.span(),
             );
         }
+
+        if expr_type.is_ref() {}
     }
 }
 

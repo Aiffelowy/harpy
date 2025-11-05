@@ -27,9 +27,13 @@ impl Parse for Type {
 
         if let tt!(&) = parser.peek()? {
             parser.consume::<t!(&)>()?;
+            if let tt!(mut) = parser.peek()? {
+                mutable = true;
+                parser.consume::<t!(mut)>()?;
+            }
             return Ok(Self {
                 inner: TypeInner::Ref(Box::new(parser.parse::<Type>()?)),
-                mutable: false,
+                mutable,
             });
         }
 
@@ -76,6 +80,13 @@ impl Type {
             mutable: false,
             inner: TypeInner::Void,
         }
+    }
+
+    pub fn is_ref(&self) -> bool {
+        if let TypeInner::Ref(_) = &self.inner {
+            return true;
+        }
+        return false;
     }
 
     pub fn calc_size(&self) -> usize {

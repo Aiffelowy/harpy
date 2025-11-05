@@ -66,9 +66,13 @@ impl Analyze for ReturnStmt {
         if let Some(expr_type) = analyzer.resolve_expr(expr) {
             if !expr_type.return_compatible(&rt.ttype) {
                 analyzer.report_semantic_error(
-                    SemanticError::ReturnTypeMismatch(expr_type, rt.clone()),
+                    SemanticError::ReturnTypeMismatch(expr_type.clone(), rt.clone()),
                     expr.span(),
                 );
+            }
+
+            if let Some(i) = expr.lvalue() {
+                analyzer.check_return_borrow(i);
             }
         }
     }

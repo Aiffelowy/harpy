@@ -1,5 +1,7 @@
 use std::fmt::Display;
+use std::ops::Deref;
 
+use crate::lexer::span::Span;
 use crate::lexer::tokens::Ident;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -9,6 +11,39 @@ use crate::{aliases::Result, lexer::tokens::Literal, parser::Parse};
 
 use super::infix::InfixOp;
 use super::prefix::PrefixOp;
+use super::prefix::PrefixOpKind;
+
+#[derive(Debug, Clone)]
+pub struct SpannedExpr {
+    expr: Expr,
+    span: Span,
+}
+
+impl Parse for SpannedExpr {
+    fn parse(parser: &mut Parser) -> Result<Self> {
+        let (expr, span) = parser.parse_spanned()?;
+        Ok(Self { expr, span })
+    }
+}
+
+impl Deref for SpannedExpr {
+    type Target = Expr;
+    fn deref(&self) -> &Self::Target {
+        &self.expr
+    }
+}
+
+impl Display for SpannedExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.expr)
+    }
+}
+
+impl SpannedExpr {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -17,6 +52,7 @@ pub enum Expr {
     Literal(Node<Literal>),
     Ident(Ident),
     Call(Ident, Vec<Node<Expr>>),
+    Borrow(Box<SpannedExpr>, bool),
 }
 
 impl Expr {
@@ -78,6 +114,16 @@ impl Expr {
                 parser.consume::<t!(")")>()?;
                 return Ok(expr);
             }
+            tt!(&) => {
+                parser.consume::<t!(&)>()?;
+                let mut mutable = false;
+                if let tt!(mut) = parser.peek()? {
+                    mutable = true;
+                    parser.consume::<t!(mut)>()?;
+                }
+                let expr = parser.parse()?;
+                return Ok(Expr::Borrow(Box::new(expr), mutable));
+            }
             _ => (),
         }
 
@@ -96,6 +142,38 @@ impl Parse for Expr {
     }
 }
 
+impl Expr {
+    pub fn calc_span(&self) -> Span {
+        match self {
+            Expr::Ident(i) => i.span(),
+            Expr::Prefix(op, expr) => Span::new(op.span().start, expr.calc_span().end),
+            Expr::Infix(lhs, _, rhs) => Span::new(lhs.calc_span().start, rhs.calc_span().end),
+            Expr::Literal(l) => l.span(),
+            Expr::Borrow(expr, _) => expr.calc_span(),
+            Expr::Call(i, exprs) => {
+                let start = i.span();
+                Span::new(
+                    start.start,
+                    exprs.last().map(|l| l.span()).unwrap_or(start).end,
+                )
+            }
+        }
+    }
+
+    pub fn lvalue(&self) -> Option<&Ident> {
+        match self {
+            Expr::Ident(i) => Some(i),
+            Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => expr.lvalue(),
+            Expr::Borrow(expr, _) => expr.lvalue(),
+
+            Expr::Literal(_) => None,
+            Expr::Call(_, _) => None,
+            Expr::Infix(_, _, _) => None,
+            Expr::Prefix(_, _) => None,
+        }
+    }
+}
+
 impl Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -111,6 +189,7 @@ impl Display for Expr {
             }
             Expr::Prefix(op, expr) => format!("{op}{expr}"),
             Expr::Infix(lhs, op, rhs) => format!("{lhs} {op} {rhs}"),
+            Expr::Borrow(rhs, mutable) => format!("&{}{rhs}", if *mutable { "mut " } else { "" }),
         };
 
         write!(f, "{s}")

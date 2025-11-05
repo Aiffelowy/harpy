@@ -300,6 +300,9 @@ define_tokens!(
 
         "boxed" => Boxed,
         "box" => Box,
+
+        "borrowed" => Borrowed,
+        "borrow" => Borrow,
     }
 
     [symbols] => {
@@ -423,6 +426,12 @@ macro_rules! t {
     };
     (box) => {
         $crate::lexer::tokens::Box
+    };
+    (borrow) => {
+        $crate::lexer::tokens::Borrow
+    };
+    (borrowed) => {
+        $crate::lexer::tokens::Borrowed
     };
     (ident) => {
         $crate::lexer::tokens::Ident
@@ -594,6 +603,12 @@ macro_rules! tt {
     };
     (box) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Box)
+    };
+    (borrow) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Borrow)
+    };
+    (borrowed) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Borrowed)
     };
 
     (=) => {

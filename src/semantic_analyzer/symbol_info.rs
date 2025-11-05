@@ -1,7 +1,8 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Deref};
 
 use crate::{
-    aliases::{Result, TypeInfoRc},
+    aliases::{Result, SymbolInfoRef, TypeInfoRc},
+    lexer::span::Span,
     parser::{
         node::NodeId,
         types::{RuntimeType, Type},
@@ -25,6 +26,13 @@ pub struct TypeInfo {
 pub struct RuntimeTypeInfo {
     pub ttype: RuntimeType,
     pub size: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct BorrowInfo {
+    pub depth: Depth,
+    pub original: SymbolInfoRef,
+    pub borrow_span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -85,31 +93,18 @@ pub enum RuntimeSymbolInfoKind {
 }
 
 impl TypeInfo {
-    pub fn compatible(&self, other: &Type) -> bool {
-        self.ttype.compatible(other)
-    }
-
-    pub fn strict_compatible(&self, other: &Type) -> bool {
-        self.ttype.strict_compatible(other)
-    }
-
-    pub fn assign_compatible(&self, other: &Type) -> bool {
-        self.ttype.assign_compatible(other)
-    }
-
-    pub fn param_compatible(&self, other: &Type) -> bool {
-        self.ttype.param_compatible(other)
-    }
-
-    pub fn return_compatible(&self, other: &Type) -> bool {
-        self.ttype.return_compatible(other)
-    }
-
     pub fn into_runtime(&self) -> Result<RuntimeTypeInfo> {
         Ok(RuntimeTypeInfo {
             ttype: self.ttype.to_runtime()?,
             size: self.size,
         })
+    }
+}
+
+impl Deref for TypeInfo {
+    type Target = Type;
+    fn deref(&self) -> &Self::Target {
+        &self.ttype
     }
 }
 
@@ -206,5 +201,19 @@ impl SymbolInfo {
             kind: self.kind.into_runtime(type_table),
             node_id: self.node_id,
         }
+    }
+}
+
+impl Display for SymbolInfoKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Expr => "expression",
+            Self::Param => "parameter",
+            Self::Literal(_) => "literal",
+            Self::Function(_) => "function",
+            Self::Variable(_) => "variable",
+        };
+
+        write!(f, "{s}")
     }
 }
