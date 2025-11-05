@@ -1,4 +1,12 @@
 fn main() {
-  let a :int = 5;
-  let ref :&mut int = &a;
+  let a :mut int = 5;
+  let c:int = *sus(&a);
 }
+
+fn sus(a: &mut int) -> &mut int {
+  a = -69;
+  let c: &mut int = a;
+  c = 420;
+  return a;
+}
+

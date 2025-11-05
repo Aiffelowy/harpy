@@ -134,10 +134,7 @@ mod ttype {
             PrefixOpKind::Star => match &ttype.inner {
                 TypeInner::Base(_) => unreachable!(),
                 TypeInner::Boxed(t) => *t.clone(),
-                TypeInner::Ref(t) => Type {
-                    mutable: ttype.mutable,
-                    inner: t.inner.clone(),
-                },
+                TypeInner::Ref(t) => *t.clone(),
                 TypeInner::Unknown => unreachable!(),
                 TypeInner::Void => unreachable!(),
             },

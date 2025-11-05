@@ -86,22 +86,24 @@ impl Analyze for Stmt {
                     return;
                 };
 
-                if !lhs_type.ttype.mutable {
+                if lhs.lvalue().is_none() {
+                    analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
+                }
+
+                let lhs_type = lhs_type.deref();
+
+                if !lhs_type.mutable {
                     analyzer.report_semantic_error(
                         SemanticError::AssignToConst(lhs.clone()),
                         lhs.span(),
                     );
                 }
 
-                if !lhs_type.compatible(&rhs_type.ttype) {
+                if !lhs_type.assign_compatible(&rhs_type.ttype) {
                     analyzer.report_semantic_error(
-                        SemanticError::AssignTypeMismatch(rhs_type, lhs_type),
+                        SemanticError::AssignTypeMismatch(rhs_type, lhs_type.clone()),
                         rhs.span(),
                     );
-                }
-
-                if let Some(i) = lhs.lvalue() {
-                    analyzer.check_assign_borrow(i, rhs);
                 }
             }
         }

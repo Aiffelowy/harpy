@@ -27,13 +27,10 @@ impl Parse for Type {
 
         if let tt!(&) = parser.peek()? {
             parser.consume::<t!(&)>()?;
-            if let tt!(mut) = parser.peek()? {
-                mutable = true;
-                parser.consume::<t!(mut)>()?;
-            }
+
             return Ok(Self {
                 inner: TypeInner::Ref(Box::new(parser.parse::<Type>()?)),
-                mutable,
+                mutable: false,
             });
         }
 
@@ -54,6 +51,13 @@ impl Parse for Type {
 }
 
 impl Type {
+    pub fn deref(&self) -> &Type {
+        match &self.inner {
+            TypeInner::Ref(inner) => inner.deref(),
+            _ => self,
+        }
+    }
+
     pub fn unknown() -> Self {
         Self {
             mutable: false,

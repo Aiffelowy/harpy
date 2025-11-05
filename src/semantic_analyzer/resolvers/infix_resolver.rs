@@ -10,22 +10,6 @@ use crate::{
 
 pub struct InfixResolver;
 
-impl Type {
-    fn deref(&self) -> &Type {
-        match &self.inner {
-            TypeInner::Ref(inner) => inner.deref(),
-            _ => self,
-        }
-    }
-
-    fn primitive_bool() -> Self {
-        Type {
-            mutable: false,
-            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Bool)),
-        }
-    }
-}
-
 impl InfixResolver {
     pub fn resolve(op: &InfixOp, lhs: &Type, rhs: &Type) -> Result<Type> {
         if !Self::validate(op, lhs, rhs) {
@@ -94,7 +78,7 @@ impl InfixResolver {
             | InfixOpKind::LtEq
             | InfixOpKind::GtEq
             | InfixOpKind::And
-            | InfixOpKind::Or => Type::primitive_bool(),
+            | InfixOpKind::Or => Type::bool(),
         }
     }
 }
