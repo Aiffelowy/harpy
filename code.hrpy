@@ -6,7 +6,8 @@ fn main() {
 fn sus(a: &mut int) -> &mut int {
   a = -69;
   let c: &mut int = a;
-  c = 420;
+  let among:int = 124;
+  c = among;
   return a;
 }
 
