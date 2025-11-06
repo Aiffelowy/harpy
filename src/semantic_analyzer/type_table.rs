@@ -33,11 +33,14 @@ impl TypeTable {
         }
 
         let i = self.pool.len();
-        let rc = TypeInfoRc::new(TypeInfo {
-            ttype: ttype.clone(),
-            size: ttype.calc_size(),
-            idx: TypeIndex(i),
-        });
+        let rc = TypeInfoRc::new(
+            TypeInfo {
+                ttype: ttype.clone(),
+                size: ttype.calc_size(),
+                idx: TypeIndex(i),
+            }
+            .into(),
+        );
 
         self.pool.push(rc.clone());
         self.map.insert(ttype.clone(), TypeIndex(i));

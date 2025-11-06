@@ -39,11 +39,16 @@ impl Parse for Type {
             parser.consume::<t!(mut)>()?;
         }
 
-        let inner = if let tt!(boxed) = parser.peek()? {
-            parser.consume::<t!(boxed)>()?;
-            TypeInner::Boxed(Box::new(parser.parse::<Type>()?))
-        } else {
-            TypeInner::Base(parser.parse::<BaseType>()?)
+        let inner = match parser.peek()? {
+            tt!(boxed) => {
+                parser.consume::<t!(boxed)>()?;
+                TypeInner::Boxed(Box::new(parser.parse::<Type>()?))
+            }
+            tt!(.) => {
+                parser.consume::<t!(.)>()?;
+                TypeInner::Unknown
+            }
+            _ => TypeInner::Base(parser.parse()?),
         };
 
         Ok(Self { mutable, inner })
@@ -204,6 +209,7 @@ impl Type {
                     l.assign_compatible(r)
                 }
             }
+            (TypeInner::Void, TypeInner::Void) => true,
             _ => false,
         }
     }

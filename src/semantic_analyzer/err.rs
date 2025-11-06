@@ -7,7 +7,7 @@ use crate::{
     parser::{
         expr::{infix::InfixOp, prefix::PrefixOp, Expr},
         node::Node,
-        types::{Type, TypeSpanned},
+        types::Type,
     },
 };
 
@@ -22,7 +22,7 @@ pub enum SemanticError {
     ArgTypeMismatch(Type, TypeInfoRc),
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
-    LetTypeMismatch(TypeSpanned, TypeInfoRc),
+    LetTypeMismatch(Type, TypeInfoRc),
     ForTypeMismatch(TypeInfoRc, TypeInfoRc),
     WhileTypeMismatch(TypeInfoRc),
     IfTypeMismatch(TypeInfoRc),

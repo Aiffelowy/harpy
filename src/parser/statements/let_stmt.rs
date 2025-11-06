@@ -1,8 +1,15 @@
 use crate::{
+    get_symbol_mut,
     lexer::tokens::Ident,
-    parser::{expr::Expr, node::Node, parse_trait::Parse, parser::Parser, types::TypeSpanned},
+    parser::{
+        expr::Expr,
+        node::Node,
+        parse_trait::Parse,
+        parser::Parser,
+        types::{Type, TypeInner, TypeSpanned},
+    },
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
-    t,
+    t, tt,
 };
 
 #[derive(Debug, Clone)]
@@ -16,8 +23,13 @@ impl Parse for LetStmt {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         parser.consume::<t!(let)>()?;
         let var = parser.parse_node::<Ident>()?;
-        parser.consume::<t!(:)>()?;
-        let ttype = parser.parse()?;
+
+        let mut ttype = TypeSpanned::dummy(Type::unknown());
+        if let tt!(:) = parser.peek()? {
+            parser.consume::<t!(:)>()?;
+            ttype = parser.parse()?;
+        }
+
         parser.consume::<t!(=)>()?;
         let rhs = parser.parse_node::<Expr>()?;
         parser.consume::<t!(;)>()?;
@@ -28,7 +40,14 @@ impl Parse for LetStmt {
 
 impl Analyze for LetStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
-        let type_info = builder.register_type(&self.ttype);
+        let type_info = if self.ttype.inner == TypeInner::Unknown {
+            builder.register_type(&TypeSpanned::dummy(Type {
+                mutable: self.ttype.mutable,
+                inner: TypeInner::Void,
+            }))
+        } else {
+            builder.register_type(&self.ttype)
+        };
         builder.define_var(&self.var, type_info)
     }
 
@@ -37,14 +56,19 @@ impl Analyze for LetStmt {
             return;
         };
 
-        if !self.ttype.assign_compatible(&expr_type.ttype) {
+        get_symbol_mut!((analyzer, self.var) info {
+        if self.ttype.inner == TypeInner::Unknown {
+            info.infer_type(&expr_type);
+        }
+
+        if !info.ty.assign_compatible(&expr_type.ttype) {
             analyzer.report_semantic_error(
-                SemanticError::LetTypeMismatch(self.ttype.clone(), expr_type.clone()),
+                SemanticError::LetTypeMismatch(info.ty.ttype.clone(), expr_type.clone()),
                 self.rhs.span(),
             );
         }
 
-        if expr_type.is_ref() {}
+        });
     }
 }
 

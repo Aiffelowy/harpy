@@ -189,7 +189,14 @@ impl SymbolInfo {
     }
 
     pub fn infer_type(&mut self, ttype: &TypeInfoRc) {
-        self.ty = ttype.clone()
+        self.ty = TypeInfoRc::new(TypeInfo {
+            ttype: Type {
+                mutable: self.ty.mutable,
+                inner: ttype.ttype.inner.clone(),
+            },
+            size: ttype.size,
+            idx: ttype.idx,
+        })
     }
 
     pub(in crate::semantic_analyzer) fn into_runtime(
