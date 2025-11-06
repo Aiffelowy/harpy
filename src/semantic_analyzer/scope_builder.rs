@@ -3,7 +3,11 @@ use crate::{
     err::{HarpyError, HarpyErrorKind},
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
-    parser::{node::Node, program::Program, types::TypeSpanned},
+    parser::{
+        node::Node,
+        program::Program,
+        types::{Type, TypeInner, TypeSpanned},
+    },
 };
 
 use super::{
@@ -95,6 +99,13 @@ impl ScopeBuilder {
     }
 
     pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {
+        if ttype.inner == TypeInner::Unknown {
+            return self.result.type_table.register(&Type {
+                mutable: ttype.mutable,
+                inner: TypeInner::Void,
+            });
+        }
+
         if !ttype.verify_pointers() {
             self.report_error(HarpyError::new(
                 HarpyErrorKind::SemanticError(SemanticError::PointerToRef),

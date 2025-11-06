@@ -1,7 +1,14 @@
 fn main() {
-  let among :mut . = 231;
-  among = 4;
+  let a : boxed mut int = box 0;
+
+  for iter in *a-10 => *a+10 {
+    let b :mut . = iter;
+    b = *a;
+  }
 }
 
 
-fn sus() {}
+fn sus( a: boxed mut int ) -> int {
+  *a = 5;
+  return *a;
+}

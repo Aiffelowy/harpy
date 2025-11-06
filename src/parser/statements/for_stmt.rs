@@ -22,7 +22,7 @@ pub struct IterExpr {
 impl Parse for IterExpr {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         let from = parser.parse_node::<Expr>()?;
-        parser.consume::<t!(..)>()?;
+        parser.consume::<t!(=>)>()?;
         let to = parser.parse_node::<Expr>()?;
 
         Ok(Self { from, to })
@@ -66,22 +66,15 @@ impl Analyze for ForStmt {
         if let Some(from_type) = analyzer.resolve_expr(&self.iter.from) {
             if !from_type.compatible(&Type::int()) {
                 analyzer.report_semantic_error(
-                    SemanticError::ForTypeMismatch(
-                        from_type.clone(),
-                        Rc::new(crate::semantic_analyzer::symbol_info::TypeInfo {
-                            ttype: Type::int(),
-                            size: 8,
-                            idx: TypeIndex(0),
-                        }),
-                    ),
+                    SemanticError::ForTypeMismatch(from_type.clone(), Type::int()),
                     self.iter.to.span(),
                 );
             }
 
             if let Some(to_type) = analyzer.resolve_expr(&self.iter.to) {
-                if from_type.compatible(&to_type.ttype) {
+                if !to_type.compatible(&from_type.ttype) {
                     analyzer.report_semantic_error(
-                        SemanticError::ForTypeMismatch(from_type.clone(), to_type.clone()),
+                        SemanticError::ForTypeMismatch(from_type.clone(), to_type.ttype.clone()),
                         self.iter.to.span(),
                     );
                 }

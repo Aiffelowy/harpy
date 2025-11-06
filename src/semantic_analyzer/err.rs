@@ -23,7 +23,7 @@ pub enum SemanticError {
     PrefixTypeMismatch(PrefixOp, Type),
     InfixTypeMismatch(InfixOp, Type, Type),
     LetTypeMismatch(Type, TypeInfoRc),
-    ForTypeMismatch(TypeInfoRc, TypeInfoRc),
+    ForTypeMismatch(TypeInfoRc, Type),
     WhileTypeMismatch(TypeInfoRc),
     IfTypeMismatch(TypeInfoRc),
     ReturnNotInFunc,

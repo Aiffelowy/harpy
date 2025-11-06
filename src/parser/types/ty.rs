@@ -99,25 +99,21 @@ impl Type {
     }
 
     pub fn calc_size(&self) -> usize {
-        let mut size = 0;
-
         match &self.inner {
-            TypeInner::Ref(_) => size += 8,
-            TypeInner::Boxed(_) => size += 8,
-            TypeInner::Void => (),
-            TypeInner::Unknown => (),
+            TypeInner::Ref(_) => 8,
+            TypeInner::Boxed(_) => 8,
+            TypeInner::Void => 0,
+            TypeInner::Unknown => 0,
             TypeInner::Base(b) => match b {
-                BaseType::Custom(_) => (),
+                BaseType::Custom(_) => 0,
                 BaseType::Primitive(p) => match p {
-                    PrimitiveType::Int => size += 8,
-                    PrimitiveType::Str => (),
-                    PrimitiveType::Bool => size += 1,
-                    PrimitiveType::Float => size += 8,
+                    PrimitiveType::Int => 0,
+                    PrimitiveType::Str => 12,
+                    PrimitiveType::Bool => 1,
+                    PrimitiveType::Float => 8,
                 },
             },
         }
-
-        size
     }
 
     pub fn verify_pointers(&self) -> bool {

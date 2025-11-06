@@ -40,14 +40,7 @@ impl Parse for LetStmt {
 
 impl Analyze for LetStmt {
     fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
-        let type_info = if self.ttype.inner == TypeInner::Unknown {
-            builder.register_type(&TypeSpanned::dummy(Type {
-                mutable: self.ttype.mutable,
-                inner: TypeInner::Void,
-            }))
-        } else {
-            builder.register_type(&self.ttype)
-        };
+        let type_info = builder.register_type(&self.ttype);
         builder.define_var(&self.var, type_info)
     }
 
