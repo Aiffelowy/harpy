@@ -3,6 +3,7 @@ use crate::aliases::Result;
 use crate::err::HarpyError;
 use crate::lexer::span::Span;
 use crate::parser::{parser::Parser, Parse};
+use crate::semantic_analyzer::type_table::RuntimeConversionTypeTable;
 use crate::{t, tt};
 use std::fmt::Display;
 
@@ -107,7 +108,7 @@ impl Type {
             TypeInner::Base(b) => match b {
                 BaseType::Custom(_) => 0,
                 BaseType::Primitive(p) => match p {
-                    PrimitiveType::Int => 0,
+                    PrimitiveType::Int => 8,
                     PrimitiveType::Str => 12,
                     PrimitiveType::Bool => 1,
                     PrimitiveType::Float => 8,
@@ -208,23 +209,6 @@ impl Type {
             (TypeInner::Void, TypeInner::Void) => true,
             _ => false,
         }
-    }
-
-    pub fn to_runtime(&self) -> Result<RuntimeType> {
-        let new = match &self.inner {
-            TypeInner::Void => RuntimeType::Void,
-            TypeInner::Unknown => {
-                return HarpyError::semantic(
-                    crate::semantic_analyzer::err::SemanticError::UnresolvedType,
-                    Span::default(),
-                )
-            }
-            TypeInner::Ref(t) => RuntimeType::Ref(Box::new(t.to_runtime()?)),
-            TypeInner::Boxed(t) => RuntimeType::Boxed(Box::new(t.to_runtime()?)),
-            TypeInner::Base(b) => RuntimeType::Base(b.clone()),
-        };
-
-        Ok(new)
     }
 }
 

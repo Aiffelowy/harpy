@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     aliases::{Result, TypeInfoRc},
-    parser::types::{RuntimeType, Type},
+    parser::types::{RuntimeType, Type, TypeInner},
 };
 
 use super::symbol_info::{RuntimeTypeInfo, TypeInfo};
@@ -32,6 +32,13 @@ impl TypeTable {
             return self.pool[info.0].clone();
         }
 
+        match &ttype.inner {
+            TypeInner::Boxed(b) | TypeInner::Ref(b) => {
+                self.register(b);
+            }
+            _ => (),
+        }
+
         let i = self.pool.len();
         let rc = TypeInfoRc::new(
             TypeInfo {
@@ -51,7 +58,7 @@ impl TypeTable {
     pub(in crate::semantic_analyzer) fn into_conversion(
         self,
     ) -> Result<RuntimeConversionTypeTable> {
-        let mut runtime_type_table = RuntimeConversionTypeTable::new();
+        let mut runtime_type_table = RuntimeConversionTypeTable::new(self.map);
         for ty in self.pool {
             runtime_type_table.register(ty)?;
         }
@@ -64,20 +71,22 @@ impl TypeTable {
 pub struct RuntimeConversionTypeTable {
     pool: Vec<RuntimeTypeInfo>,
     map: HashMap<RuntimeType, RuntimeTypeIndex>,
+    old_map: HashMap<Type, TypeIndex>,
     runtime_mapping: HashMap<TypeIndex, RuntimeTypeIndex>,
 }
 
 impl RuntimeConversionTypeTable {
-    fn new() -> Self {
+    fn new(old_map: HashMap<Type, TypeIndex>) -> Self {
         Self {
             pool: vec![],
             map: HashMap::new(),
             runtime_mapping: HashMap::new(),
+            old_map,
         }
     }
 
     fn register(&mut self, type_info: TypeInfoRc) -> Result<()> {
-        let runtime_info = type_info.into_runtime()?;
+        let runtime_info = type_info.into_runtime(self)?;
 
         if let Some(idx) = self.map.get(&runtime_info.ttype) {
             self.runtime_mapping.insert(type_info.idx, *idx);
@@ -97,6 +106,10 @@ impl RuntimeConversionTypeTable {
         type_idx: &TypeIndex,
     ) -> RuntimeTypeIndex {
         self.runtime_mapping[type_idx]
+    }
+
+    pub(in crate::semantic_analyzer) fn get_type_index(&self, ty: &Type) -> TypeIndex {
+        self.old_map[ty]
     }
 
     pub(in crate::semantic_analyzer) fn into_runtime(self) -> RuntimeTypeTable {

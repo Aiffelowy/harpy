@@ -1,9 +1,11 @@
+use crate::semantic_analyzer::type_table::RuntimeTypeIndex;
+
 use super::BaseType;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum RuntimeType {
     Base(BaseType),
-    Boxed(Box<RuntimeType>),
-    Ref(Box<RuntimeType>),
+    Boxed(RuntimeTypeIndex),
+    Ref(RuntimeTypeIndex),
     Void,
 }

@@ -2,10 +2,11 @@ use std::{fmt::Display, ops::Deref};
 
 use crate::{
     aliases::{Result, SymbolInfoRef, TypeInfoRc},
+    err::HarpyError,
     lexer::span::Span,
     parser::{
         node::NodeId,
-        types::{RuntimeType, Type},
+        types::{RuntimeType, Type, TypeInner},
     },
 };
 
@@ -14,6 +15,29 @@ use super::{
     scope::Depth,
     type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex, TypeIndex},
 };
+
+impl Type {
+    pub fn to_runtime(&self, type_table: &RuntimeConversionTypeTable) -> Result<RuntimeType> {
+        let new = match &self.inner {
+            TypeInner::Void => RuntimeType::Void,
+            TypeInner::Unknown => {
+                return HarpyError::semantic(
+                    crate::semantic_analyzer::err::SemanticError::UnresolvedType,
+                    Span::default(),
+                )
+            }
+            TypeInner::Ref(t) => {
+                RuntimeType::Ref(type_table.get_mapping(&type_table.get_type_index(t)))
+            }
+            TypeInner::Boxed(t) => {
+                RuntimeType::Boxed(type_table.get_mapping(&type_table.get_type_index(t)))
+            }
+            TypeInner::Base(b) => RuntimeType::Base(b.clone()),
+        };
+
+        Ok(new)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
@@ -93,9 +117,9 @@ pub enum RuntimeSymbolInfoKind {
 }
 
 impl TypeInfo {
-    pub fn into_runtime(&self) -> Result<RuntimeTypeInfo> {
+    pub fn into_runtime(&self, type_table: &RuntimeConversionTypeTable) -> Result<RuntimeTypeInfo> {
         Ok(RuntimeTypeInfo {
-            ttype: self.ttype.to_runtime()?,
+            ttype: self.ttype.to_runtime(type_table)?,
             size: self.size,
         })
     }
