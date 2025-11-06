@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::lexer::tokens::Ident;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -8,7 +6,6 @@ use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
-use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{get_symbol_mut, t};
 
 use super::BlockStmt;

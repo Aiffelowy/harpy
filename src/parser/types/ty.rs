@@ -1,9 +1,5 @@
-use super::{BaseType, PrimitiveType, RuntimeType};
-use crate::aliases::Result;
-use crate::err::HarpyError;
-use crate::lexer::span::Span;
+use super::{BaseType, PrimitiveType};
 use crate::parser::{parser::Parser, Parse};
-use crate::semantic_analyzer::type_table::RuntimeConversionTypeTable;
 use crate::{t, tt};
 use std::fmt::Display;
 
@@ -200,8 +196,9 @@ impl Type {
             (TypeInner::Base(l), TypeInner::Base(r)) => l == r,
             (TypeInner::Boxed(l), TypeInner::Boxed(r)) => l.assign_compatible(r),
             (TypeInner::Ref(l), TypeInner::Ref(r)) => {
-                if self.mutable {
-                    r.mutable && l.assign_compatible(r)
+                println!("{} {}", l.mutable, rhs.mutable);
+                if l.mutable {
+                    rhs.mutable && l.assign_compatible(r)
                 } else {
                     l.assign_compatible(r)
                 }

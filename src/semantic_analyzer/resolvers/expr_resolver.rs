@@ -103,6 +103,8 @@ impl ExprResolver {
             )
         })?;
 
+        println!("{:?}", var);
+
         if mutable && var.immutably_borrowed_count != 0 {
             return HarpyError::semantic(
                 SemanticError::CreatedMutableBorrowWhileImmutableBorrow,
@@ -128,7 +130,10 @@ impl ExprResolver {
 
         Ok(Type {
             mutable,
-            inner: TypeInner::Ref(Box::new(ttype.ttype.clone())),
+            inner: TypeInner::Ref(Box::new(Type {
+                mutable,
+                inner: ttype.inner.clone(),
+            })),
         })
     }
 

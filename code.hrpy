@@ -1,4 +1,9 @@
 fn main() {
-  let s :boxed boxed boxed str = box box box "e";
-  let a :&boxed boxed boxed str = &s;
+  let a :mut int = 5;
+  
+  o(&mut a);
+}
+
+fn o(a: &mut int) -> int {
+  return *a;
 }

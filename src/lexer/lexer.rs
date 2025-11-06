@@ -85,12 +85,11 @@ impl<'lexer> Lexer<'lexer> {
 
     pub(in crate::lexer) fn skip_whitespace(&mut self) {
         while let Some(c) = self.peek_char() {
-            if c.is_whitespace() {
-                self.next_char();
-                continue;
+            if !c.is_whitespace() {
+                break;
             }
 
-            break;
+            self.next_char();
         }
     }
 
@@ -98,14 +97,20 @@ impl<'lexer> Lexer<'lexer> {
         loop {
             let next = Token::parse(self)?;
             match next.t {
-                tt!("//") => self.skip_line_comments(),
-                tt!("/*") => self.skip_multi_comments(),
-                _ => {
-                    let current = std::mem::replace(&mut self.next, next);
-                    self.last_position = current.span().end;
-                    return Ok(current);
+                tt!("//") => {
+                    self.skip_line_comments();
+                    continue;
                 }
+                tt!("/*") => {
+                    self.skip_multi_comments();
+                    continue;
+                }
+                _ => (),
             }
+
+            let current = std::mem::replace(&mut self.next, next);
+            self.last_position = current.span().end;
+            return Ok(current);
         }
     }
 
