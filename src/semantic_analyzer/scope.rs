@@ -65,14 +65,15 @@ impl Scope {
         &mut self,
         node: &Node<Ident>,
         symbol: SymbolInfoRef,
-    ) -> Result<()> {
+    ) -> Result<SymbolInfoRef> {
         if self.symbols.contains_key(node.value()) {
             return HarpyError::semantic(SemanticError::DuplicateSymbol(node.clone()), node.span());
         }
 
         self.symbols.insert(node.value().to_owned(), symbol);
+        let s = self.lookup(node)?;
 
-        Ok(())
+        Ok(s)
     }
 
     pub(in crate::semantic_analyzer) fn next_unvisited_child(&mut self) -> Option<ScopeRc> {

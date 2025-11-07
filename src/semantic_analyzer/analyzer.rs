@@ -3,6 +3,7 @@ use crate::err::HarpyErrorKind;
 use crate::extensions::{ScopeRcExt, WeakScopeExt};
 use crate::lexer::span::Span;
 use crate::lexer::tokens::Literal;
+use crate::parser::expr::expr::CallExpr;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
@@ -11,7 +12,7 @@ use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 
 use super::analyze_trait::Analyze;
 use super::err::SemanticError;
-use super::resolvers::expr_resolver::ExprResolver;
+use super::resolvers::expr_resolver::{ExprResolver, ResolveMode};
 use super::result::AnalysisResult;
 use super::scope::{Depth, ScopeKind};
 use super::scope_builder::ScopeBuilder;
@@ -105,8 +106,8 @@ impl Analyzer {
         self.current_scope.get().get_function_symbol()
     }
 
-    pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<TypeInfoRc> {
-        match ExprResolver::resolve_expr(expr, self) {
+    fn res_expr(&mut self, expr: &Node<Expr>, mode: ResolveMode) -> Option<TypeInfoRc> {
+        match ExprResolver::resolve_expr(expr, self, mode) {
             Ok(t) => {
                 let type_info = self.register_type(&TypeSpanned {
                     ty: t,
@@ -129,6 +130,14 @@ impl Analyzer {
                 None
             }
         }
+    }
+
+    pub fn resolve_expr(&mut self, expr: &Node<Expr>) -> Option<TypeInfoRc> {
+        self.res_expr(expr, ResolveMode::Read)
+    }
+
+    pub fn resolve_expr_write(&mut self, expr: &Node<Expr>) -> Option<TypeInfoRc> {
+        self.res_expr(expr, ResolveMode::Write)
     }
 
     pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {
@@ -154,6 +163,16 @@ impl Analyzer {
         let info = SymbolInfo::new(ttype, info, lit.id(), self.current_scope.get().depth());
         let info = SymbolInfoRef::new(info.into());
         self.result.node_info.insert(lit.id(), info);
+    }
+
+    pub fn register_call(&mut self, ident: &Ident, call_expr: &Node<CallExpr>) {
+        match self.result.function_table.register_call(ident, call_expr) {
+            Some(()) => (),
+            None => self.report_error(HarpyError::new(
+                HarpyErrorKind::SemanticError(SemanticError::MissingSymbol(ident.clone())),
+                ident.span(),
+            )),
+        }
     }
 
     pub(in crate::semantic_analyzer) fn current_depth(&self) -> Depth {

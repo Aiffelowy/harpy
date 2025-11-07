@@ -46,12 +46,41 @@ impl SpannedExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct CallExpr {
+    pub ident: Ident,
+    pub args: Vec<Node<Expr>>,
+}
+
+impl Parse for CallExpr {
+    fn parse(parser: &mut Parser) -> Result<Self> {
+        let ident = parser.consume()?;
+        parser.consume::<t!("(")>()?;
+        let mut args = vec![];
+        loop {
+            if *parser.peek()? == tt!(")") {
+                break;
+            }
+
+            args.push(parser.parse_node::<Expr>()?);
+            if *parser.peek()? == tt!(,) {
+                parser.consume::<t!(,)>()?;
+            } else {
+                break;
+            }
+        }
+        parser.consume::<t!(")")>()?;
+
+        Ok(Self { ident, args })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>),
     Prefix(PrefixOp, Box<Expr>),
     Literal(Node<Literal>),
     Ident(Ident),
-    Call(Ident, Vec<Node<Expr>>),
+    Call(Node<CallExpr>),
     Borrow(Box<SpannedExpr>, bool),
 }
 
@@ -86,33 +115,16 @@ impl Expr {
                 return Ok(Expr::Literal(val));
             }
             tt!(ident) => {
+                let mut fork = parser.fork();
+                fork.consume::<t!(ident)>()?;
+
+                if let tt!("(") = *fork.peek()? {
+                    let call = parser.parse_node::<CallExpr>()?;
+                    return Ok(Expr::Call(call));
+                }
+
                 let ident = parser.consume::<t!(ident)>()?;
-                if *parser.peek()? != tt!("(") {
-                    return Ok(Expr::Ident(ident));
-                }
-
-                parser.consume::<t!("(")>()?;
-                let mut args = vec![];
-                loop {
-                    if *parser.peek()? == tt!(")") {
-                        break;
-                    }
-
-                    args.push(parser.parse_node::<Expr>()?);
-                    if *parser.peek()? == tt!(,) {
-                        parser.consume::<t!(,)>()?;
-                    } else {
-                        break;
-                    }
-                }
-                parser.consume::<t!(")")>()?;
-                return Ok(Expr::Call(ident, args));
-            }
-            tt!("(") => {
-                parser.consume::<t!("(")>()?;
-                let expr = Expr::parse_expr(parser, 0)?;
-                parser.consume::<t!(")")>()?;
-                return Ok(expr);
+                return Ok(Expr::Ident(ident));
             }
             tt!(&) => {
                 parser.consume::<t!(&)>()?;
@@ -150,13 +162,7 @@ impl Expr {
             Expr::Infix(lhs, _, rhs) => Span::new(lhs.calc_span().start, rhs.calc_span().end),
             Expr::Literal(l) => l.span(),
             Expr::Borrow(expr, _) => expr.calc_span(),
-            Expr::Call(i, exprs) => {
-                let start = i.span();
-                Span::new(
-                    start.start,
-                    exprs.last().map(|l| l.span()).unwrap_or(start).end,
-                )
-            }
+            Expr::Call(expr) => expr.span(),
         }
     }
 
@@ -167,7 +173,7 @@ impl Expr {
             Expr::Borrow(expr, _) => expr.lvalue(),
 
             Expr::Literal(_) => None,
-            Expr::Call(_, _) => None,
+            Expr::Call(_) => None,
             Expr::Infix(_, _, _) => None,
             Expr::Prefix(_, _) => None,
         }
@@ -179,9 +185,9 @@ impl Display for Expr {
         let s = match self {
             Expr::Literal(l) => format!("{}", l.value()),
             Expr::Ident(i) => format!("{}", i.value()),
-            Expr::Call(i, params) => {
-                let mut s = format!("{}(", i.value());
-                for param in params {
+            Expr::Call(expr) => {
+                let mut s = format!("{}(", expr.ident.value());
+                for param in &expr.args {
                     s.push_str(&format!("{},", param));
                 }
                 s.push(')');

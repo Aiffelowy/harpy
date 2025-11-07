@@ -3,11 +3,7 @@ use crate::{
     err::{HarpyError, HarpyErrorKind},
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
     lexer::tokens::Ident,
-    parser::{
-        node::Node,
-        program::Program,
-        types::{Type, TypeInner, TypeSpanned},
-    },
+    parser::{node::Node, program::Program, types::TypeSpanned},
 };
 
 use super::{
@@ -59,17 +55,23 @@ impl ScopeBuilder {
         self
     }
 
-    fn define_symbol(&mut self, ident: &Node<Ident>, ty: TypeInfoRc, info: SymbolInfoKind) {
+    fn define_symbol(
+        &mut self,
+        ident: &Node<Ident>,
+        ty: TypeInfoRc,
+        info: SymbolInfoKind,
+    ) -> Option<SymbolInfoRef> {
         let symbol = SymbolInfo::new(ty, info, ident.id(), self.current_scope.get().depth());
         let symbol = SymbolInfoRef::new(symbol.into());
 
         let r = self.current_scope.get_mut().define(ident, symbol.clone());
         if let Err(e) = r {
             self.report_error(e);
-            return;
+            return None;
         }
 
-        self.result.node_info.insert(ident.id(), symbol);
+        self.result.node_info.insert(ident.id(), symbol.clone());
+        Some(symbol)
     }
 
     pub fn define_param(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
@@ -82,30 +84,28 @@ impl ScopeBuilder {
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
-        self.define_symbol(
+        let Some(sym) = self.define_symbol(
             ident,
             ty.clone(),
             SymbolInfoKind::Variable(VariableInfo::new()),
-        );
+        ) else {
+            return;
+        };
 
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().locals.push(ty);
+        func.as_function_mut().unwrap().locals.push(sym);
     }
 
     pub fn define_func(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
-        self.define_symbol(ident, ty, SymbolInfoKind::Function(FunctionInfo::new()))
+        let s = self.define_symbol(ident, ty, SymbolInfoKind::Function(FunctionInfo::new()));
+        if let Some(s) = s {
+            self.result.function_table.register(ident, s.clone());
+        }
     }
 
     pub fn register_type(&mut self, ttype: &TypeSpanned) -> TypeInfoRc {
-        if ttype.inner == TypeInner::Unknown {
-            return self.result.type_table.register(&Type {
-                mutable: ttype.mutable,
-                inner: TypeInner::Void,
-            });
-        }
-
         if !ttype.verify_pointers() {
             self.report_error(HarpyError::new(
                 HarpyErrorKind::SemanticError(SemanticError::PointerToRef),

@@ -41,6 +41,7 @@ pub enum SemanticError {
     LifetimeMismatch,
     ReturnRefToLocal,
     AssignToRValue,
+    UninitializedVar,
 }
 
 impl Display for SemanticError {
@@ -193,6 +194,7 @@ impl Display for SemanticError {
             InvalidVarBorrow(k) => format!("cannot borrow {k}s"),
             ReturnRefToLocal => format!("cannot return a reference to a local variable"),
             AssignToRValue => format!("cannot assign to rvalue"),
+            UninitializedVar => format!("variable not initialized"),
         };
 
         write!(f, "{s}")

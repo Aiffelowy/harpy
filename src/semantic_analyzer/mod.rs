@@ -2,6 +2,7 @@ pub mod analyze_trait;
 pub mod analyzer;
 pub mod const_pool;
 pub mod err;
+pub mod function_table;
 pub mod resolvers;
 pub mod result;
 pub mod scope;

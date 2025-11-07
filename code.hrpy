@@ -1,9 +1,8 @@
 fn main() {
-  let a :mut int = 5;
-  
-  o(&mut a);
+  let i = box 24;
+  let s :int = 1 + *i;
+  func();
 }
 
-fn o(a: &mut int) -> int {
-  return *a;
-}
+fn func() {}
+

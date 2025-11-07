@@ -58,12 +58,15 @@ impl TypeTable {
     pub(in crate::semantic_analyzer) fn into_conversion(
         self,
     ) -> Result<RuntimeConversionTypeTable> {
-        let mut runtime_type_table = RuntimeConversionTypeTable::new(self.map);
+        let mut conversion_type_table = RuntimeConversionTypeTable::new(self.map);
         for ty in self.pool {
-            runtime_type_table.register(ty)?;
+            if ty.inner == TypeInner::Unknown {
+                continue;
+            }
+            conversion_type_table.register(ty)?;
         }
 
-        Ok(runtime_type_table)
+        Ok(conversion_type_table)
     }
 }
 

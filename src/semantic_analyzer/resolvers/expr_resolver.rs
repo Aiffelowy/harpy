@@ -4,7 +4,12 @@ use crate::{
     extensions::SymbolInfoRefExt,
     lexer::tokens::{Ident, Lit, Literal},
     parser::{
-        expr::{expr::SpannedExpr, infix::InfixOp, prefix::PrefixOp, Expr},
+        expr::{
+            expr::{CallExpr, SpannedExpr},
+            infix::InfixOp,
+            prefix::PrefixOp,
+            Expr,
+        },
         node::Node,
         types::{BaseType, PrimitiveType, Type, TypeInner},
     },
@@ -16,6 +21,12 @@ use crate::{
 };
 
 use super::{infix_resolver::InfixResolver, prefix_resolver::PrefixResolver};
+
+#[derive(Debug, Clone, Copy)]
+pub enum ResolveMode {
+    Read,
+    Write,
+}
 
 pub struct ExprResolver;
 
@@ -37,13 +48,31 @@ impl ExprResolver {
         t
     }
 
-    fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer) -> Result<Type> {
+    fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer, mode: ResolveMode) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
+        if let SymbolInfoKind::Variable(ref v) = symbol.kind {
+            match mode {
+                ResolveMode::Read => {
+                    if !v.initialized {
+                        return HarpyError::semantic(SemanticError::UninitializedVar, ident.span());
+                    }
+                }
+                ResolveMode::Write => (),
+            }
+        }
+
         Ok(symbol.ty.ttype.clone())
     }
 
-    fn resolve_call(ident: &Ident, params: &[Node<Expr>], analyzer: &mut Analyzer) -> Result<Type> {
+    fn resolve_call(
+        expr: &Node<CallExpr>,
+        analyzer: &mut Analyzer,
+        mode: ResolveMode,
+    ) -> Result<Type> {
+        let ident = &expr.ident;
+        let params = &expr.args;
+
         let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
 
@@ -64,7 +93,7 @@ impl ExprResolver {
         }
 
         for (param_expr, param_type) in params.iter().zip(&func_info.params) {
-            let ttype = Self::resolve_expr(param_expr, analyzer)?;
+            let ttype = Self::resolve_expr(param_expr, analyzer, mode)?;
             let param_t = &param_type.ttype;
             if !param_t.param_compatible(&ttype) {
                 //fix
@@ -75,11 +104,18 @@ impl ExprResolver {
             }
         }
 
+        analyzer.register_call(ident, expr);
+
         Ok(symbol.ty.ttype.clone())
     }
 
-    fn resolve_prefix(op: &PrefixOp, rhs: &Expr, analyzer: &mut Analyzer) -> Result<Type> {
-        let rhs_type = Self::resolve_expr(rhs, analyzer)?;
+    fn resolve_prefix(
+        op: &PrefixOp,
+        rhs: &Expr,
+        analyzer: &mut Analyzer,
+        mode: ResolveMode,
+    ) -> Result<Type> {
+        let rhs_type = Self::resolve_expr(rhs, analyzer, mode)?;
         PrefixResolver::resolve(op, &rhs_type)
     }
 
@@ -103,7 +139,9 @@ impl ExprResolver {
             )
         })?;
 
-        println!("{:?}", var);
+        if !var.initialized {
+            return HarpyError::semantic(SemanticError::UninitializedVar, i.span());
+        }
 
         if mutable && var.immutably_borrowed_count != 0 {
             return HarpyError::semantic(
@@ -142,19 +180,20 @@ impl ExprResolver {
         op: &InfixOp,
         rhs: &Expr,
         analyzer: &mut Analyzer,
+        mode: ResolveMode,
     ) -> Result<Type> {
-        let lhs_type = Self::resolve_expr(lhs, analyzer)?;
-        let rhs_type = Self::resolve_expr(rhs, analyzer)?;
+        let lhs_type = Self::resolve_expr(lhs, analyzer, mode)?;
+        let rhs_type = Self::resolve_expr(rhs, analyzer, mode)?;
         InfixResolver::resolve(op, &lhs_type, &rhs_type)
     }
 
-    pub fn resolve_expr(expr: &Expr, analyzer: &mut Analyzer) -> Result<Type> {
+    pub fn resolve_expr(expr: &Expr, analyzer: &mut Analyzer, mode: ResolveMode) -> Result<Type> {
         match expr {
             Expr::Literal(l) => Ok(Self::resolve_lit(l, analyzer)),
-            Expr::Ident(i) => Self::resolve_ident(i, analyzer),
-            Expr::Call(ident, params) => Self::resolve_call(ident, params, analyzer),
-            Expr::Prefix(op, rhs) => Self::resolve_prefix(op, rhs, analyzer),
-            Expr::Infix(lhs, op, rhs) => Self::resolve_infix(lhs, op, rhs, analyzer),
+            Expr::Ident(i) => Self::resolve_ident(i, analyzer, mode),
+            Expr::Call(expr) => Self::resolve_call(expr, analyzer, mode),
+            Expr::Prefix(op, rhs) => Self::resolve_prefix(op, rhs, analyzer, mode),
+            Expr::Infix(lhs, op, rhs) => Self::resolve_infix(lhs, op, rhs, analyzer, mode),
             Expr::Borrow(expr, mutable) => Self::resolve_borrow(expr, *mutable, analyzer),
         }
     }

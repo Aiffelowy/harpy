@@ -8,7 +8,7 @@ use crate::{
         parser::Parser,
         types::{Type, TypeInner, TypeSpanned},
     },
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
+    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::SymbolInfoKind},
     t, tt,
 };
 
@@ -16,7 +16,7 @@ use crate::{
 pub struct LetStmt {
     var: Node<Ident>,
     ttype: TypeSpanned,
-    rhs: Node<Expr>,
+    rhs: Option<Node<Expr>>,
 }
 
 impl Parse for LetStmt {
@@ -30,8 +30,11 @@ impl Parse for LetStmt {
             ttype = parser.parse()?;
         }
 
-        parser.consume::<t!(=)>()?;
-        let rhs = parser.parse_node::<Expr>()?;
+        let mut rhs = None;
+        if let tt!(=) = parser.peek()? {
+            parser.consume::<t!(=)>()?;
+            rhs = Some(parser.parse_node::<Expr>()?);
+        }
         parser.consume::<t!(;)>()?;
 
         Ok(Self { var, ttype, rhs })
@@ -45,7 +48,9 @@ impl Analyze for LetStmt {
     }
 
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
-        let Some(expr_type) = analyzer.resolve_expr(&self.rhs) else {
+        let Some(rhs) = &self.rhs else { return };
+
+        let Some(expr_type) = analyzer.resolve_expr(&rhs) else {
             return;
         };
 
@@ -57,9 +62,13 @@ impl Analyze for LetStmt {
         if !info.ty.assign_compatible(&expr_type.ttype) {
             analyzer.report_semantic_error(
                 SemanticError::LetTypeMismatch(info.ty.ttype.clone(), expr_type.clone()),
-                self.rhs.span(),
+                rhs.span(),
             );
         }
+
+        if let SymbolInfoKind::Variable(ref mut v) = &mut info.kind {
+                v.initialized = true;
+            }
 
         });
     }
