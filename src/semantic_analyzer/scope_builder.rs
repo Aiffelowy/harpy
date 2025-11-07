@@ -121,10 +121,6 @@ impl ScopeBuilder {
         let mut s = Self::new();
         program.build(&mut s);
 
-        if !s.errors.is_empty() {
-            return Err(s.errors);
-        }
-
-        Ok(Analyzer::new(s.result))
+        Ok(Analyzer::new(s.result, s.errors))
     }
 }

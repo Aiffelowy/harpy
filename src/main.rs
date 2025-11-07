@@ -17,7 +17,7 @@ pub mod source;
 
 fn print_errors(errors: Vec<HarpyError>, source: &SourceFile) {
     for err in errors {
-        err.show(&source);
+        err.show(source);
     }
 }
 
@@ -39,8 +39,8 @@ fn main() -> Result<()> {
     match Analyzer::analyze(&ast) {
         Ok(result) => {
             let result = result.into_runtime()?;
-            println!("TYPE TABLE:\n{:?}", result.type_table);
-            println!("CONST POOL:\n{:?}\n\n\n", result.constants);
+            println!("TYPE TABLE:\n{:?}\n\n", result.type_table);
+            println!("CONST POOL:\n{:?}\n\n", result.constants);
             println!("FUNCTION TABLE:\n{:?}", result.function_table);
         }
         Err(errors) => {

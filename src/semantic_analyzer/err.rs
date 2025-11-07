@@ -46,155 +46,94 @@ pub enum SemanticError {
 
 impl Display for SemanticError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Color::*;
         use SemanticError::*;
 
         let s = match self {
-            DuplicateSymbol(i) => format!(
-                "redefinition of symbol {}{}{}",
-                Color::Red,
-                i.value(),
-                Color::Reset
-            ),
-            MissingSymbol(i) => format!(
-                "use of undeclared symbol {}{}{}",
-                Color::Red,
-                i.value(),
-                Color::Reset
-            ),
+            DuplicateSymbol(i) => format!("redefinition of symbol {}{}{}", Red, i.value(), Reset),
+            MissingSymbol(i) => format!("use of undeclared symbol {}{}{}", Red, i.value(), Reset),
             NotAFunc(i) => format!("\"{}\" is not a function", i.value()),
 
             ArgCountMismatch(_i, got, expected) => format!(
                 "expected {}{}{} arguments, got {}{}{}",
-                Color::Green,
-                expected,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, expected, Reset, Red, got, Reset,
             ),
 
             ArgTypeMismatch(got, expected) => format!(
                 "incorrect arguments; expected {}{}{} got {}{}{}",
-                Color::Green,
-                expected.ttype,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, expected.ttype, Reset, Red, got, Reset,
             ),
 
             PrefixTypeMismatch(op, ty) => {
                 format!(
                     "cannot apply {}{}{} to {}{}{}",
-                    Color::Green,
-                    op,
-                    Color::Reset,
-                    Color::Red,
-                    ty,
-                    Color::Reset
+                    Green, op, Reset, Red, ty, Reset
                 )
             }
 
             InfixTypeMismatch(op, lhs, rhs) => format!(
                 "cannot {}{} {}{}{} to {}{}{}",
-                Color::Green,
-                op,
-                Color::Red,
-                lhs,
-                Color::Reset,
-                Color::Red,
-                rhs,
-                Color::Reset
+                Green, op, Red, lhs, Reset, Red, rhs, Reset
             ),
 
             LetTypeMismatch(i, ty) => format!(
                 "cannot assign {}{}{} to {}{}{}",
-                Color::Red,
-                ty,
-                Color::Reset,
-                Color::Green,
-                i,
-                Color::Reset
+                Red, ty, Reset, Green, i, Reset
             ),
 
             ForTypeMismatch(got, expected) => format!(
                 "type mismatch, expected {}{}{} got {}{}{}",
-                Color::Green,
-                expected,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, expected, Reset, Red, got, Reset,
             ),
 
             WhileTypeMismatch(got) => format!(
                 "type mismatch, expected {}bool{} got {}{}{}",
-                Color::Green,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, Reset, Red, got, Reset,
             ),
 
             IfTypeMismatch(got) => format!(
                 "type mismatch, expected {}bool{} got {}{}{}",
-                Color::Green,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, Reset, Red, got, Reset,
             ),
 
             ReturnNotInFunc => format!(
                 "{}return{} used outside a {}function{}",
-                Color::Red,
-                Color::Reset,
-                Color::Green,
-                Color::Reset
+                Red, Reset, Green, Reset
             ),
 
             ReturnTypeMismatch(got, expected) => format!(
                 "expected {}{}{} because of return type, got {}{}{}",
-                Color::Green,
-                expected,
-                Color::Reset,
-                Color::Red,
-                got,
-                Color::Reset,
+                Green, expected, Reset, Red, got, Reset,
             ),
 
             AssignTypeMismatch(got, expected) => format!(
                 "cannot assign {}{}{} to {}{}{}",
-                Color::Red,
-                got,
-                Color::Reset,
-                Color::Green,
-                expected,
-                Color::Reset,
+                Red, got, Reset, Green, expected, Reset,
             ),
 
-            AssignToConst(expr) => format!(
-                "{}{}{} is not {}mutable{}",
-                Color::Red,
-                expr,
-                Color::Reset,
-                Color::Green,
-                Color::Reset
-            ),
-            MissingMain => format!("missing {}main{}", Color::Red, Color::Reset),
-            UnresolvedType => format!("internal error: unresolved type"),
-            PointerToRef => format!("cannot create a pointer to a reference"),
-            CreatedMutableBorrowWhileImmutableBorrow => {
-                format!("cannot borrow as mutable; already borrowed as immutable")
+            AssignToConst(expr) => {
+                format!("{}{}{} is not {}mutable{}", Red, expr, Reset, Green, Reset)
             }
-            AlreadyMutablyBorrowed => format!("cannot borrow; already borrowed as mutable"),
-            InvalidBorrow => format!("cannot borrow this value"),
-            BorrowMutNonMutable => format!("cannot borrow immutable value as mutable"),
-            LifetimeMismatch => format!("borrow outlives base variable"),
-            InvalidVarBorrow(k) => format!("cannot borrow {k}s"),
-            ReturnRefToLocal => format!("cannot return a reference to a local variable"),
-            AssignToRValue => format!("cannot assign to rvalue"),
-            UninitializedVar => format!("variable not initialized"),
+            MissingMain => format!("missing {}main{}", Red, Reset),
+            UnresolvedType => format!("internal error: unresolved type"),
+            PointerToRef => {
+                format!("cannot create a {Red}pointer{Reset} to a {Green}reference{Reset}")
+            }
+            CreatedMutableBorrowWhileImmutableBorrow => {
+                format!("cannot {Green}borrow{Reset} as {Red}mutable{Reset}; already {Green}borrowed{Reset} as {Red}immutable{Reset}")
+            }
+            AlreadyMutablyBorrowed => format!(
+                "cannot {Red}borrow{Reset}; already {Green}borrowed{Reset} as {Red}mutable{Reset}"
+            ),
+            InvalidBorrow => format!("cannot {Green}borrow{Reset} this {Red}value{Reset}"),
+            BorrowMutNonMutable => format!(
+                "cannot {Green}borrow{Reset} {Red}immutable{Reset} value as {Red}mutable{Reset}"
+            ),
+            LifetimeMismatch => format!("{Red}borrow{Reset} outlives {Green}base{Reset} variable"),
+            InvalidVarBorrow(k) => format!("cannot {Green}borrow{Reset} {Red}{k}s{Reset}"),
+            ReturnRefToLocal => format!("cannot {Red}return{Reset} a {Green}reference{Reset} to a {Red}local{Reset} variable"),
+            AssignToRValue => format!("cannot {Green}assign{Reset} to {Red}rvalue{Reset}"),
+            UninitializedVar => format!("{Green}variable{Reset} not {Red}initialized{Reset}"),
         };
 
         write!(f, "{s}")

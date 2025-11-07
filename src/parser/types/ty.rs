@@ -196,7 +196,6 @@ impl Type {
             (TypeInner::Base(l), TypeInner::Base(r)) => l == r,
             (TypeInner::Boxed(l), TypeInner::Boxed(r)) => l.assign_compatible(r),
             (TypeInner::Ref(l), TypeInner::Ref(r)) => {
-                println!("{} {}", l.mutable, rhs.mutable);
                 if l.mutable {
                     rhs.mutable && l.assign_compatible(r)
                 } else {

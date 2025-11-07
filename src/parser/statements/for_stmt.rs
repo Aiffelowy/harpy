@@ -6,6 +6,7 @@ use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
+use crate::semantic_analyzer::symbol_info::SymbolInfoKind;
 use crate::{get_symbol_mut, t};
 
 use super::BlockStmt;
@@ -78,6 +79,9 @@ impl Analyze for ForStmt {
 
                 get_symbol_mut!((analyzer, self.var) var {
                     var.infer_type(&from_type);
+                    if let SymbolInfoKind::Variable(ref mut v) = var.kind {
+                        v.initialized = true;
+                    }
                 });
             }
         }

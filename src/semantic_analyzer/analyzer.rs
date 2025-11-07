@@ -57,9 +57,12 @@ pub struct Analyzer {
 }
 
 impl Analyzer {
-    pub fn new(result: AnalysisResult) -> Self {
+    pub(in crate::semantic_analyzer) fn new(
+        result: AnalysisResult,
+        errors: Vec<HarpyError>,
+    ) -> Self {
         Self {
-            errors: vec![],
+            errors,
             current_scope: result.scope_tree.clone(),
             result,
         }
@@ -147,11 +150,11 @@ impl Analyzer {
                 ttype.span(),
             ));
         }
-        self.result.type_table.register(&ttype)
+        self.result.type_table.register(ttype)
     }
 
     fn register_type_unchecked(&mut self, ttype: &Type) -> TypeInfoRc {
-        self.result.type_table.register(&ttype)
+        self.result.type_table.register(ttype)
     }
 
     pub fn register_constant(&mut self, lit: &Node<Literal>, ty: &Type) {
