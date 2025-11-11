@@ -76,12 +76,20 @@ impl ScopeBuilder {
     }
 
     pub fn define_param(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
-        self.define_symbol(ident, ty.clone(), SymbolInfoKind::Param);
+        let Some(sym) = self.define_symbol(ident, ty.clone(), SymbolInfoKind::Param) else {
+            return;
+        };
 
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().params.push(ty);
+        let mut func = func.as_function_mut().unwrap();
+        self.result.locals_map.insert(
+            ident.id(),
+            LocalAddress(func.locals.len().try_into().unwrap()),
+        );
+        func.locals.push(sym);
+        func.params.push(ty);
     }
 
     pub fn define_var(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {

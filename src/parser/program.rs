@@ -1,5 +1,6 @@
 use super::{func_decl::FuncDelc, node::Node, statements::LetStmt, Parse};
 use crate::{
+    generator::compile_trait::Generate,
     lexer::span::Span,
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
     tt,
@@ -20,6 +21,15 @@ impl Parse for SubProgram {
         };
 
         Ok(s)
+    }
+}
+
+impl Generate for SubProgram {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        match self {
+            Self::Let(l) => l.generate(generator),
+            Self::FuncDecl(f) => f.generate(generator),
+        }
     }
 }
 
@@ -63,6 +73,14 @@ impl Analyze for Program {
 
         if !analyzer.main_exists() {
             analyzer.report_semantic_error(SemanticError::MissingMain, Span::default());
+        }
+    }
+}
+
+impl Generate for Program {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        for sub in &self.parts {
+            sub.generate(generator)
         }
     }
 }

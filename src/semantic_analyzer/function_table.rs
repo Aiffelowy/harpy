@@ -15,7 +15,7 @@ use super::{
     type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FuncIndex(pub u32);
 
 #[derive(Debug)]
@@ -23,6 +23,7 @@ pub struct FunctionTable {
     pool: Vec<SymbolInfoRef>,
     map: HashMap<String, FuncIndex>,
     call_map: HashMap<NodeId, FuncIndex>,
+    func_delc_map: HashMap<NodeId, FuncIndex>,
 }
 
 impl FunctionTable {
@@ -31,10 +32,11 @@ impl FunctionTable {
             pool: vec![],
             map: HashMap::new(),
             call_map: HashMap::new(),
+            func_delc_map: HashMap::new(),
         }
     }
 
-    pub fn register(&mut self, name: &Ident, info: SymbolInfoRef) -> FuncIndex {
+    pub fn register(&mut self, name: &Node<Ident>, info: SymbolInfoRef) -> FuncIndex {
         if let Some(idx) = self.map.get(name.value()) {
             return *idx;
         }
@@ -43,6 +45,7 @@ impl FunctionTable {
         let idx = FuncIndex(self.pool.len().try_into().unwrap());
         self.pool.push(info.clone());
         self.map.insert(name.value().to_owned(), idx);
+        self.func_delc_map.insert(name.id(), idx);
         idx
     }
 
@@ -93,6 +96,7 @@ impl FunctionTable {
         RuntimeFunctionTable {
             pool,
             call_map: self.call_map,
+            func_delc_map: self.func_delc_map,
         }
     }
 }
@@ -101,6 +105,7 @@ impl FunctionTable {
 pub struct RuntimeFunctionTable {
     pool: Vec<RuntimeFunctionInfo>,
     call_map: HashMap<NodeId, FuncIndex>,
+    func_delc_map: HashMap<NodeId, FuncIndex>,
 }
 
 impl RuntimeFunctionTable {
@@ -110,5 +115,9 @@ impl RuntimeFunctionTable {
 
     pub fn get_mapping(&self, idx: NodeId) -> FuncIndex {
         self.call_map[&idx]
+    }
+
+    pub fn get_function_delc_mapping(&self, id: NodeId) -> FuncIndex {
+        self.func_delc_map[&id]
     }
 }

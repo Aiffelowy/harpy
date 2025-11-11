@@ -2,6 +2,7 @@ use std::io::BufReader;
 
 use aliases::Result;
 use err::HarpyError;
+use generator::generator::Generator;
 use parser::parser::Parser;
 use semantic_analyzer::analyzer::Analyzer;
 use source::SourceFile;
@@ -37,18 +38,17 @@ fn main() -> Result<()> {
         }
     };
 
-    match Analyzer::analyze(&ast) {
-        Ok(result) => {
-            let result = result.into_runtime()?;
-            println!("TYPE TABLE:\n{:?}\n\n", result.type_table);
-            println!("CONST POOL:\n{:?}\n\n", result.constants);
-            println!("FUNCTION TABLE:\n{:?}", result.function_table);
-        }
+    let result = match Analyzer::analyze(&ast) {
+        Ok(result) => result.into_runtime()?,
         Err(errors) => {
             print_errors(errors, &source);
             return Ok(());
         }
-    }
+    };
+
+
+    let code = Generator::compile(&ast, result);
+    println!("{:?}", code);
 
     Ok(())
 }

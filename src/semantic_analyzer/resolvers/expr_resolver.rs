@@ -37,6 +37,7 @@ impl ExprResolver {
             Lit::LitFloat(_) => BaseType::Primitive(PrimitiveType::Float),
             Lit::LitStr(_) => BaseType::Primitive(PrimitiveType::Str),
             Lit::LitBool(_) => BaseType::Primitive(PrimitiveType::Bool),
+            Lit::LitVoid => return Type::void(),
         };
 
         let t = Type {
@@ -44,12 +45,12 @@ impl ExprResolver {
             inner: TypeInner::Base(inner),
         };
 
-        analyzer.register_constant(&lit, &t);
+        analyzer.register_constant(lit, &t);
         t
     }
 
-    fn resolve_ident(ident: &Ident, analyzer: &mut Analyzer, mode: ResolveMode) -> Result<Type> {
-        let sym_ref = analyzer.get_symbol(ident)?;
+    fn resolve_ident(ident: &Node<Ident>, analyzer: &mut Analyzer, mode: ResolveMode) -> Result<Type> {
+        let sym_ref = analyzer.get_symbol(&**ident)?;
         let symbol = (*sym_ref).borrow();
         if let SymbolInfoKind::Variable(ref v) = symbol.kind {
             match mode {
@@ -61,6 +62,9 @@ impl ExprResolver {
                 ResolveMode::Write => (),
             }
         }
+
+        // Map this identifier to its local address if it's a variable or parameter
+        analyzer.map_ident_to_local_with_symbol(ident, &symbol);
 
         Ok(symbol.ty.ttype.clone())
     }

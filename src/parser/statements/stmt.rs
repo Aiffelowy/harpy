@@ -1,7 +1,15 @@
 use crate::{
-    generator::compile_trait::Generate,
+    generator::{compile_trait::Generate, generator::Generator, instruction::Instruction},
     get_symbol_mut,
-    parser::{expr::Expr, node::Node, parser::Parser, Parse},
+    parser::{
+        expr::{
+            prefix::{PrefixOp, PrefixOpKind},
+            Expr,
+        },
+        node::Node,
+        parser::Parser,
+        Parse,
+    },
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::SymbolInfoKind},
     t, tt,
 };
@@ -128,5 +136,52 @@ impl Analyze for Stmt {
 }
 
 impl Generate for Stmt {
-    fn generate(&self, generator: &mut crate::generator::generator::Generator) {}
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        match self {
+            Stmt::LetStmt(lets) => lets.generate(generator),
+            Stmt::BlockStmt(block) => block.generate(generator),
+            Stmt::IfStmt(ifs) => ifs.generate(generator),
+            Stmt::ForStmt(fors) => fors.generate(generator),
+            Stmt::WhileStmt(whiles) => whiles.generate(generator),
+            Stmt::LoopStmt(loops) => loops.generate(generator),
+            Stmt::ReturnStmt(returns) => returns.generate(generator),
+            Stmt::Expr(expr) => {
+                generator.gen_expr(expr);
+            }
+            Stmt::AssignStmt(lhs, _, rhs) => match &**lhs {
+                Expr::Ident(ident) => {
+                    generator.gen_expr(rhs);
+                    let local = generator.get_local_mapping(ident.id());
+                    generator.push_instruction(Instruction::STORE_LOCAL(local));
+                }
+
+                Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => {
+                    generate_lvalue_address(expr, generator);
+                    generator.gen_expr(rhs);
+                    generator.push_instruction(Instruction::STORE);
+                }
+
+                _ => panic!("Invalid lvalue in assignment"),
+            },
+        }
+    }
+}
+
+fn generate_lvalue_address(expr: &Expr, generator: &mut Generator) {
+    match expr {
+        Expr::Ident(ident) => {
+            let local = generator.get_local_mapping(ident.id());
+            generator.push_instruction(Instruction::PUSH_ADDR_LOCAL(local));
+        }
+
+        Expr::Prefix(PrefixOp { op, .. }, inner) if *op == PrefixOpKind::Star => {
+            generator.gen_expr(inner);
+        }
+
+        Expr::Borrow(inner, _) => {
+            generate_lvalue_address(inner, generator);
+        }
+
+        _ => panic!("Invalid lvalue address expression"),
+    }
 }

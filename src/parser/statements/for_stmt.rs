@@ -1,4 +1,5 @@
 use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::lexer::tokens::Ident;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -93,5 +94,29 @@ impl Analyze for ForStmt {
 }
 
 impl Generate for ForStmt {
-    fn generate(&self, generator: &mut crate::generator::generator::Generator) {}
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        generator.gen_expr(&self.iter.from);
+        let iter_var = generator.get_local_mapping(self.var.id());
+        generator.push_instruction(Instruction::STORE_LOCAL(iter_var));
+
+        let loop_start = generator.create_label();
+        generator.place_label(loop_start);
+
+        generator.push_instruction(Instruction::LOAD_LOCAL(iter_var));
+        generator.gen_expr(&self.iter.to);
+        generator.push_instruction(Instruction::LT);
+
+        let loop_end = generator.create_label();
+        generator.push_instruction(Instruction::JMP_IF_FALSE(loop_end));
+
+        self.block.generate(generator);
+
+        generator.push_instruction(Instruction::LOAD_LOCAL(iter_var));
+        generator.push_instruction(Instruction::INC);
+        generator.push_instruction(Instruction::STORE_LOCAL(iter_var));
+
+        generator.push_instruction(Instruction::JMP(loop_start));
+
+        generator.place_label(loop_end);
+    }
 }

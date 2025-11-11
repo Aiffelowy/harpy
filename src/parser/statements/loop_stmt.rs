@@ -1,3 +1,5 @@
+use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::parser::parse_trait::Parse;
 use crate::parser::parser::Parser;
 use crate::semantic_analyzer::analyze_trait::Analyze;
@@ -30,5 +32,13 @@ impl Analyze for LoopStmt {
         analyzer.enter_scope();
         self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
+    }
+}
+
+impl Generate for LoopStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        let loop_start = generator.create_label();
+        self.block.generate(generator);
+        generator.push_instruction(Instruction::JMP(loop_start));
     }
 }

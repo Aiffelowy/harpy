@@ -110,6 +110,19 @@ impl Analyzer {
     }
 
     fn res_expr(&mut self, expr: &Node<Expr>, mode: ResolveMode) -> Option<TypeInfoRc> {
+        // Check if this is an identifier expression and map it to local address if needed
+        if let Expr::Ident(ident) = &**expr {
+            if let Ok(sym_ref) = self.get_symbol(&**ident) {
+                let symbol = (*sym_ref).borrow();
+                if matches!(symbol.kind, SymbolInfoKind::Variable(_) | SymbolInfoKind::Param) {
+                    let original_node_id = symbol.node_id;
+                    if let Some(&local_addr) = self.result.locals_map.get(&original_node_id) {
+                        self.result.locals_map.insert(expr.id(), local_addr);
+                    }
+                }
+            }
+        }
+        
         match ExprResolver::resolve_expr(expr, self, mode) {
             Ok(t) => {
                 let type_info = self.register_type(&TypeSpanned {
@@ -223,4 +236,14 @@ impl Analyzer {
             });
         }
     }
+
+    pub fn map_ident_to_local_with_symbol(&mut self, ident_node: &Node<Ident>, symbol: &SymbolInfo) {
+        if matches!(symbol.kind, SymbolInfoKind::Variable(_) | SymbolInfoKind::Param) {
+            let original_node_id = symbol.node_id;
+            if let Some(&local_addr) = self.result.locals_map.get(&original_node_id) {
+                self.result.locals_map.insert(ident_node.id(), local_addr);
+            }
+        }
+    }
+
 }

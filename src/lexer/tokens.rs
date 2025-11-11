@@ -57,12 +57,14 @@ macro_rules! define_literals_enum {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub enum Lit {
             $($literal_ident($($literal_type)*),)+
+            LitVoid
         }
 
         impl Display for Lit {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", match self {
                     $(Lit::$literal_ident(l) => l.to_string(),)+
+                    Lit::LitVoid => "()".to_owned(),
                 })
             }
         }

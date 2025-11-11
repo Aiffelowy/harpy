@@ -1,4 +1,5 @@
 use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
@@ -23,6 +24,15 @@ impl Parse for ElseStmt {
         }
 
         Ok(Self::Block(parser.parse::<BlockStmt>()?))
+    }
+}
+
+impl Generate for ElseStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        match self {
+            ElseStmt::Block(b) => b.generate(generator),
+            ElseStmt::If(if_stmt) => if_stmt.generate(generator),
+        }
     }
 }
 
@@ -93,5 +103,25 @@ impl Analyze for IfStmt {
 impl Generate for IfStmt {
     fn generate(&self, generator: &mut crate::generator::generator::Generator) {
         generator.gen_expr(&self.expr);
+
+        if let Some(else_stmt) = &self.else_stmt {
+            let else_label = generator.create_label();
+            let end_label = generator.create_label();
+
+            generator.push_instruction(Instruction::JMP_IF_FALSE(else_label));
+            self.block.generate(generator);
+
+            generator.push_instruction(Instruction::JMP(end_label));
+            generator.place_label(else_label);
+
+            else_stmt.generate(generator);
+            generator.place_label(end_label);
+        } else {
+            let end_label = generator.create_label();
+            generator.push_instruction(Instruction::JMP_IF_FALSE(end_label));
+            self.block.generate(generator);
+
+            generator.place_label(end_label);
+        }
     }
 }

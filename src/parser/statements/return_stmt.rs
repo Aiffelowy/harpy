@@ -1,12 +1,15 @@
 use std::rc::Rc;
 
 use crate::extensions::SymbolInfoRefExt;
+use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::lexer::span::Span;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::const_pool::ConstIndex;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{t, tt};
@@ -75,6 +78,18 @@ impl Analyze for ReturnStmt {
                 analyzer.check_return_borrow(i);
             }
         }
+    }
+}
+
+impl Generate for ReturnStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        if let Some(expr) = &self.expr {
+            generator.gen_expr(expr);
+        } else {
+            generator.push_instruction(Instruction::LOAD_CONST(ConstIndex(0)));
+        }
+
+        generator.push_instruction(Instruction::RET);
     }
 }
 

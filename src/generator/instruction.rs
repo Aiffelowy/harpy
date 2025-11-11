@@ -20,6 +20,9 @@ pub struct LocalAddress(pub u16);
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Hash, Eq)]
 pub struct CodeAddress(pub u64);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Label(pub u64);
+
 impl_extend!(LocalAddress, 2);
 impl_extend!(FuncIndex, 4);
 impl_extend!(ConstIndex, 4);
@@ -48,7 +51,7 @@ macro_rules! define_instruction_enum {
             pub fn opcode(&self) -> u8 {
                 unsafe { *(self as *const Self as *const u8) }
             }
-
+            /*
             pub fn push_instruction(self, code_buf: &mut Vec<u8>) {
                 code_buf.push(self.opcode());
                 match self {
@@ -59,7 +62,7 @@ macro_rules! define_instruction_enum {
                     )*
                     _ => {}
                 }
-            }
+            }*/
         }
     };
 
@@ -68,6 +71,7 @@ macro_rules! define_instruction_enum {
 
 define_instruction_enum!(
     #[allow(non_camel_case_types)]
+    #[derive(Debug, Clone, Copy)]
     #[repr(u8)]
     pub enum Instruction {
         NOP = 0x0,
@@ -88,10 +92,11 @@ define_instruction_enum!(
         MUL = 0x52,
         DIV = 0x53,
         NEG = 0x54,
+        INC = 0x55,
 
-        JMP(CodeAddress) = 0x60,
-        JMP_IF_TRUE(CodeAddress) = 0x61,
-        JMP_IF_FALSE(CodeAddress) = 0x62,
+        JMP(Label) = 0x60,
+        JMP_IF_TRUE(Label) = 0x61,
+        JMP_IF_FALSE(Label) = 0x62,
 
         CALL(FuncIndex) = 0x70,
         RET = 0x71,
@@ -106,6 +111,7 @@ define_instruction_enum!(
         OR = 0x87,
 
         POP = 0x90,
+        DUP = 0x91,
 
         HALT = 0xFF,
     }

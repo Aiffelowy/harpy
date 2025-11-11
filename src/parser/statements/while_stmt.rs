@@ -1,3 +1,5 @@
+use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
@@ -45,5 +47,20 @@ impl Analyze for WhileStmt {
 
         self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
+    }
+}
+
+impl Generate for WhileStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        let loop_start = generator.create_label();
+        generator.place_label(loop_start);
+        generator.gen_expr(&self.expr);
+        let loop_end = generator.create_label();
+        generator.push_instruction(crate::generator::instruction::Instruction::JMP_IF_FALSE(
+            loop_end,
+        ));
+        self.block.generate(generator);
+        generator.push_instruction(Instruction::JMP(loop_start));
+        generator.place_label(loop_end);
     }
 }

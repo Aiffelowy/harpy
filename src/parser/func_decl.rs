@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{
     aliases::Result,
+    generator::compile_trait::Generate,
     lexer::tokens::Ident,
     semantic_analyzer::{analyze_trait::Analyze, scope::ScopeKind},
     t, tt,
@@ -103,5 +104,13 @@ impl Analyze for FuncDelc {
         analyzer.enter_scope();
         self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
+    }
+}
+
+impl Generate for FuncDelc {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        let func_label = generator.create_label();
+        generator.register_function(generator.get_function_mapping(self.name.id()), func_label);
+        self.block.generate(generator);
     }
 }

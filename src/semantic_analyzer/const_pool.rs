@@ -32,15 +32,25 @@ pub struct ConstPool {
 
 impl ConstPool {
     pub(in crate::semantic_analyzer) fn new() -> Self {
+        let mut pool = vec![];
+        let mut map = HashMap::new();
+
+        pool.push(ConstInfo {
+            lit: Lit::LitVoid,
+            type_idx: TypeIndex(0),
+        });
+        map.insert(Lit::LitVoid, ConstIndex(0));
+
         Self {
-            pool: vec![],
-            map: HashMap::new(),
+            pool,
+            map,
             node_map: HashMap::new(),
         }
     }
 
     pub fn register(&mut self, lit: &Node<Literal>, info: &TypeInfoRc) -> ConstIndex {
-        if let Some(i) = self.map.get(&lit.value()) {
+        if let Some(i) = self.map.get(lit.value()) {
+            self.node_map.insert(lit.id(), *i);
             return *i;
         }
 

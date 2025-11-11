@@ -21,10 +21,21 @@ pub struct TypeTable {
 
 impl TypeTable {
     pub(in crate::semantic_analyzer) fn new() -> Self {
-        Self {
-            pool: vec![],
-            map: HashMap::new(),
-        }
+        let mut pool = vec![];
+        let mut map = HashMap::new();
+
+        pool.push(TypeInfoRc::new(
+            TypeInfo {
+                ttype: Type::void(),
+                size: 0,
+                idx: TypeIndex(0),
+            }
+            .into(),
+        ));
+
+        map.insert(Type::void(), TypeIndex(0));
+
+        Self { pool, map }
     }
 
     pub(in crate::semantic_analyzer) fn register(&mut self, ttype: &Type) -> TypeInfoRc {
