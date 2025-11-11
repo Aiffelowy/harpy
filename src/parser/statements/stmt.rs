@@ -171,7 +171,7 @@ fn generate_lvalue_address(expr: &Expr, generator: &mut Generator) {
     match expr {
         Expr::Ident(ident) => {
             let local = generator.get_local_mapping(ident.id());
-            generator.push_instruction(Instruction::PUSH_ADDR_LOCAL(local));
+            generator.push_instruction(Instruction::LOAD_LOCAL(local));
         }
 
         Expr::Prefix(PrefixOp { op, .. }, inner) if *op == PrefixOpKind::Star => {

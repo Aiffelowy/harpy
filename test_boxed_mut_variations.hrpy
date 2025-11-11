@@ -1,0 +1,10 @@
+fn modify_boxed(ptr: boxed mut int) {
+    *ptr = *ptr + 10;
+}
+
+fn main() {
+    let x: boxed mut int = box 100;
+    *x = 200;
+    modify_boxed(x);
+    let final_val = *x;
+}

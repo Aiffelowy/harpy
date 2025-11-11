@@ -76,10 +76,17 @@ impl Generate for PrefixOp {
         use PrefixOpKind::*;
         match self.op {
             Minus => generator.push_instruction(crate::generator::instruction::Instruction::NEG),
-            Plus => generator.push_instruction(crate::generator::instruction::Instruction::NOP),
-            Neg => generator.push_instruction(crate::generator::instruction::Instruction::NEG),
+            Plus => {
+                // Unary plus is a no-op - don't generate any instruction
+                // The value is already on the stack from the RHS expression
+            },
+            Neg => generator.push_instruction(crate::generator::instruction::Instruction::NOT),
             Star => generator.push_instruction(crate::generator::instruction::Instruction::LOAD),
-            Box => generator.push_instruction(crate::generator::instruction::Instruction::STORE),
+            Box => {
+                // Box allocates memory for the value on the stack
+                // The VM will determine the allocation size from the value's type at runtime
+                generator.push_instruction(crate::generator::instruction::Instruction::BOX_ALLOC);
+            },
         }
     }
 }

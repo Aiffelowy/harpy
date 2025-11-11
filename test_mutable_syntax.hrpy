@@ -1,0 +1,6 @@
+fn main() {
+    let i: mut int = 10;
+    i = 5;
+    let j: mut . = 20;
+    j = 15;
+}

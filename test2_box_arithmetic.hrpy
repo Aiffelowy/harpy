@@ -1,0 +1,4 @@
+fn main() {
+    let result = box (3 + 5);
+    let nested = box box 10;
+}

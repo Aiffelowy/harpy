@@ -111,6 +111,7 @@ impl Generate for FuncDelc {
     fn generate(&self, generator: &mut crate::generator::generator::Generator) {
         let func_label = generator.create_label();
         generator.register_function(generator.get_function_mapping(self.name.id()), func_label);
+        generator.place_label(func_label);
         self.block.generate(generator);
     }
 }

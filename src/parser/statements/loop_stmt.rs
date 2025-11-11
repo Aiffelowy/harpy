@@ -38,6 +38,7 @@ impl Analyze for LoopStmt {
 impl Generate for LoopStmt {
     fn generate(&self, generator: &mut crate::generator::generator::Generator) {
         let loop_start = generator.create_label();
+        generator.place_label(loop_start);
         self.block.generate(generator);
         generator.push_instruction(Instruction::JMP(loop_start));
     }

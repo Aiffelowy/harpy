@@ -49,7 +49,11 @@ impl ExprResolver {
         t
     }
 
-    fn resolve_ident(ident: &Node<Ident>, analyzer: &mut Analyzer, mode: ResolveMode) -> Result<Type> {
+    fn resolve_ident(
+        ident: &Node<Ident>,
+        analyzer: &mut Analyzer,
+        mode: ResolveMode,
+    ) -> Result<Type> {
         let sym_ref = analyzer.get_symbol(&**ident)?;
         let symbol = (*sym_ref).borrow();
         if let SymbolInfoKind::Variable(ref v) = symbol.kind {
@@ -100,7 +104,6 @@ impl ExprResolver {
             let ttype = Self::resolve_expr(param_expr, analyzer, mode)?;
             let param_t = &param_type.ttype;
             if !param_t.param_compatible(&ttype) {
-                //fix
                 return HarpyError::semantic(
                     SemanticError::ArgTypeMismatch(ttype, param_type.clone()),
                     param_expr.span(),
@@ -133,42 +136,45 @@ impl ExprResolver {
         if mutable && !ttype.mutable {
             return HarpyError::semantic(SemanticError::BorrowMutNonMutable, expr.span());
         }
+        {
+            let mut var = symbol.as_variable_mut().ok_or_else(|| {
+                HarpyError::new(
+                    crate::err::HarpyErrorKind::SemanticError(SemanticError::InvalidVarBorrow(
+                        symbol.get().kind.clone(),
+                    )),
+                    expr.span(),
+                )
+            })?;
 
-        let mut var = symbol.as_variable_mut().ok_or_else(|| {
-            HarpyError::new(
-                crate::err::HarpyErrorKind::SemanticError(SemanticError::InvalidVarBorrow(
-                    symbol.get().kind.clone(),
-                )),
-                expr.span(),
-            )
-        })?;
+            if !var.initialized {
+                return HarpyError::semantic(SemanticError::UninitializedVar, i.span());
+            }
 
-        if !var.initialized {
-            return HarpyError::semantic(SemanticError::UninitializedVar, i.span());
+            if mutable && var.immutably_borrowed_count != 0 {
+                return HarpyError::semantic(
+                    SemanticError::CreatedMutableBorrowWhileImmutableBorrow,
+                    expr.span(),
+                );
+            }
+
+            if var.mutably_borrowed {
+                return HarpyError::semantic(SemanticError::AlreadyMutablyBorrowed, expr.span());
+            }
+
+            if mutable {
+                var.mutably_borrowed = true;
+            } else {
+                var.immutably_borrowed_count += 1;
+            }
+
+            analyzer.register_borrow(BorrowInfo {
+                depth: analyzer.current_depth(),
+                original: symbol.clone(),
+                borrow_span: expr.span(),
+            });
         }
-
-        if mutable && var.immutably_borrowed_count != 0 {
-            return HarpyError::semantic(
-                SemanticError::CreatedMutableBorrowWhileImmutableBorrow,
-                expr.span(),
-            );
-        }
-
-        if var.mutably_borrowed {
-            return HarpyError::semantic(SemanticError::AlreadyMutablyBorrowed, expr.span());
-        }
-
-        if mutable {
-            var.mutably_borrowed = true;
-        } else {
-            var.immutably_borrowed_count += 1;
-        }
-
-        analyzer.register_borrow(BorrowInfo {
-            depth: analyzer.current_depth(),
-            original: symbol.clone(),
-            borrow_span: expr.span(),
-        });
+        // Map the borrowed identifier to its local address for code generation
+        analyzer.map_ident_to_local_with_symbol(i, &symbol.get());
 
         Ok(Type {
             mutable,

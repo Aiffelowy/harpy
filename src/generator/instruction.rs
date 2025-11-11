@@ -85,7 +85,7 @@ define_instruction_enum!(
         LOAD = 0x31,
         STORE = 0x32,
 
-        ALLOC(RuntimeTypeIndex) = 0x40,
+        BOX_ALLOC = 0x40,
 
         ADD = 0x50,
         SUB = 0x51,
@@ -109,6 +109,7 @@ define_instruction_enum!(
         GTE = 0x85,
         AND = 0x86,
         OR = 0x87,
+        NOT = 0x88,
 
         POP = 0x90,
         DUP = 0x91,

@@ -24,7 +24,14 @@ fn print_errors(errors: Vec<HarpyError>, source: &SourceFile) {
 }
 
 fn main() -> Result<()> {
-    let reader = BufReader::new(std::fs::File::open("code.hrpy")?);
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 2 {
+        eprintln!("Usage: {} <file.hrpy>", args[0]);
+        std::process::exit(1);
+    }
+    
+    let filename = &args[1];
+    let reader = BufReader::new(std::fs::File::open(filename)?);
     let source = SourceFile::new(reader)?;
 
     let lexer = lexer::Lexer::new(&source)?;

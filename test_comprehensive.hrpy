@@ -1,0 +1,17 @@
+fn process_boxed(b: boxed int) -> int {
+    return *b * 2;
+}
+
+fn main() {
+    let counter: mut int = 0;
+    let values = box 100;
+    
+    while counter < 3 {
+        let current = *values;
+        let doubled = process_boxed(values);
+        values = box doubled;
+        counter = counter + 1;
+    }
+    
+    let final_result = *values;
+}
