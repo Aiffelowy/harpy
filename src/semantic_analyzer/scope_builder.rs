@@ -2,6 +2,7 @@ use crate::{
     aliases::{ScopeRc, SymbolInfoRef, TypeInfoRc},
     err::{HarpyError, HarpyErrorKind},
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
+    generator::instruction::LocalAddress,
     lexer::tokens::Ident,
     parser::{node::Node, program::Program, types::TypeSpanned},
 };
@@ -95,7 +96,13 @@ impl ScopeBuilder {
         let Some(func) = self.current_scope.get().get_function_symbol() else {
             return;
         };
-        func.as_function_mut().unwrap().locals.push(sym);
+        let mut func = func.as_function_mut().unwrap();
+        //FIX!!!
+        self.result.locals_map.insert(
+            ident.id(),
+            LocalAddress(func.locals.len().try_into().unwrap()),
+        );
+        func.locals.push(sym);
     }
 
     pub fn define_func(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {

@@ -1,4 +1,5 @@
 use crate::{
+    generator::compile_trait::Generate,
     get_symbol_mut,
     parser::{expr::Expr, node::Node, parser::Parser, Parse},
     semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::SymbolInfoKind},
@@ -36,10 +37,14 @@ impl Parse for Stmt {
                 let expr = parser.parse_node::<Expr>()?;
                 if let Some(assign) = parser.try_parse::<AssignOp>() {
                     let s = Self::AssignStmt(expr, assign, parser.parse_node::<Expr>()?);
-                    parser.consume::<t!(;)>()?;
+                    if let tt!(;) = parser.peek()? {
+                        parser.consume::<t!(;)>()?;
+                    }
                     s
                 } else {
-                    parser.consume::<t!(;)>()?;
+                    if let tt!(;) = parser.peek()? {
+                        parser.consume::<t!(;)>()?;
+                    }
                     Self::Expr(expr)
                 }
             }
@@ -120,4 +125,8 @@ impl Analyze for Stmt {
             }
         }
     }
+}
+
+impl Generate for Stmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {}
 }

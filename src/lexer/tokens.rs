@@ -363,7 +363,9 @@ define_tokens!(
             '|' => LogOr,
         }
 
-        '!' => Neg {}
+        '!' => Neg {
+            '=' => Neq,
+        }
 
         ',' => Comma {}
     }
@@ -459,6 +461,9 @@ macro_rules! t {
     };
     (<=) => {
         $crate::lexer::tokens::LtEq
+    };
+    (!=) => {
+        $crate::lexer::tokens::Neq
     };
     (+) => {
         $crate::lexer::tokens::Plus
@@ -704,6 +709,9 @@ macro_rules! tt {
     };
     (<=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::LtEq)
+    };
+    (!=) => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Neq)
     };
     (&) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::And)

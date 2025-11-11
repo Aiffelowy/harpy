@@ -1,72 +1,14 @@
 fn main() {
-  let type_infer = 5;
+  let result = fibonacci(5);
 
-  let uninit;
-  uninit = "string";
-
-  if uninit > type_infer {} //cant compare
-
-  let not_mutable = 50;
-  not_mutable = 1;
-
-  let mutable :mut . = false; //. => infer type
-  mutable = true;
-
-  for iter in fibonacci(3) => not_mutable+4 {} //for
-
-  while mutable {} //while
-  /*block comment*/
-
-  let pointer :boxed int = box 5;
-  *pointer = 1; //not mutable
-
-  let pointer_to_mut :boxed mut int = box 5;
-  *pointer_to_mut = 1;
-
-  let base = 4;
-  let ref :&int = &base;
-
-  let mut_base: mut int = 2;
-  let mut_ref = &mut mut_base;
-
-  mut_ref = 5;
-
-  /*
-    infinite immutable references allowed
-                OR
-    ONLY one mutable reference
-  */
-  let invalid = &mut_base;
-
-  let param :mut . = 3;
-  let result = func(&mut param);
-
-  let h :boxed mut int = box 1;
-  func(*h); //pointers turn to references
-
-  let no = no; //no
-  let also_no :boxed &str;
-}
-
-
-fn func(ref: &mut int) -> bool {
-  ref += ref;
-  if ref > 10 {
-    return true;
-  }
-
-  return false;
+  let a = 5
+  let b = 5;
 }
 
 fn fibonacci(n: int) -> int {
-  if n <= 1 {
+  if n != 1 {
     return n;
   }
 
   return fibonacci(n-1) + fibonacci(n-2);
-}
-
-fn bad() -> &str {
-  let s = "bad";
-  return &s;
 }

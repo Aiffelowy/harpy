@@ -79,7 +79,7 @@ pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>),
     Prefix(PrefixOp, Box<Expr>),
     Literal(Node<Literal>),
-    Ident(Ident),
+    Ident(Node<Ident>),
     Call(Node<CallExpr>),
     Borrow(Box<SpannedExpr>, bool),
 }
@@ -123,7 +123,7 @@ impl Expr {
                     return Ok(Expr::Call(call));
                 }
 
-                let ident = parser.consume::<t!(ident)>()?;
+                let ident = parser.parse_node::<t!(ident)>()?;
                 return Ok(Expr::Ident(ident));
             }
             tt!(&) => {
@@ -166,7 +166,7 @@ impl Expr {
         }
     }
 
-    pub fn lvalue(&self) -> Option<&Ident> {
+    pub fn lvalue(&self) -> Option<&Node<Ident>> {
         match self {
             Expr::Ident(i) => Some(i),
             Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => expr.lvalue(),

@@ -11,7 +11,7 @@ use super::symbol_info::{RuntimeTypeInfo, TypeInfo};
 pub struct TypeIndex(pub usize);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct RuntimeTypeIndex(pub usize);
+pub struct RuntimeTypeIndex(pub u32);
 
 #[derive(Debug)]
 pub struct TypeTable {
@@ -96,7 +96,8 @@ impl RuntimeConversionTypeTable {
             return Ok(());
         }
 
-        let idx = RuntimeTypeIndex(self.pool.len());
+        //FIX!!!
+        let idx = RuntimeTypeIndex(self.pool.len().try_into().unwrap());
         let rttc = runtime_info.ttype.clone();
         self.pool.push(runtime_info);
         self.map.insert(rttc, idx);
@@ -127,6 +128,6 @@ pub struct RuntimeTypeTable {
 
 impl RuntimeTypeTable {
     pub fn get(&self, type_idx: RuntimeTypeIndex) -> &RuntimeTypeInfo {
-        &self.pool[type_idx.0]
+        &self.pool[type_idx.0 as usize]
     }
 }

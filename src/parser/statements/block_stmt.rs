@@ -1,3 +1,4 @@
+use crate::generator::compile_trait::Generate;
 use crate::parser::parser::Parser;
 use crate::parser::{parse_trait::Parse, statements::Stmt};
 use crate::semantic_analyzer::analyze_trait::Analyze;
@@ -45,5 +46,13 @@ impl Analyze for BlockStmt {
             stmt.analyze_semantics(analyzer)
         }
         analyzer.exit_scope();
+    }
+}
+
+impl Generate for BlockStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        for stmt in &self.stmts {
+            stmt.generate(generator);
+        }
     }
 }

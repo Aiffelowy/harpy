@@ -159,7 +159,7 @@ impl Analyzer {
 
     pub fn register_constant(&mut self, lit: &Node<Literal>, ty: &Type) {
         let ttype = self.register_type_unchecked(ty);
-        let const_idx = self.result.constants.register(lit.value().clone(), &ttype);
+        let const_idx = self.result.constants.register(lit, &ttype);
 
         let info = LiteralInfo { const_idx };
         let info = SymbolInfoKind::Literal(info);

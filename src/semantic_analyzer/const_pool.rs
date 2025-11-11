@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
-use crate::{aliases::TypeInfoRc, lexer::tokens::Lit};
+use crate::{
+    aliases::TypeInfoRc,
+    lexer::tokens::{Lit, Literal},
+    parser::node::{Node, NodeId},
+};
 
 use super::type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex, TypeIndex};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ConstIndex(pub usize);
+pub struct ConstIndex(pub u32);
 
 #[derive(Debug, Clone)]
 pub struct ConstInfo {
@@ -23,6 +27,7 @@ pub struct RuntimeConstInfo {
 pub struct ConstPool {
     pool: Vec<ConstInfo>,
     map: HashMap<Lit, ConstIndex>,
+    node_map: HashMap<NodeId, ConstIndex>,
 }
 
 impl ConstPool {
@@ -30,25 +35,28 @@ impl ConstPool {
         Self {
             pool: vec![],
             map: HashMap::new(),
+            node_map: HashMap::new(),
         }
     }
 
-    pub fn register(&mut self, lit: Lit, info: &TypeInfoRc) -> ConstIndex {
-        if let Some(i) = self.map.get(&lit) {
+    pub fn register(&mut self, lit: &Node<Literal>, info: &TypeInfoRc) -> ConstIndex {
+        if let Some(i) = self.map.get(&lit.value()) {
             return *i;
         }
 
-        let i = ConstIndex(self.pool.len());
+        //FIX!!!
+        let i = ConstIndex(self.pool.len().try_into().unwrap());
         self.pool.push(ConstInfo {
-            lit: lit.clone(),
+            lit: lit.value().clone(),
             type_idx: info.idx,
         });
-        self.map.insert(lit, i);
+        self.map.insert(lit.value().clone(), i);
+        self.node_map.insert(lit.id(), i);
         i
     }
 
     pub fn get(&self, id: ConstIndex) -> Option<&Lit> {
-        self.pool.get(id.0).map(|c| &c.lit)
+        self.pool.get(id.0 as usize).map(|c| &c.lit)
     }
 
     pub(in crate::semantic_analyzer) fn to_runtime(
@@ -63,17 +71,25 @@ impl ConstPool {
             });
         }
 
-        RuntimeConstPool { pool }
+        RuntimeConstPool {
+            pool,
+            node_map: self.node_map,
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct RuntimeConstPool {
     pool: Vec<RuntimeConstInfo>,
+    node_map: HashMap<NodeId, ConstIndex>,
 }
 
 impl RuntimeConstPool {
     pub fn get(&self, idx: ConstIndex) -> &RuntimeConstInfo {
-        &self.pool[idx.0]
+        &self.pool[idx.0 as usize]
+    }
+
+    pub fn get_mapping(&self, idx: NodeId) -> ConstIndex {
+        self.node_map[&idx]
     }
 }

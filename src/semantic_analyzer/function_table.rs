@@ -16,7 +16,7 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FuncIndex(pub usize);
+pub struct FuncIndex(pub u32);
 
 #[derive(Debug)]
 pub struct FunctionTable {
@@ -39,7 +39,8 @@ impl FunctionTable {
             return *idx;
         }
 
-        let idx = FuncIndex(self.pool.len());
+        //FIX!!!
+        let idx = FuncIndex(self.pool.len().try_into().unwrap());
         self.pool.push(info.clone());
         self.map.insert(name.value().to_owned(), idx);
         idx
@@ -55,7 +56,7 @@ impl FunctionTable {
     }
 
     pub fn get(&self, idx: FuncIndex) -> SymbolInfoRef {
-        self.pool[idx.0].clone()
+        self.pool[idx.0 as usize].clone()
     }
 
     pub(in crate::semantic_analyzer) fn into_runtime(
@@ -104,7 +105,7 @@ pub struct RuntimeFunctionTable {
 
 impl RuntimeFunctionTable {
     pub fn get(&self, idx: FuncIndex) -> &RuntimeFunctionInfo {
-        &self.pool[idx.0]
+        &self.pool[idx.0 as usize]
     }
 
     pub fn get_mapping(&self, idx: NodeId) -> FuncIndex {

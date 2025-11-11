@@ -1,4 +1,10 @@
-use crate::aliases::{NodeInfo, Result, ScopeRc};
+use std::collections::HashMap;
+
+use crate::{
+    aliases::{NodeInfo, Result, ScopeRc},
+    generator::instruction::LocalAddress,
+    parser::node::NodeId,
+};
 
 use super::{
     const_pool::{ConstPool, RuntimeConstPool},
@@ -14,6 +20,7 @@ pub struct AnalysisResult {
     pub type_table: TypeTable,
     pub constants: ConstPool,
     pub function_table: FunctionTable,
+    pub locals_map: HashMap<NodeId, LocalAddress>,
 }
 
 impl AnalysisResult {
@@ -26,6 +33,7 @@ impl AnalysisResult {
             type_table: TypeTable::new(),
             constants: ConstPool::new(),
             function_table: FunctionTable::new(),
+            locals_map: HashMap::new(),
         }
     }
 
@@ -38,6 +46,7 @@ impl AnalysisResult {
             constants,
             type_table: type_table.into_runtime(),
             function_table,
+            locals_map: self.locals_map,
         })
     }
 }
@@ -47,4 +56,5 @@ pub struct RuntimeAnalysisResult {
     pub type_table: RuntimeTypeTable,
     pub constants: RuntimeConstPool,
     pub function_table: RuntimeFunctionTable,
+    pub locals_map: HashMap<NodeId, LocalAddress>,
 }

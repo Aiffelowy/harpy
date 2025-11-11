@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use crate::generator::compile_trait::Generate;
 use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
@@ -67,5 +68,18 @@ impl Parse for PrefixOp {
         let t = parser.discard_next()?;
 
         Ok(Self { op, span: t.span() })
+    }
+}
+
+impl Generate for PrefixOp {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        use PrefixOpKind::*;
+        match self.op {
+            Minus => generator.push_instruction(crate::generator::instruction::Instruction::NEG),
+            Plus => generator.push_instruction(crate::generator::instruction::Instruction::NOP),
+            Neg => generator.push_instruction(crate::generator::instruction::Instruction::NEG),
+            Star => generator.push_instruction(crate::generator::instruction::Instruction::LOAD),
+            Box => generator.push_instruction(crate::generator::instruction::Instruction::STORE),
+        }
     }
 }

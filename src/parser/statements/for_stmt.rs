@@ -1,3 +1,4 @@
+use crate::generator::compile_trait::Generate;
 use crate::lexer::tokens::Ident;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
@@ -89,4 +90,8 @@ impl Analyze for ForStmt {
         self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
     }
+}
+
+impl Generate for ForStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {}
 }

@@ -1,3 +1,4 @@
+use crate::generator::compile_trait::Generate;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
@@ -86,5 +87,11 @@ impl Analyze for IfStmt {
         }
 
         analyzer.exit_scope();
+    }
+}
+
+impl Generate for IfStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        generator.gen_expr(&self.expr);
     }
 }

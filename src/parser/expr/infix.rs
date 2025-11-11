@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
 use super::binding_power::Bp;
+use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::lexer::span::Span;
 use crate::parser::parser::Parser;
 use crate::parser::Parse;
@@ -19,6 +21,7 @@ pub enum InfixOpKind {
     Eq,
     GtEq,
     LtEq,
+    Neq,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +39,7 @@ impl InfixOp {
             | InfixOpKind::LtEq
             | InfixOpKind::Eq
             | InfixOpKind::Lt
+            | InfixOpKind::Neq
             | InfixOpKind::Gt => (40, 41),
             InfixOpKind::And => (30, 31),
             InfixOpKind::Or => (20, 21),
@@ -63,6 +67,7 @@ impl Display for InfixOp {
             Eq => "==",
             GtEq => ">=",
             LtEq => "<=",
+            Neq => "!=",
         };
 
         write!(f, "{s}")
@@ -83,6 +88,7 @@ impl Parse for InfixOp {
             tt!(==) => InfixOpKind::Eq,
             tt!(>=) => InfixOpKind::GtEq,
             tt!(<=) => InfixOpKind::LtEq,
+            tt!(!=) => InfixOpKind::Neq,
             _ => {
                 return parser.unexpected("infix operator");
             }
@@ -91,5 +97,25 @@ impl Parse for InfixOp {
         let t = parser.discard_next()?;
 
         Ok(Self { op, span: t.span() })
+    }
+}
+
+impl Generate for InfixOp {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        use InfixOpKind::*;
+        match self.op {
+            Plus => generator.push_instruction(Instruction::ADD),
+            Minus => generator.push_instruction(Instruction::SUB),
+            Mult => generator.push_instruction(Instruction::MUL),
+            Div => generator.push_instruction(Instruction::DIV),
+            And => generator.push_instruction(Instruction::AND),
+            Or => generator.push_instruction(Instruction::OR),
+            Gt => generator.push_instruction(Instruction::GT),
+            Lt => generator.push_instruction(Instruction::LT),
+            Eq => generator.push_instruction(Instruction::EQ),
+            GtEq => generator.push_instruction(Instruction::GTE),
+            LtEq => generator.push_instruction(Instruction::LTE),
+            Neq => generator.push_instruction(Instruction::NEQ),
+        }
     }
 }

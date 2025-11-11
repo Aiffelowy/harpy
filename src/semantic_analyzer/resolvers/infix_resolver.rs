@@ -47,6 +47,7 @@ impl InfixResolver {
                 | InfixOpKind::Lt
                 | InfixOpKind::Gt
                 | InfixOpKind::GtEq
+                | InfixOpKind::Neq
                 | InfixOpKind::LtEq => {
                     matches!(
                         (lhs_p, rhs_p),
@@ -78,6 +79,7 @@ impl InfixResolver {
             | InfixOpKind::LtEq
             | InfixOpKind::GtEq
             | InfixOpKind::And
+            | InfixOpKind::Neq
             | InfixOpKind::Or => Type::bool(),
         }
     }

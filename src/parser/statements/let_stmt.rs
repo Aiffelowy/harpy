@@ -1,4 +1,5 @@
 use crate::{
+    generator::{compile_trait::Generate, instruction::Instruction},
     get_symbol_mut,
     lexer::tokens::Ident,
     parser::{
@@ -35,7 +36,10 @@ impl Parse for LetStmt {
             parser.consume::<t!(=)>()?;
             rhs = Some(parser.parse_node::<Expr>()?);
         }
-        parser.consume::<t!(;)>()?;
+
+        if let tt!(;) = parser.peek()? {
+            parser.consume::<t!(;)>()?;
+        }
 
         Ok(Self { var, ttype, rhs })
     }
@@ -50,7 +54,7 @@ impl Analyze for LetStmt {
     fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
         let Some(rhs) = &self.rhs else { return };
 
-        let Some(expr_type) = analyzer.resolve_expr(&rhs) else {
+        let Some(expr_type) = analyzer.resolve_expr(rhs) else {
             return;
         };
 
@@ -71,6 +75,16 @@ impl Analyze for LetStmt {
             }
 
         });
+    }
+}
+
+impl Generate for LetStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        if let Some(expr) = &self.rhs {
+            generator.gen_expr(expr);
+            let id = generator.get_local_mapping(self.var.id());
+            generator.push_instruction(Instruction::STORE_LOCAL(id));
+        }
     }
 }
 

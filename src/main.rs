@@ -10,6 +10,7 @@ pub mod aliases;
 pub mod color;
 pub mod err;
 pub mod extensions;
+pub mod generator;
 pub mod lexer;
 pub mod parser;
 pub mod semantic_analyzer;
