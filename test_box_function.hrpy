@@ -1,9 +1,0 @@
-fn make_boxed(n: int) -> boxed int {
-    return box n;
-}
-
-fn main() {
-    let value = 42;
-    let boxed_value = make_boxed(value);
-    let another_box = box boxed_value;
-}

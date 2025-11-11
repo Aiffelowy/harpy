@@ -1,7 +1,0 @@
-fn main() {
-    let x = 42;
-    let boxed_x = box x;
-    let double_boxed = box boxed_x;
-    let deref_once = *double_boxed;
-    let deref_twice = **double_boxed;
-}

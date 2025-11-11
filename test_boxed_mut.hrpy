@@ -1,5 +1,0 @@
-fn main() {
-    let pointer_to_mut: boxed mut int = box 5;
-    *pointer_to_mut = 69;
-    let value = *pointer_to_mut;
-}

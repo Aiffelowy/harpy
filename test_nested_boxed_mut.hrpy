@@ -1,6 +1,0 @@
-fn main() {
-    let nested: boxed boxed mut int = box box 42;
-    let inner_ptr :boxed mut int = **nested;
-    *inner_ptr = 99;
-    let final_value = **nested;
-}

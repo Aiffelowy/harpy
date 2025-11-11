@@ -1,7 +1,0 @@
-fn sum(a: int, b: int, c: int) -> int {
-    return a + b + c;
-}
-
-fn main() {
-    let result = sum(10, 20, 30);
-}

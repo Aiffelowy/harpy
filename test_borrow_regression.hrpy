@@ -1,6 +1,0 @@
-fn main() {
-    let x = 42;
-    let borrowed_x = &x;
-    let y: mut int = 10;
-    let borrowed_mut_y = &y;
-}

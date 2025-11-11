@@ -1,6 +1,0 @@
-fn main() {
-    let i: mut int = 5;
-    while i > 0 {
-        i = i - 1;
-    }
-}

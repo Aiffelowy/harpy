@@ -1,4 +1,0 @@
-fn main() {
-    let x = 42;
-    let boxed_x = box x;
-}

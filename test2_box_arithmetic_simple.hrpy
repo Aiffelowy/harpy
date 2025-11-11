@@ -1,8 +1,0 @@
-fn main() {
-    let a = 3;
-    let b = 5;
-    let sum = a + b;
-    let result = box sum;
-    let boxed_ten = box 10;
-    let nested = box boxed_ten;
-}
