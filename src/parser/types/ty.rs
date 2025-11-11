@@ -95,7 +95,7 @@ impl Type {
         return false;
     }
 
-    pub fn calc_size(&self) -> usize {
+    pub fn calc_size(&self) -> u8 {
         match &self.inner {
             TypeInner::Ref(_) => 8,
             TypeInner::Boxed(_) => 8,

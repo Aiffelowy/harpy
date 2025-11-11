@@ -141,4 +141,8 @@ impl RuntimeTypeTable {
     pub fn get(&self, type_idx: RuntimeTypeIndex) -> &RuntimeTypeInfo {
         &self.pool[type_idx.0 as usize]
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, RuntimeTypeInfo> {
+        self.pool.iter()
+    }
 }

@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         eprintln!("Usage: {} <file.hrpy>", args[0]);
         std::process::exit(1);
     }
-    
+
     let filename = &args[1];
     let reader = BufReader::new(std::fs::File::open(filename)?);
     let source = SourceFile::new(reader)?;
@@ -52,7 +52,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
     };
-
 
     let code = Generator::compile(&ast, result);
     println!("{:?}", code);

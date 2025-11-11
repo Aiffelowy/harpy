@@ -42,14 +42,14 @@ impl Type {
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
     pub ttype: Type,
-    pub size: usize,
+    pub size: u8,
     pub idx: TypeIndex,
 }
 
 #[derive(Debug, Clone)]
 pub struct RuntimeTypeInfo {
     pub ttype: RuntimeType,
-    pub size: usize,
+    pub size: u8,
 }
 
 #[derive(Debug, Clone)]

@@ -120,4 +120,8 @@ impl RuntimeFunctionTable {
     pub fn get_function_delc_mapping(&self, id: NodeId) -> FuncIndex {
         self.func_delc_map[&id]
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, RuntimeFunctionInfo> {
+        self.pool.iter()
+    }
 }

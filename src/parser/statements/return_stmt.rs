@@ -74,8 +74,10 @@ impl Analyze for ReturnStmt {
                 );
             }
 
-            if let Some(i) = expr.lvalue() {
-                analyzer.check_return_borrow(i);
+            if let Expr::Borrow(inner_expr, _) = &**expr {
+                if let Some(i) = inner_expr.lvalue() {
+                    analyzer.check_return_borrow(i);
+                }
             }
         }
     }

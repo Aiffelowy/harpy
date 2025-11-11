@@ -13,3 +13,6 @@ pub type SymbolInfoRef = std::rc::Rc<std::cell::RefCell<SymbolInfo>>;
 pub type TypeInfoRc = std::rc::Rc<TypeInfo>;
 
 pub type NodeInfo = std::collections::HashMap<NodeId, SymbolInfoRef>;
+
+pub static MAGIC_NUMBER: [u8; 5] = [68, 61, 72, 70, 79];
+pub static VERSION: u16 = 0x1u16;

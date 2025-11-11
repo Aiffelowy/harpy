@@ -102,4 +102,8 @@ impl RuntimeConstPool {
     pub fn get_mapping(&self, idx: NodeId) -> ConstIndex {
         self.node_map[&idx]
     }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, RuntimeConstInfo> {
+        self.pool.iter()
+    }
 }
