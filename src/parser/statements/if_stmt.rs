@@ -6,6 +6,7 @@ use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::{t, tt};
 
 use super::BlockStmt;
@@ -24,6 +25,22 @@ impl Parse for ElseStmt {
         }
 
         Ok(Self::Block(parser.parse::<BlockStmt>()?))
+    }
+}
+
+impl Analyze for ElseStmt {
+    fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
+        match self {
+            ElseStmt::Block(b) => b.build(builder),
+            ElseStmt::If(if_stmt) => if_stmt.build(builder),
+        }
+    }
+
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+        match self {
+            ElseStmt::Block(b) => b.analyze_semantics(analyzer),
+            ElseStmt::If(if_stmt) => if_stmt.analyze_semantics(analyzer),
+        }
     }
 }
 
@@ -76,7 +93,7 @@ impl Analyze for IfStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         analyzer.enter_scope();
         if let Some(expr_type) = analyzer.resolve_expr(&self.expr) {
             if !expr_type.compatible(&Type::bool()) {
@@ -87,16 +104,15 @@ impl Analyze for IfStmt {
             }
         }
 
-        self.block.analyze_semantics(analyzer);
-
-        if let Some(else_stmt) = &self.else_stmt {
-            match else_stmt {
-                ElseStmt::If(ifstmt) => ifstmt.analyze_semantics(analyzer),
-                ElseStmt::Block(block) => block.analyze_semantics(analyzer),
-            }
-        }
+        let then_status = self.block.analyze_semantics(analyzer);
+        let else_status = if let Some(else_stmt) = &self.else_stmt {
+            else_stmt.analyze_semantics(analyzer)
+        } else {
+            ReturnStatus::Never
+        };
 
         analyzer.exit_scope();
+        then_status.intersect(else_status)
     }
 }
 

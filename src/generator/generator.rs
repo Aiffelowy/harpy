@@ -17,7 +17,7 @@ use super::{
 
 static PREALLOC_CODE_BUFFER: usize = 4096;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BytecodeNode {
     Instruction(Instruction),
     Label(Label),
@@ -84,6 +84,14 @@ impl Generator {
 
     pub fn get_const_mapping(&self, id: NodeId) -> ConstIndex {
         self.analysis_result.constants.get_mapping(id)
+    }
+
+    pub fn place_ret(&mut self) {
+        if BytecodeNode::Instruction(Instruction::RET) == self.code[self.code.len() - 1] {
+            return;
+        }
+
+        self.code.push(BytecodeNode::Instruction(Instruction::RET));
     }
 
     pub fn get_function_mapping(&self, id: NodeId) -> FuncIndex {

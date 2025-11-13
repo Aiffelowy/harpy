@@ -9,7 +9,7 @@ use crate::{
         parser::Parser,
         types::{Type, TypeInner, TypeSpanned},
     },
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::SymbolInfoKind},
+    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus, symbol_info::SymbolInfoKind},
     t, tt,
 };
 
@@ -51,11 +51,11 @@ impl Analyze for LetStmt {
         builder.define_var(&self.var, type_info)
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
-        let Some(rhs) = &self.rhs else { return };
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+        let Some(rhs) = &self.rhs else { return ReturnStatus::Never };
 
         let Some(expr_type) = analyzer.resolve_expr(rhs) else {
-            return;
+            return ReturnStatus::Never;
         };
 
         get_symbol_mut!((analyzer, self.var) info {
@@ -75,6 +75,8 @@ impl Analyze for LetStmt {
             }
 
         });
+        
+        ReturnStatus::Never
     }
 }
 

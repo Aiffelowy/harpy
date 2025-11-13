@@ -71,7 +71,7 @@ macro_rules! define_instruction_enum {
 
 define_instruction_enum!(
     #[allow(non_camel_case_types)]
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     #[repr(u8)]
     pub enum Instruction {
         NOP = 0x0,

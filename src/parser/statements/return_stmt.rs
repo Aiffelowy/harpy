@@ -11,6 +11,7 @@ use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::const_pool::ConstIndex;
 use crate::semantic_analyzer::err::SemanticError;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::type_table::TypeIndex;
 use crate::{t, tt};
 
@@ -40,10 +41,10 @@ impl Parse for ReturnStmt {
 
 impl Analyze for ReturnStmt {
     fn build(&self, _builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {}
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         let Some(rt) = analyzer.get_func_info() else {
             analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
-            return;
+            return ReturnStatus::Always;
         };
 
         let rt = rt.get().ty.clone();
@@ -63,7 +64,7 @@ impl Analyze for ReturnStmt {
                 );
             }
 
-            return;
+            return ReturnStatus::Always;
         };
 
         if let Some(expr_type) = analyzer.resolve_expr(expr) {
@@ -80,6 +81,8 @@ impl Analyze for ReturnStmt {
                 }
             }
         }
+
+        ReturnStatus::Always
     }
 }
 

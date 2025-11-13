@@ -5,6 +5,7 @@ pub mod err;
 pub mod function_table;
 pub mod resolvers;
 pub mod result;
+pub mod return_status;
 pub mod scope;
 pub mod scope_builder;
 pub mod symbol_info;

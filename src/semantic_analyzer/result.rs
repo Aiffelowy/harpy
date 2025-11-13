@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    aliases::{NodeInfo, Result, ScopeRc},
+    aliases::{NodeInfo, ScopeRc},
+    err::HarpyError,
     generator::instruction::LocalAddress,
     parser::node::NodeId,
 };
@@ -37,10 +38,10 @@ impl AnalysisResult {
         }
     }
 
-    pub fn into_runtime(self) -> Result<RuntimeAnalysisResult> {
-        let type_table = self.type_table.into_conversion()?;
+    pub fn into_runtime(self) -> std::result::Result<RuntimeAnalysisResult, Vec<HarpyError>> {
+        let type_table = self.type_table.into_conversion().map_err(|e| vec![e])?;
         let constants = self.constants.to_runtime(&type_table);
-        let function_table = self.function_table.into_runtime(&type_table);
+        let function_table = self.function_table.into_runtime(&type_table)?;
 
         Ok(RuntimeAnalysisResult {
             constants,

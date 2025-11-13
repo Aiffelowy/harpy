@@ -2,14 +2,16 @@ use super::{
     node::Node,
     parser::Parser,
     statements::BlockStmt,
-    types::{Type, TypeSpanned},
+    types::{Type, TypeInner, TypeSpanned},
     Parse,
 };
 use crate::{
     aliases::Result,
     generator::compile_trait::Generate,
     lexer::tokens::Ident,
-    semantic_analyzer::{analyze_trait::Analyze, scope::ScopeKind},
+    semantic_analyzer::{
+        analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus, scope::ScopeKind,
+    },
     t, tt,
 };
 
@@ -100,10 +102,19 @@ impl Analyze for FuncDelc {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         analyzer.enter_scope();
-        self.block.analyze_semantics(analyzer);
+        let block_status = self.block.analyze_semantics(analyzer);
+
+        if self.return_type.inner != TypeInner::Void && block_status != ReturnStatus::Always {
+            analyzer.report_semantic_error(SemanticError::NotAllPathsReturn, self.name.span());
+        }
+
         analyzer.exit_scope();
+        block_status
     }
 }
 
@@ -117,5 +128,6 @@ impl Generate for FuncDelc {
         }
         generator.place_label(func_label);
         self.block.generate(generator);
+        generator.place_ret()
     }
 }

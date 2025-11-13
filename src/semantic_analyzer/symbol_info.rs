@@ -146,16 +146,24 @@ pub struct SymbolInfo {
     pub ref_count: usize,
     pub node_id: NodeId,
     pub scope_depth: Depth,
+    pub span: Span,
 }
 
 impl SymbolInfo {
-    pub fn new(ty: TypeInfoRc, kind: SymbolInfoKind, node_id: NodeId, scope_depth: Depth) -> Self {
+    pub fn new(
+        ty: TypeInfoRc,
+        kind: SymbolInfoKind,
+        node_id: NodeId,
+        scope_depth: Depth,
+        span: Span,
+    ) -> Self {
         Self {
             ty,
             kind,
             ref_count: 0,
             node_id,
             scope_depth,
+            span,
         }
     }
 

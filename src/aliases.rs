@@ -14,5 +14,5 @@ pub type TypeInfoRc = std::rc::Rc<TypeInfo>;
 
 pub type NodeInfo = std::collections::HashMap<NodeId, SymbolInfoRef>;
 
-pub static MAGIC_NUMBER: [u8; 5] = [68, 61, 72, 70, 79];
+pub static MAGIC_NUMBER: [u8; 5] = [0x68, 0x61, 0x72, 0x70, 0x79];
 pub static VERSION: u16 = 0x1u16;

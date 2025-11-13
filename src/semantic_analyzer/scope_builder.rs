@@ -62,7 +62,13 @@ impl ScopeBuilder {
         ty: TypeInfoRc,
         info: SymbolInfoKind,
     ) -> Option<SymbolInfoRef> {
-        let symbol = SymbolInfo::new(ty, info, ident.id(), self.current_scope.get().depth());
+        let symbol = SymbolInfo::new(
+            ty,
+            info,
+            ident.id(),
+            self.current_scope.get().depth(),
+            ident.span(),
+        );
         let symbol = SymbolInfoRef::new(symbol.into());
 
         let r = self.current_scope.get_mut().define(ident, symbol.clone());
@@ -127,7 +133,7 @@ impl ScopeBuilder {
                 ttype.span(),
             ));
         }
-        self.result.type_table.register(&ttype)
+        self.result.type_table.register(ttype)
     }
 
     pub(in crate::semantic_analyzer) fn build_analyzer(

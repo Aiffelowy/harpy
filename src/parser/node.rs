@@ -41,8 +41,8 @@ impl<T: Parse + Analyze> Analyze for Node<T> {
         self.value.build(builder);
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
-        self.value.analyze_semantics(analyzer);
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> crate::semantic_analyzer::return_status::ReturnStatus {
+        self.value.analyze_semantics(analyzer)
     }
 }
 

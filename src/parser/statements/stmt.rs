@@ -10,7 +10,7 @@ use crate::{
         parser::Parser,
         Parse,
     },
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, symbol_info::SymbolInfoKind},
+    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus, symbol_info::SymbolInfoKind},
     t, tt,
 };
 
@@ -77,7 +77,7 @@ impl Analyze for Stmt {
         }
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         use Stmt::*;
         match self {
             LetStmt(lets) => lets.analyze_semantics(analyzer),
@@ -88,16 +88,15 @@ impl Analyze for Stmt {
             LoopStmt(loops) => loops.analyze_semantics(analyzer),
             ReturnStmt(returns) => returns.analyze_semantics(analyzer),
             Expr(expr) => {
-                if let None = analyzer.resolve_expr(expr) {
-                    return;
-                }
+                analyzer.resolve_expr(expr);
+                ReturnStatus::Never
             }
             AssignStmt(lhs, _, rhs) => {
                 let Some(lhs_type) = analyzer.resolve_expr_write(lhs) else {
-                    return;
+                    return ReturnStatus::Never;
                 };
                 let Some(rhs_type) = analyzer.resolve_expr(rhs) else {
-                    return;
+                    return ReturnStatus::Never;
                 };
 
                 let mut lhs_type = lhs_type.deref();
@@ -128,8 +127,10 @@ impl Analyze for Stmt {
                     });
                 } else {
                     analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
-                    return;
+                    return ReturnStatus::Never;
                 };
+                
+                ReturnStatus::Never
             }
         }
     }

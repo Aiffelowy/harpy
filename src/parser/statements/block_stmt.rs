@@ -2,6 +2,7 @@ use crate::generator::compile_trait::Generate;
 use crate::parser::parser::Parser;
 use crate::parser::{parse_trait::Parse, statements::Stmt};
 use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::{t, tt};
 
@@ -40,12 +41,17 @@ impl Analyze for BlockStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         analyzer.enter_scope();
+        
+        let mut status = ReturnStatus::Never;
         for stmt in &self.stmts {
-            stmt.analyze_semantics(analyzer)
+            let stmt_status = stmt.analyze_semantics(analyzer);
+            status = status.then(stmt_status);
         }
+        
         analyzer.exit_scope();
+        status
     }
 }
 

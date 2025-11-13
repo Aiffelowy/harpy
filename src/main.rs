@@ -1,4 +1,4 @@
-use std::io::BufReader;
+use std::io::{BufReader, Write};
 
 use aliases::Result;
 use err::HarpyError;
@@ -16,6 +16,7 @@ pub mod lexer;
 pub mod parser;
 pub mod semantic_analyzer;
 pub mod source;
+pub mod vm;
 
 fn print_errors(errors: Vec<HarpyError>, source: &SourceFile) {
     for err in errors {
@@ -46,7 +47,15 @@ fn main() -> Result<()> {
     };
 
     let result = match Analyzer::analyze(&ast) {
-        Ok(result) => result.into_runtime()?,
+        Ok(result) => result.into_runtime(),
+        Err(errors) => {
+            print_errors(errors, &source);
+            return Ok(());
+        }
+    };
+
+    let result = match result {
+        Ok(rti) => rti,
         Err(errors) => {
             print_errors(errors, &source);
             return Ok(());
@@ -54,7 +63,8 @@ fn main() -> Result<()> {
     };
 
     let code = Generator::compile(&ast, result);
-    println!("{:?}", code);
+    let mut file = std::fs::File::create("out")?;
+    file.write_all(&code)?;
 
     Ok(())
 }

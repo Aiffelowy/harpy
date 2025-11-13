@@ -114,7 +114,10 @@ impl Analyzer {
         if let Expr::Ident(ident) = &**expr {
             if let Ok(sym_ref) = self.get_symbol(&**ident) {
                 let symbol = (*sym_ref).borrow();
-                if matches!(symbol.kind, SymbolInfoKind::Variable(_) | SymbolInfoKind::Param) {
+                if matches!(
+                    symbol.kind,
+                    SymbolInfoKind::Variable(_) | SymbolInfoKind::Param
+                ) {
                     let original_node_id = symbol.node_id;
                     if let Some(&local_addr) = self.result.locals_map.get(&original_node_id) {
                         self.result.locals_map.insert(expr.id(), local_addr);
@@ -122,7 +125,7 @@ impl Analyzer {
                 }
             }
         }
-        
+
         match ExprResolver::resolve_expr(expr, self, mode) {
             Ok(t) => {
                 let type_info = self.register_type(&TypeSpanned {
@@ -134,6 +137,7 @@ impl Analyzer {
                     SymbolInfoKind::Expr,
                     expr.id(),
                     self.current_scope.get().depth(),
+                    expr.span(),
                 );
 
                 self.result
@@ -176,7 +180,13 @@ impl Analyzer {
 
         let info = LiteralInfo { const_idx };
         let info = SymbolInfoKind::Literal(info);
-        let info = SymbolInfo::new(ttype, info, lit.id(), self.current_scope.get().depth());
+        let info = SymbolInfo::new(
+            ttype,
+            info,
+            lit.id(),
+            self.current_scope.get().depth(),
+            lit.span(),
+        );
         let info = SymbolInfoRef::new(info.into());
         self.result.node_info.insert(lit.id(), info);
     }
@@ -205,7 +215,7 @@ impl Analyzer {
 
     pub fn analyze(program: &Program) -> std::result::Result<AnalysisResult, Vec<HarpyError>> {
         let mut s = ScopeBuilder::build_analyzer(program)?;
-        program.analyze_semantics(&mut s);
+        let _return_status = program.analyze_semantics(&mut s);
 
         if !s.errors.is_empty() {
             return Err(s.errors);
@@ -237,13 +247,19 @@ impl Analyzer {
         }
     }
 
-    pub fn map_ident_to_local_with_symbol(&mut self, ident_node: &Node<Ident>, symbol: &SymbolInfo) {
-        if matches!(symbol.kind, SymbolInfoKind::Variable(_) | SymbolInfoKind::Param) {
+    pub fn map_ident_to_local_with_symbol(
+        &mut self,
+        ident_node: &Node<Ident>,
+        symbol: &SymbolInfo,
+    ) {
+        if matches!(
+            symbol.kind,
+            SymbolInfoKind::Variable(_) | SymbolInfoKind::Param
+        ) {
             let original_node_id = symbol.node_id;
             if let Some(&local_addr) = self.result.locals_map.get(&original_node_id) {
                 self.result.locals_map.insert(ident_node.id(), local_addr);
             }
         }
     }
-
 }

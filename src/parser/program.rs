@@ -2,7 +2,7 @@ use super::{func_decl::FuncDelc, node::Node, statements::LetStmt, Parse};
 use crate::{
     generator::compile_trait::Generate,
     lexer::span::Span,
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError},
+    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus},
     tt,
 };
 
@@ -63,17 +63,19 @@ impl Analyze for Program {
         }
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         for sub in &self.parts {
             match sub {
-                SubProgram::Let(lets) => lets.analyze_semantics(analyzer),
-                SubProgram::FuncDecl(decl) => decl.analyze_semantics(analyzer),
+                SubProgram::Let(lets) => { lets.analyze_semantics(analyzer); },
+                SubProgram::FuncDecl(decl) => { decl.analyze_semantics(analyzer); },
             }
         }
 
         if !analyzer.main_exists() {
             analyzer.report_semantic_error(SemanticError::MissingMain, Span::default());
         }
+        
+        ReturnStatus::Never
     }
 }
 

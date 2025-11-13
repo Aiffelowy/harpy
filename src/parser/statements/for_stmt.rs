@@ -6,6 +6,7 @@ use crate::parser::parser::Parser;
 use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::err::SemanticError;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::semantic_analyzer::symbol_info::SymbolInfoKind;
@@ -60,7 +61,7 @@ impl Analyze for ForStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         analyzer.enter_scope();
 
         if let Some(from_type) = analyzer.resolve_expr(&self.iter.from) {
@@ -88,8 +89,12 @@ impl Analyze for ForStmt {
             }
         }
 
-        self.block.analyze_semantics(analyzer);
+        let block_status = self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
+        match block_status {
+            ReturnStatus::Always => ReturnStatus::Sometimes,
+            _ => ReturnStatus::Never,
+        }
     }
 }
 

@@ -1,16 +1,19 @@
 use std::collections::HashMap;
 
 use crate::{
-    aliases::SymbolInfoRef,
+    aliases::{Result, SymbolInfoRef},
+    err::HarpyError,
     extensions::SymbolInfoRefExt,
     lexer::tokens::Ident,
     parser::{
         expr::expr::CallExpr,
         node::{Node, NodeId},
+        types::TypeInner,
     },
 };
 
 use super::{
+    err::SemanticError,
     symbol_info::{RuntimeFunctionInfo, SymbolInfoKind},
     type_table::{RuntimeConversionTypeTable, RuntimeTypeIndex},
 };
@@ -65,8 +68,9 @@ impl FunctionTable {
     pub(in crate::semantic_analyzer) fn into_runtime(
         self,
         type_table: &RuntimeConversionTypeTable,
-    ) -> RuntimeFunctionTable {
+    ) -> std::result::Result<RuntimeFunctionTable, Vec<HarpyError>> {
         let mut pool = Vec::with_capacity(self.pool.len());
+        let mut error_pool = vec![];
         for info in self.pool {
             let info = info.get();
             if let SymbolInfoKind::Function(i) = &info.kind {
@@ -79,11 +83,35 @@ impl FunctionTable {
                     .locals
                     .iter()
                     .map(|local| {
-                        let ty = &local.get().ty;
-                        type_table.get_mapping(&ty.idx)
+                        let local = &local.get();
+                        let ty = &local.ty;
+                        if ty.inner == TypeInner::Unknown {
+                            return Err(HarpyError::new(
+                                crate::err::HarpyErrorKind::SemanticError(
+                                    SemanticError::CantInferType,
+                                ),
+                                local.span,
+                            ));
+                        }
+                        Ok(type_table.get_mapping(&ty.idx))
                     })
-                    .collect::<Vec<RuntimeTypeIndex>>();
+                    .collect::<Vec<Result<RuntimeTypeIndex>>>();
                 let return_type = type_table.get_mapping(&info.ty.idx);
+
+                let (oks, errors): (Vec<_>, Vec<_>) = locals.into_iter().partition(Result::is_ok);
+                let errs = errors
+                    .into_iter()
+                    .map(Result::unwrap_err)
+                    .collect::<Vec<HarpyError>>();
+                if !errs.is_empty() {
+                    error_pool.extend(errs);
+                    continue;
+                }
+
+                let locals = oks
+                    .into_iter()
+                    .map(Result::unwrap)
+                    .collect::<Vec<RuntimeTypeIndex>>();
 
                 pool.push(RuntimeFunctionInfo {
                     params,
@@ -93,11 +121,15 @@ impl FunctionTable {
             }
         }
 
-        RuntimeFunctionTable {
+        if !error_pool.is_empty() {
+            return Err(error_pool);
+        }
+
+        Ok(RuntimeFunctionTable {
             pool,
             call_map: self.call_map,
             func_delc_map: self.func_delc_map,
-        }
+        })
     }
 }
 

@@ -42,6 +42,8 @@ pub enum SemanticError {
     ReturnRefToLocal,
     AssignToRValue,
     UninitializedVar,
+    CantInferType,
+    NotAllPathsReturn,
 }
 
 impl Display for SemanticError {
@@ -134,6 +136,8 @@ impl Display for SemanticError {
             ReturnRefToLocal => format!("cannot {Red}return{Reset} a {Green}reference{Reset} to a {Red}local{Reset} variable"),
             AssignToRValue => format!("cannot {Green}assign{Reset} to {Red}rvalue{Reset}"),
             UninitializedVar => format!("{Green}variable{Reset} not {Red}initialized{Reset}"),
+            CantInferType => format!("{Red}Cannot{Reset} {Green}infer{Reset} type; consider giving it a concrete {Green}type{Reset}"),
+            NotAllPathsReturn => format!("not all code paths return a value")
         };
 
         write!(f, "{s}")

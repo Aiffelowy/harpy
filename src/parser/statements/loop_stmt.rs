@@ -3,6 +3,7 @@ use crate::generator::instruction::Instruction;
 use crate::parser::parse_trait::Parse;
 use crate::parser::parser::Parser;
 use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::t;
 
@@ -28,10 +29,11 @@ impl Analyze for LoopStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) {
+    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
         analyzer.enter_scope();
-        self.block.analyze_semantics(analyzer);
+        let block_status = self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
+        block_status
     }
 }
 
