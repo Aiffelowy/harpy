@@ -16,7 +16,6 @@ pub mod lexer;
 pub mod parser;
 pub mod semantic_analyzer;
 pub mod source;
-pub mod vm;
 
 fn print_errors(errors: Vec<HarpyError>, source: &SourceFile) {
     for err in errors {

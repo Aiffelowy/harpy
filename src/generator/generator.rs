@@ -119,7 +119,6 @@ impl Generator {
                 }
                 RuntimeType::Void => {
                     data.push(0x00);
-                    data.push(0x00);
                 }
             }
         }
