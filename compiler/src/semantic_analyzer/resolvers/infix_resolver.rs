@@ -23,8 +23,6 @@ impl InfixResolver {
     }
 
     fn validate(op: &InfixOp, lhs: &Type, rhs: &Type) -> bool {
-        let lhs = lhs.deref();
-        let rhs = rhs.deref();
 
         if matches!(lhs.inner, TypeInner::Boxed(_)) || matches!(rhs.inner, TypeInner::Boxed(_)) {
             return false;
@@ -66,7 +64,6 @@ impl InfixResolver {
     }
 
     fn result(op: &InfixOp, lhs: &Type, _rhs: &Type) -> Type {
-        let lhs = lhs.deref();
 
         match op.op {
             InfixOpKind::Plus | InfixOpKind::Minus | InfixOpKind::Mult | InfixOpKind::Div => {

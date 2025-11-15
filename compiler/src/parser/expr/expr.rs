@@ -77,7 +77,7 @@ impl Parse for CallExpr {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Infix(Box<Expr>, InfixOp, Box<Expr>),
-    Prefix(PrefixOp, Box<Expr>),
+    Prefix(PrefixOp, Box<Node<Expr>>),
     Literal(Node<Literal>),
     Ident(Node<Ident>),
     Call(Node<CallExpr>),
@@ -86,7 +86,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
+    pub(in crate::parser) fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
         let mut lhs = Expr::parse_null_den(parser)?;
 
         loop {
@@ -146,7 +146,7 @@ impl Expr {
         }
 
         if let Some(op) = parser.try_parse::<PrefixOp>() {
-            let rhs = Expr::parse_expr(parser, op.bp().right)?;
+            let rhs = parser.parse_expr_node(op.bp().right)?;
             return Ok(Expr::Prefix(op, Box::new(rhs)));
         }
 

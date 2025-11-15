@@ -91,6 +91,10 @@ impl Generator {
         self.analysis_result.expr_map[&id]
     }
 
+    pub fn get_type_info(&self, type_idx: RuntimeTypeIndex) -> &crate::semantic_analyzer::symbol_info::RuntimeTypeInfo {
+        self.analysis_result.type_table.get(type_idx)
+    }
+
     pub fn place_ret(&mut self) {
         if BytecodeNode::Instruction(Instruction::RET) == self.code[self.code.len() - 1] {
             return;
@@ -231,6 +235,7 @@ impl Generator {
             Instruction::PUSH_ADDR_LOCAL(_)
             | Instruction::LOAD_LOCAL(_)
             | Instruction::STORE_LOCAL(_) => 1 + 2,
+            Instruction::BOX_ALLOC(_) => 1 + 4,
             Instruction::JMP(_) | Instruction::JMP_IF_TRUE(_) | Instruction::JMP_IF_FALSE(_) => {
                 1 + 8
             }

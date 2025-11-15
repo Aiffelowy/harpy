@@ -111,7 +111,7 @@ impl Analyzer {
 
     fn res_expr(&mut self, expr: &Node<Expr>, mode: ResolveMode) -> Option<TypeInfoRc> {
         if let Expr::Ident(ident) = &**expr {
-            if let Ok(sym_ref) = self.get_symbol(&**ident) {
+            if let Ok(sym_ref) = self.get_symbol(ident) {
                 let symbol = (*sym_ref).borrow();
                 if matches!(
                     symbol.kind,

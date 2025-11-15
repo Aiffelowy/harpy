@@ -54,7 +54,7 @@ impl ExprResolver {
         analyzer: &mut Analyzer,
         mode: ResolveMode,
     ) -> Result<Type> {
-        let sym_ref = analyzer.get_symbol(&**ident)?;
+        let sym_ref = analyzer.get_symbol(ident)?;
         let symbol = (*sym_ref).borrow();
         if let SymbolInfoKind::Variable(ref v) = symbol.kind {
             match mode {
@@ -117,12 +117,19 @@ impl ExprResolver {
 
     fn resolve_prefix(
         op: &PrefixOp,
-        rhs: &Expr,
+        rhs: &Node<Expr>,
         analyzer: &mut Analyzer,
         mode: ResolveMode,
     ) -> Result<Type> {
-        let rhs_type = Self::resolve_expr(rhs, analyzer, mode)?;
-        PrefixResolver::resolve(op, &rhs_type)
+        let rhs_type = match mode {
+            ResolveMode::Read => analyzer.resolve_expr(rhs),
+            ResolveMode::Write => analyzer.resolve_expr_write(rhs),
+        };
+
+        let Some(rhs_type) = rhs_type else {
+            return HarpyError::semantic(SemanticError::UnresolvedType, rhs.span());
+        };
+        PrefixResolver::resolve(op, &rhs_type.ttype)
     }
 
     fn resolve_borrow(expr: &SpannedExpr, mutable: bool, analyzer: &mut Analyzer) -> Result<Type> {

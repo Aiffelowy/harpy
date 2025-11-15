@@ -24,14 +24,11 @@ impl TypeTable {
         let mut pool = vec![];
         let mut map = HashMap::new();
 
-        pool.push(TypeInfoRc::new(
-            TypeInfo {
-                ttype: Type::void(),
-                size: 0,
-                idx: TypeIndex(0),
-            }
-            .into(),
-        ));
+        pool.push(TypeInfoRc::new(TypeInfo {
+            ttype: Type::void(),
+            size: 0,
+            idx: TypeIndex(0),
+        }));
 
         map.insert(Type::void(), TypeIndex(0));
 
@@ -51,14 +48,11 @@ impl TypeTable {
         }
 
         let i = self.pool.len();
-        let rc = TypeInfoRc::new(
-            TypeInfo {
-                ttype: ttype.clone(),
-                size: ttype.calc_size(),
-                idx: TypeIndex(i),
-            }
-            .into(),
-        );
+        let rc = TypeInfoRc::new(TypeInfo {
+            ttype: ttype.clone(),
+            size: ttype.calc_size(),
+            idx: TypeIndex(i),
+        });
 
         self.pool.push(rc.clone());
         self.map.insert(ttype.clone(), TypeIndex(i));

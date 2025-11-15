@@ -92,13 +92,13 @@ impl Type {
         if let TypeInner::Ref(_) = &self.inner {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn calc_size(&self) -> u8 {
         match &self.inner {
-            TypeInner::Ref(_) => 8,
-            TypeInner::Boxed(_) => 8,
+            TypeInner::Ref(_) => 16,
+            TypeInner::Boxed(_) => 16,
             TypeInner::Void => 0,
             TypeInner::Unknown => 0,
             TypeInner::Base(b) => match b {

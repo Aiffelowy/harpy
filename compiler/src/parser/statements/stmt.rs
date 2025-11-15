@@ -1,5 +1,5 @@
 use crate::{
-    generator::{compile_trait::Generate, generator::Generator, instruction::Instruction},
+    generator::{compile_trait::Generate, instruction::Instruction},
     get_symbol_mut,
     parser::{
         expr::{
@@ -10,7 +10,10 @@ use crate::{
         parser::Parser,
         Parse,
     },
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus, symbol_info::SymbolInfoKind},
+    semantic_analyzer::{
+        analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus,
+        symbol_info::SymbolInfoKind,
+    },
     t, tt,
 };
 
@@ -77,7 +80,10 @@ impl Analyze for Stmt {
         }
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         use Stmt::*;
         match self {
             LetStmt(lets) => lets.analyze_semantics(analyzer),
@@ -99,29 +105,44 @@ impl Analyze for Stmt {
                     return ReturnStatus::Never;
                 };
 
-                let mut lhs_type = lhs_type.deref();
+                let mut lhs_type = &lhs_type.ttype;
 
                 if let Some(i) = lhs.lvalue() {
                     get_symbol_mut!((analyzer, i) info {
-                        if let SymbolInfoKind::Variable(ref mut v) = info.kind {
-                            if !lhs_type.mutable && v.initialized {
-                                analyzer.report_semantic_error(
-                                    SemanticError::AssignToConst(lhs.clone()),
-                                    lhs.span(),
-                                );
-                            }
+                        match &mut info.kind {
+                            SymbolInfoKind::Variable(ref mut v) => {
+                                if !lhs_type.mutable && v.initialized {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignToConst(lhs.clone()),
+                                        lhs.span(),
+                                    );
+                                }
 
-                            if !v.initialized {
-                                v.initialized = true;
-                                info.infer_type(&rhs_type);
-                                lhs_type = &rhs_type.ttype;
-                            }
+                                if !v.initialized {
+                                    v.initialized = true;
+                                    info.infer_type(&rhs_type);
+                                    lhs_type = &rhs_type.ttype;
+                                }
 
-                            if !lhs_type.assign_compatible(&rhs_type.ttype) {
-                                analyzer.report_semantic_error(
-                                    SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
-                                    rhs.span(),
-                                );
+                                if !lhs_type.assign_compatible(&rhs_type.ttype) {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
+                                        rhs.span(),
+                                    );
+                                }
+                            }
+                            SymbolInfoKind::Param => {
+                                // Parameters are always initialized and immutable as variables
+                                // but their contents may be mutable (e.g., &mut T)
+                                if !lhs_type.assign_compatible(&rhs_type.ttype) {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
+                                        rhs.span(),
+                                    );
+                                }
+                            }
+                            _ => {
+                                analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
                             }
                         }
                     });
@@ -129,7 +150,7 @@ impl Analyze for Stmt {
                     analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
                     return ReturnStatus::Never;
                 };
-                
+
                 ReturnStatus::Never
             }
         }
@@ -157,7 +178,9 @@ impl Generate for Stmt {
                 }
 
                 Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => {
-                    generate_lvalue_address(expr, generator);
+                    // Both references and pointers work the same for assignment:
+                    // they contain addresses, so just load the address and store
+                    generator.gen_expr(&**expr);
                     generator.gen_expr(rhs);
                     generator.push_instruction(Instruction::STORE);
                 }
@@ -168,21 +191,3 @@ impl Generate for Stmt {
     }
 }
 
-fn generate_lvalue_address(expr: &Expr, generator: &mut Generator) {
-    match expr {
-        Expr::Ident(ident) => {
-            let local = generator.get_local_mapping(ident.id());
-            generator.push_instruction(Instruction::LOAD_LOCAL(local));
-        }
-
-        Expr::Prefix(PrefixOp { op, .. }, inner) if *op == PrefixOpKind::Star => {
-            generator.gen_expr(inner);
-        }
-
-        Expr::Borrow(inner, _) => {
-            generate_lvalue_address(inner, generator);
-        }
-
-        _ => panic!("Invalid lvalue address expression"),
-    }
-}

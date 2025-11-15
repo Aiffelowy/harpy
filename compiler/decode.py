@@ -48,11 +48,11 @@ def decode_bytecode(data):
             pos += 1
         elif type_id == 0x02:
             to = int.from_bytes(data[pos+1:pos+5], 'big')
-            type_table.append({ "type": type_id, "size": 8, "points_to": to })
+            type_table.append({ "type": type_id, "size": 16, "points_to": to })
             pos += 5
         elif type_id == 0x03:
             to = int.from_bytes(data[pos+1:pos+5], 'big')
-            type_table.append({ "type": type_id, "size": 8, "points_to": to })
+            type_table.append({ "type": type_id, "size": 16, "points_to": to })
             pos += 5
         elif type_id == 0x04:
             size = data[pos+1]
