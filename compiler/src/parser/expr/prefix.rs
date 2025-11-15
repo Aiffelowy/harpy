@@ -14,7 +14,6 @@ pub enum PrefixOpKind {
     Plus,
     Neg,
     Star,
-    Box,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -25,11 +24,7 @@ pub struct PrefixOp {
 
 impl PrefixOp {
     pub fn bp(&self) -> Bp {
-        match self.op {
-            PrefixOpKind::Box => (0, 19),
-            _ => (0, 70),
-        }
-        .into()
+        (0, 70).into()
     }
 
     pub fn span(&self) -> Span {
@@ -45,7 +40,6 @@ impl Display for PrefixOp {
             Plus => "+",
             Neg => "-",
             Star => "*",
-            Box => "box ",
         };
 
         write!(f, "{s}")
@@ -59,7 +53,6 @@ impl Parse for PrefixOp {
             tt!(-) => PrefixOpKind::Minus,
             tt!(!) => PrefixOpKind::Neg,
             tt!(*) => PrefixOpKind::Star,
-            tt!(box) => PrefixOpKind::Box,
             _ => {
                 return parser.unexpected("prefix operator");
             }
@@ -76,17 +69,9 @@ impl Generate for PrefixOp {
         use PrefixOpKind::*;
         match self.op {
             Minus => generator.push_instruction(crate::generator::instruction::Instruction::NEG),
-            Plus => {
-                // Unary plus is a no-op - don't generate any instruction
-                // The value is already on the stack from the RHS expression
-            },
+            Plus => {}
             Neg => generator.push_instruction(crate::generator::instruction::Instruction::NOT),
             Star => generator.push_instruction(crate::generator::instruction::Instruction::LOAD),
-            Box => {
-                // Box allocates memory for the value on the stack
-                // The VM will determine the allocation size from the value's type at runtime
-                generator.push_instruction(crate::generator::instruction::Instruction::BOX_ALLOC);
-            },
         }
     }
 }

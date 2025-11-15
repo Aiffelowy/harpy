@@ -67,7 +67,6 @@ impl ExprResolver {
             }
         }
 
-        // Map this identifier to its local address if it's a variable or parameter
         analyzer.map_ident_to_local_with_symbol(ident, &symbol);
 
         Ok(symbol.ty.ttype.clone())
@@ -173,7 +172,7 @@ impl ExprResolver {
                 borrow_span: expr.span(),
             });
         }
-        // Map the borrowed identifier to its local address for code generation
+
         analyzer.map_ident_to_local_with_symbol(i, &symbol.get());
 
         Ok(Type {
@@ -183,6 +182,17 @@ impl ExprResolver {
                 inner: ttype.inner.clone(),
             })),
         })
+    }
+
+    fn resolve_box(expr: &Node<Expr>, analyzer: &mut Analyzer) -> Result<Type> {
+        if let Some(ty) = analyzer.resolve_expr(expr) {
+            Ok(Type {
+                mutable: false,
+                inner: TypeInner::Boxed(Box::new(ty.ttype.clone())),
+            })
+        } else {
+            HarpyError::semantic(SemanticError::UnresolvedType, expr.span())
+        }
     }
 
     fn resolve_infix(
@@ -205,6 +215,7 @@ impl ExprResolver {
             Expr::Prefix(op, rhs) => Self::resolve_prefix(op, rhs, analyzer, mode),
             Expr::Infix(lhs, op, rhs) => Self::resolve_infix(lhs, op, rhs, analyzer, mode),
             Expr::Borrow(expr, mutable) => Self::resolve_borrow(expr, *mutable, analyzer),
+            Expr::Box(expr) => Self::resolve_box(expr, analyzer),
         }
     }
 }

@@ -97,7 +97,7 @@ def decode_bytecode(data):
         0x12: {"name": "STORE_LOCAL", "size": 3},
         0x31: {"name": "LOAD", "size": 1}, 
         0x32: {"name": "STORE", "size": 1}, 
-        0x40: {"name": "BOX_ALLOC", "size": 1},
+        0x40: {"name": "BOX_ALLOC", "size": 5},
         0x50: {"name": "ADD", "size": 1}, 
         0x51: {"name": "SUB", "size": 1}, 
         0x52: {"name": "MUL", "size": 1}, 
@@ -139,6 +139,9 @@ def decode_bytecode(data):
         elif opcode in [0x10, 0x11, 0x12]:  # LOCAL operations
             local_addr = int.from_bytes(data[pos+1:pos+3], 'big')
             bytecode.append({"opcode": name, "param": local_addr, "size": size, "byte_offset": pos - bytecode_start})
+        elif opcode == 0x40:
+            type_id = int.from_bytes(data[pos+1:pos+5], 'big')
+            bytecode.append({ "opcode": name, "param": type_id, "size": size, "byte_offset": pos - bytecode_start })
         elif opcode in [0x60, 0x61, 0x62]:  # JMP operations
             target = int.from_bytes(data[pos+1:pos+9], 'big')
             bytecode.append({"opcode": name, "param": target, "size": size, "byte_offset": pos - bytecode_start})
@@ -213,7 +216,7 @@ def print_bytecode(bc):
         if param is not None:
             # Print jump targets as hex (code addresses), others as decimal
             if opcode in ["JMP", "JMP_IF_TRUE", "JMP_IF_FALSE"]:
-                print(f"[{byte_offset:04x}] {opcode} 0x{param:04x}")
+                print(f"[0x{byte_offset:04x}] {opcode} 0x{param:04x}")
             else:
                 print(f"[0x{byte_offset:04x}] {opcode} {param}")
         else:

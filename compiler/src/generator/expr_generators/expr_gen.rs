@@ -48,6 +48,12 @@ impl ExprGenerator {
         generator.push_instruction(Instruction::LOAD_CONST(id))
     }
 
+    fn generate_box(expr: &Node<Expr>, generator: &mut Generator) {
+        let id = generator.get_expr_type(expr.id());
+        generator.gen_expr(expr);
+        generator.push_instruction(Instruction::BOX_ALLOC(id));
+    }
+
     pub fn generate(expr: &Expr, generator: &mut Generator) {
         match expr {
             Ident(i) => Self::generate_ident(i, generator),
@@ -56,6 +62,7 @@ impl ExprGenerator {
             Call(call) => Self::generate_call(call, generator),
             Borrow(expr, _) => Self::generate_borrow(expr, generator),
             Literal(l) => Self::generate_lit(l, generator),
+            Box(expr) => Self::generate_box(expr, generator),
         }
     }
 }

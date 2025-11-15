@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    aliases::{MAGIC_NUMBER, VERSION},lexer::tokens::Lit, parser::{expr::Expr, node::NodeId, program::Program, types::runtime::RuntimeType}, semantic_analyzer::{
+    aliases::{MAGIC_NUMBER, VERSION},
+    lexer::tokens::Lit,
+    parser::{expr::Expr, node::NodeId, program::Program, types::runtime::RuntimeType},
+    semantic_analyzer::{
         const_pool::ConstIndex, function_table::FuncIndex, result::RuntimeAnalysisResult,
-    }
+        type_table::RuntimeTypeIndex,
+    },
 };
 
 use super::{
@@ -81,6 +85,10 @@ impl Generator {
 
     pub fn get_const_mapping(&self, id: NodeId) -> ConstIndex {
         self.analysis_result.constants.get_mapping(id)
+    }
+
+    pub fn get_expr_type(&self, id: NodeId) -> RuntimeTypeIndex {
+        self.analysis_result.expr_map[&id]
     }
 
     pub fn place_ret(&mut self) {
@@ -179,7 +187,7 @@ impl Generator {
                     label_positions.insert(*label, position);
                 }
                 BytecodeNode::Instruction(instr) => {
-                    position += self.instruction_size(&instr);
+                    position += self.instruction_size(instr);
                 }
             }
         }
@@ -196,6 +204,9 @@ impl Generator {
                     | Instruction::LOAD_LOCAL(addr)
                     | Instruction::STORE_LOCAL(addr) => {
                         data.extend(addr.0.to_be_bytes());
+                    }
+                    Instruction::BOX_ALLOC(rti) => {
+                        data.extend(rti.0.to_be_bytes());
                     }
                     Instruction::JMP(label)
                     | Instruction::JMP_IF_TRUE(label)

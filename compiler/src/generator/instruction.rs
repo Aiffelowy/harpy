@@ -51,18 +51,6 @@ macro_rules! define_instruction_enum {
             pub fn opcode(&self) -> u8 {
                 unsafe { *(self as *const Self as *const u8) }
             }
-            /*
-            pub fn push_instruction(self, code_buf: &mut Vec<u8>) {
-                code_buf.push(self.opcode());
-                match self {
-                    $(
-                        $(
-                            Self::$variant(p) => { define_instruction_enum!(@ignore $param); code_buf.extend(p) },
-                        )?
-                    )*
-                    _ => {}
-                }
-            }*/
         }
     };
 
@@ -85,7 +73,7 @@ define_instruction_enum!(
         LOAD = 0x31,
         STORE = 0x32,
 
-        BOX_ALLOC = 0x40,
+        BOX_ALLOC(RuntimeTypeIndex) = 0x40,
 
         ADD = 0x50,
         SUB = 0x51,

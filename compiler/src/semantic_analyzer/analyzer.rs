@@ -110,7 +110,6 @@ impl Analyzer {
     }
 
     fn res_expr(&mut self, expr: &Node<Expr>, mode: ResolveMode) -> Option<TypeInfoRc> {
-        // Check if this is an identifier expression and map it to local address if needed
         if let Expr::Ident(ident) = &**expr {
             if let Ok(sym_ref) = self.get_symbol(&**ident) {
                 let symbol = (*sym_ref).borrow();

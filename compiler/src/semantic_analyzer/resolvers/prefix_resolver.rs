@@ -27,7 +27,6 @@ mod boxed {
     pub(super) fn validate(op: &PrefixOp) -> bool {
         match op.op {
             PrefixOpKind::Star => true,
-            PrefixOpKind::Box => true,
             _ => false,
         }
     }
@@ -58,7 +57,6 @@ mod primitive {
 
     pub(super) fn validate(op: &PrefixOp, ttype: &TType) -> bool {
         match op.op {
-            PrefixOpKind::Box => true,
             PrefixOpKind::Star => false,
             PrefixOpKind::Neg => match ttype {
                 PrimitiveType::Int => true,
@@ -127,10 +125,6 @@ mod ttype {
 
     pub(super) fn result(op: &PrefixOp, ttype: &Type) -> Type {
         match op.op {
-            PrefixOpKind::Box => Type {
-                mutable: false,
-                inner: TypeInner::Boxed(Box::new(ttype.clone())),
-            },
             PrefixOpKind::Star => match &ttype.inner {
                 TypeInner::Base(_) => unreachable!(),
                 TypeInner::Boxed(t) => Type {
