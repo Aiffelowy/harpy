@@ -16,6 +16,15 @@ pub enum BaseType {
     Custom(CustomType),
 }
 
+impl BaseType {
+    pub fn type_id(&self) -> u8 {
+        match self {
+            BaseType::Primitive(p) => p.type_id(),
+            BaseType::Custom(_) => 0xFF 
+        }
+    }
+}
+
 impl Parse for BaseType {
     fn parse(parser: &mut Parser) -> crate::aliases::Result<Self> {
         if let Some(t) = parser.try_parse::<PrimitiveType>() {

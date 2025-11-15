@@ -1,0 +1,8 @@
+[package]
+name = "harpy"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+harpy_compiler = { path = "../compiler" }
+harpy_vm = { path = "../vm" }

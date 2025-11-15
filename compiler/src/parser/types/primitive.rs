@@ -41,6 +41,17 @@ impl Parse for PrimitiveType {
     }
 }
 
+impl PrimitiveType {
+    pub fn type_id(&self) -> u8 {
+        match self {
+            Self::Int => 0x01,
+            Self::Float => 0x02,
+            Self::Str => 0x03,
+            Self::Bool => 0x04
+        }
+    }
+}
+
 impl Display for PrimitiveType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {

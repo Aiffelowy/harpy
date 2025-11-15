@@ -1,0 +1,14 @@
+[package]
+name = "harpy_compiler"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "harpy_compiler"
+path = "src/lib.rs"
+
+[[bin]]
+name = "compiler"
+path = "src/main.rs"
+
+[dependencies]

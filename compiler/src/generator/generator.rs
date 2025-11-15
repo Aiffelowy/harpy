@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    aliases::{MAGIC_NUMBER, VERSION},
-    lexer::tokens::Lit,
-    parser::{expr::Expr, node::NodeId, program::Program, types::runtime::RuntimeType},
-    semantic_analyzer::{
+    aliases::{MAGIC_NUMBER, VERSION},lexer::tokens::Lit, parser::{expr::Expr, node::NodeId, program::Program, types::runtime::RuntimeType}, semantic_analyzer::{
         const_pool::ConstIndex, function_table::FuncIndex, result::RuntimeAnalysisResult,
-    },
+    }
 };
 
 use super::{
@@ -105,8 +102,16 @@ impl Generator {
 
         for ty in self.analysis_result.type_table.iter() {
             match &ty.ttype {
-                RuntimeType::Base(_) => {
-                    data.push(0x01);
+                RuntimeType::Base(b) => {
+                    match &b {
+                        crate::parser::types::BaseType::Primitive(p) => {
+                            data.push(0x01);
+                            data.push(p.type_id());
+                        }
+                        crate::parser::types::BaseType::Custom(_) => {
+                            data.push(0x04);
+                        }
+                    }
                     data.push(ty.size);
                 }
                 RuntimeType::Boxed(i) => {
@@ -174,7 +179,7 @@ impl Generator {
                     label_positions.insert(*label, position);
                 }
                 BytecodeNode::Instruction(instr) => {
-                    position += self.instruction_size(instr);
+                    position += self.instruction_size(&instr);
                 }
             }
         }
@@ -235,18 +240,18 @@ impl Generator {
         output.extend(VERSION.to_be_bytes());
         output.extend(0x0000u16.to_be_bytes());
 
-        let header_size = 29u32; // 5 + 2 + 2 + 4 + 4 + 4 + 4 + 4
+        let header_size = 33u32; // 5 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 4
         let type_table_offset = header_size;
         let const_pool_offset = type_table_offset + type_table.len() as u32;
         let function_table_offset = const_pool_offset + const_pool.len() as u32;
+        let bytecode_offset = function_table_offset + function_table.len() as u32;
 
-        let main_label = self.function_entry_points[&self.main_index];
-        let entry_point = label_positions.get(&main_label).unwrap_or(&0);
-        output.extend((*entry_point as u32).to_be_bytes());
+        output.extend((self.main_index.0).to_be_bytes());
 
         output.extend(type_table_offset.to_be_bytes());
         output.extend(const_pool_offset.to_be_bytes());
         output.extend(function_table_offset.to_be_bytes());
+        output.extend(bytecode_offset.to_be_bytes());
 
         output.extend((bytecode.len() as u32).to_be_bytes());
 

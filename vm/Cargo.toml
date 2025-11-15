@@ -1,0 +1,14 @@
+[package]
+name = "harpy_vm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "harpy_vm"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vm"
+path = "src/main.rs"
+
+[dependencies]

@@ -105,7 +105,7 @@ impl Type {
                 BaseType::Custom(_) => 0,
                 BaseType::Primitive(p) => match p {
                     PrimitiveType::Int => 8,
-                    PrimitiveType::Str => 12,
+                    PrimitiveType::Str => 16,
                     PrimitiveType::Bool => 1,
                     PrimitiveType::Float => 8,
                 },
