@@ -12,7 +12,7 @@ mod parser;
 mod runtime;
 
 fn main() -> Result<()> {
-    let filename = std::env::args().skip(1).next();
+    let filename = std::env::args().nth(1);
     if filename.is_none() {
         eprintln!("Usage: vm <file.hrpc>");
         std::process::exit(1);

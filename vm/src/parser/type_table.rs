@@ -3,7 +3,7 @@ use std::ops::Index;
 use crate::{
     aliases::Result,
     err::ParseError,
-    runtime::values::{HeapAddress, StackAddress, VmValue},
+    runtime::values::{HeapAddress, VmValue},
 };
 
 use super::byte_reader::{ByteReader, ReadSafe};
@@ -72,8 +72,8 @@ impl Type {
         match self {
             Self::Void => TypeSize(0),
             Self::Primitive(_, size) => *size,
-            Self::Pointer(_) => TypeSize(8),
-            Self::Ref(_) => TypeSize(8),
+            Self::Pointer(_) => TypeSize(16),
+            Self::Ref(_) => TypeSize(16),
             Self::Custom(size) => *size,
         }
     }
@@ -83,11 +83,13 @@ impl Type {
     pub fn construct(&self, reader: &mut ByteReader) -> Result<VmValue> {
         let v = match self {
             Type::Void => VmValue::Int(0),
-            Type::Ref(_) => VmValue::Ref(StackAddress(reader.read()?)),
+            Type::Ref(_) => VmValue::Ref(reader.read_safe()?, TypeId(reader.read()?)),
             Type::Primitive(p, _) => p.construct(reader)?,
-            Type::Pointer(_) => VmValue::Pointer(HeapAddress(reader.read()?)),
+            Type::Pointer(_) => {
+                VmValue::Pointer(HeapAddress(reader.read()?), TypeId(reader.read()?))
+            }
             Type::Custom(s) => {
-                reader.skip(s.0.into());
+                reader.skip(s.0);
                 VmValue::Int(0)
             }
         };
@@ -115,7 +117,6 @@ impl TypeTable {
                 _ => return Err(crate::err::ParseError::UnknownTypeId.into()),
             });
         }
-
         Ok(TypeTable { tt })
     }
 }
@@ -124,6 +125,6 @@ impl Index<TypeId> for TypeTable {
     type Output = Type;
 
     fn index(&self, index: TypeId) -> &Self::Output {
-        &self.tt[index.0 as usize]
+        &self.tt[index.0]
     }
 }

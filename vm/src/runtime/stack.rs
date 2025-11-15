@@ -4,7 +4,7 @@ use crate::{
     parser::{
         byte_reader::ByteReader,
         function_table::{FunctionIndex, FunctionTable, LocalIndex},
-        type_table::TypeTable,
+        type_table::{Type, TypeTable},
     },
 };
 
@@ -42,14 +42,13 @@ impl Stack {
         function_table: &FunctionTable,
         local_index: LocalIndex,
     ) -> Result<VmValue> {
-        let (size, local_offset) =
+        let (local_offset, size) =
             function_table[self.current_function].local_offsets[local_index.0];
         let offset = self.frame_pointer.0 + local_offset;
         let type_info =
             &type_table[function_table[self.current_function].local_types[local_index.0]];
 
         let mut reader = ByteReader::new(&self.data[offset..offset + size], size);
-
         type_info.construct(&mut reader)
     }
 
@@ -57,10 +56,11 @@ impl Stack {
         &self,
         function_table: &FunctionTable,
         local_index: LocalIndex,
-    ) -> StackAddress {
-        let (_, local_offset) = function_table[self.current_function].local_offsets[local_index.0];
+    ) -> VmValue {
+        let (local_offset, _) = function_table[self.current_function].local_offsets[local_index.0];
+        let id = function_table[self.current_function].local_types[local_index.0];
         let address = self.frame_pointer.0 + local_offset;
-        StackAddress(address)
+        VmValue::Ref(StackAddress(address), id)
     }
 
     pub fn write_local(
@@ -69,7 +69,7 @@ impl Stack {
         local_index: LocalIndex,
         value: VmValue,
     ) {
-        let (size, local_offset) =
+        let (local_offset, size) =
             function_table[self.current_function].local_offsets[local_index.0];
         let offset = self.frame_pointer.0 + local_offset;
 
@@ -93,20 +93,23 @@ impl Stack {
     ) -> Result<()> {
         let old_fp = self.frame_pointer;
         let old_fp_bytes = old_fp.0.to_be_bytes();
+        let old_func_bytes = self.current_function.0.to_be_bytes();
 
         let info = &function_table[func];
 
         let new_frame_start = self.stack_pointer.0;
         let frame_size = info.stack_size;
 
-        if new_frame_start + frame_size + 8 > self.data.len() {
+        if new_frame_start + frame_size + 16 > self.data.len() {
             return Err(RuntimeError::StackOverflow);
         }
 
         self.data[new_frame_start..new_frame_start + 8].copy_from_slice(&old_fp_bytes);
+        self.data[new_frame_start + 8..new_frame_start + 16].copy_from_slice(&old_func_bytes);
 
-        self.frame_pointer = StackAddress(new_frame_start + 8);
+        self.frame_pointer = StackAddress(new_frame_start + 16);
         self.stack_pointer = StackAddress(self.frame_pointer.0 + frame_size);
+        self.current_function = func;
 
         self.data[self.frame_pointer.0..self.stack_pointer.0].fill(0);
 
@@ -114,17 +117,32 @@ impl Stack {
     }
 
     pub fn is_main(&self) -> bool {
-        self.frame_pointer.0 == 8
+        self.frame_pointer.0 == 16
     }
 
     pub fn pop_frame(&mut self) -> Result<()> {
-        let saved_fp_start = self.frame_pointer.0 - 8;
+        let saved_fp_start = self.frame_pointer.0 - 16;
         let saved_fp_bytes = &self.data[saved_fp_start..saved_fp_start + 8];
+        let saved_func_bytes = &self.data[saved_fp_start + 8..saved_fp_start + 16];
         let old_fp = usize::from_be_bytes(saved_fp_bytes.try_into().unwrap());
+        let old_func = usize::from_be_bytes(saved_func_bytes.try_into().unwrap());
 
         self.stack_pointer = StackAddress(saved_fp_start);
         self.frame_pointer = StackAddress(old_fp);
+        self.current_function = FunctionIndex(old_func);
 
+        Ok(())
+    }
+
+    pub fn read_at(&self, addr: StackAddress, type_info: &Type) -> Result<VmValue> {
+        let mut reader = ByteReader::new(&self.data[addr.0..], type_info.size().0);
+        type_info.construct(&mut reader)
+    }
+
+    pub fn write_at(&mut self, addr: StackAddress, value: VmValue, type_info: &Type) -> Result<()> {
+        let size = type_info.size().0;
+        let memory_slice = &mut self.data[addr.0..addr.0 + size];
+        value.write_bytes(memory_slice);
         Ok(())
     }
 }

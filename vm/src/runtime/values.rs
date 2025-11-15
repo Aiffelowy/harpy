@@ -1,4 +1,8 @@
-use crate::{aliases::Result, err::RuntimeError, parser::byte_reader::ReadSafe};
+use crate::{
+    aliases::Result,
+    err::RuntimeError,
+    parser::{byte_reader::ReadSafe, type_table::TypeId},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct HeapAddress(pub usize);
@@ -14,14 +18,20 @@ impl ReadSafe for HeapAddress {
 #[derive(Debug, Clone, Copy)]
 pub struct StackAddress(pub usize);
 
+impl ReadSafe for StackAddress {
+    fn read_safe(reader: &mut crate::parser::byte_reader::ByteReader) -> Result<Self> {
+        Ok(Self(reader.read()?))
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum VmValue {
     Int(i64),
     Float(f64),
     Bool(bool),
     StringHandle { len: usize, ptr: HeapAddress },
-    Pointer(HeapAddress),
-    Ref(StackAddress),
+    Pointer(HeapAddress, TypeId),
+    Ref(StackAddress, TypeId),
 }
 
 macro_rules! arithmetic_op {
@@ -61,8 +71,14 @@ impl VmValue {
                 memory[0..8].copy_from_slice(&len.to_be_bytes());
                 memory[8..16].copy_from_slice(&ptr.0.to_be_bytes());
             }
-            Self::Pointer(address) => memory.copy_from_slice(&address.0.to_be_bytes()),
-            Self::Ref(address) => memory.copy_from_slice(&address.0.to_be_bytes()),
+            Self::Pointer(address, ti) => {
+                memory[0..8].copy_from_slice(&address.0.to_be_bytes());
+                memory[8..16].copy_from_slice(&ti.0.to_be_bytes());
+            }
+            Self::Ref(address, ti) => {
+                memory[0..8].copy_from_slice(&address.0.to_be_bytes());
+                memory[8..16].copy_from_slice(&ti.0.to_be_bytes());
+            }
         }
     }
 

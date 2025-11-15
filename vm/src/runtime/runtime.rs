@@ -1,11 +1,12 @@
 use crate::{
     aliases::Result,
+    err::RuntimeError,
     parser::{
         byte_reader::ByteReader,
         const_pool::{ConstIndex, ConstPool},
         function_table::{CodeAddress, FunctionIndex, FunctionTable, LocalIndex},
         header::Header,
-        type_table::TypeTable,
+        type_table::{TypeId, TypeTable},
     },
 };
 
@@ -17,11 +18,11 @@ use super::{
 static STACK_SIZE: usize = 1048576;
 
 macro_rules! binary_op_runtime {
-    ($name:ident, $method:ident) => {
+    ($name:ident) => {
         fn $name(&mut self) -> Result<()> {
             let b = self.operand_stack.pop()?;
             let a = self.operand_stack.pop()?;
-            self.operand_stack.push(a.$method(b)?);
+            self.operand_stack.push(a.$name(b)?);
             Ok(())
         }
     };
@@ -58,7 +59,7 @@ impl<'bytecode> Runtime<'bytecode> {
             const_pool,
             function_table,
             bytecode,
-            heap: Heap {},
+            heap: Heap::new(),
             header,
             operand_stack: OperandStack::new(),
             running: true,
@@ -71,7 +72,7 @@ impl<'bytecode> Runtime<'bytecode> {
 
     fn push_addr_local(&mut self, local_id: LocalIndex) {
         let addr = self.stack.get_local_address(&self.function_table, local_id);
-        self.operand_stack.push(VmValue::Ref(addr));
+        self.operand_stack.push(addr);
     }
 
     fn load_local(&mut self, local_id: LocalIndex) -> Result<()> {
@@ -88,49 +89,61 @@ impl<'bytecode> Runtime<'bytecode> {
         Ok(())
     }
 
-    fn load(&mut self) {
-        todo!()
-    }
+    fn load(&mut self) -> Result<()> {
+        let pointer = self.operand_stack.pop()?;
 
-    fn store(&mut self) {
-        todo!()
-    }
+        let value = match pointer {
+            VmValue::Pointer(heap_addr, type_id) => {
+                self.heap.read_value(heap_addr, type_id, &self.type_table)?
+            }
+            VmValue::Ref(stack_addr, type_id) => {
+                let info = &self.type_table[type_id];
+                self.stack.read_at(stack_addr, info)?
+            }
+            _ => return Err(RuntimeError::InvalidOperation),
+        };
 
-    fn box_alloc(&mut self) {
-        todo!()
-    }
+        self.operand_stack.push(value);
 
-    fn add(&mut self) -> Result<()> {
-        let v1 = self.operand_stack.pop()?;
-        let v2 = self.operand_stack.pop()?;
-
-        self.operand_stack.push(v2.add(v1)?);
         Ok(())
     }
 
-    fn sub(&mut self) -> Result<()> {
-        let v1 = self.operand_stack.pop()?;
-        let v2 = self.operand_stack.pop()?;
+    fn store(&mut self) -> Result<()> {
+        let value = self.operand_stack.pop()?;
+        let reference = self.operand_stack.pop()?;
 
-        self.operand_stack.push(v2.sub(v1)?);
+        match reference {
+            VmValue::Ref(stack_addr, type_id) => {
+                let type_info = &self.type_table[type_id];
+                self.stack.write_at(stack_addr, value, type_info)?;
+            }
+            VmValue::Pointer(heap_addr, type_id) => {
+                let type_info = &self.type_table[type_id];
+                self.heap.write_value(heap_addr, value, type_info.size());
+            }
+            _ => return Err(RuntimeError::InvalidOperation),
+        }
+
         Ok(())
     }
 
-    fn mul(&mut self) -> Result<()> {
-        let v1 = self.operand_stack.pop()?;
-        let v2 = self.operand_stack.pop()?;
+    fn box_alloc(&mut self, type_id: TypeId) -> Result<()> {
+        let type_info = &self.type_table[type_id];
+        let size = type_info.size();
 
-        self.operand_stack.push(v2.mul(v1)?);
+        let addr = self.heap.alloc(size);
+
+        let value = self.operand_stack.pop()?;
+        self.heap.write_value(addr, value, size);
+
+        self.operand_stack.push(VmValue::Pointer(addr, type_id));
         Ok(())
     }
 
-    fn div(&mut self) -> Result<()> {
-        let v1 = self.operand_stack.pop()?;
-        let v2 = self.operand_stack.pop()?;
-
-        self.operand_stack.push(v2.div(v1)?);
-        Ok(())
-    }
+    binary_op_runtime!(add);
+    binary_op_runtime!(sub);
+    binary_op_runtime!(mul);
+    binary_op_runtime!(div);
 
     fn neg(&mut self) -> Result<()> {
         let v1 = self.operand_stack.pop()?;
@@ -147,7 +160,8 @@ impl<'bytecode> Runtime<'bytecode> {
     }
 
     fn jmp_condition(&mut self, address: CodeAddress, cond: bool) -> Result<()> {
-        let v = self.operand_stack.pop()?.as_bool()?;
+        let v = self.operand_stack.pop()?;
+        let v = v.as_bool()?;
         if v == cond {
             return self.bytecode.jump_to(address.0 as usize);
         }
@@ -195,38 +209,25 @@ impl<'bytecode> Runtime<'bytecode> {
         Ok(())
     }
 
-    fn and(&mut self) -> Result<()> {
-        let b = self.operand_stack.pop()?;
-        let a = self.operand_stack.pop()?;
-        self.operand_stack.push(a.and(b)?);
-        Ok(())
-    }
-
-    fn or(&mut self) -> Result<()> {
-        let b = self.operand_stack.pop()?;
-        let a = self.operand_stack.pop()?;
-        self.operand_stack.push(a.or(b)?);
-        Ok(())
-    }
-
     fn not(&mut self) -> Result<()> {
         let a = self.operand_stack.pop()?;
         self.operand_stack.push(a.not()?);
         Ok(())
     }
 
-    binary_op_runtime!(lt, lt);
-    binary_op_runtime!(le, le);
-    binary_op_runtime!(gt, gt);
-    binary_op_runtime!(ge, ge);
-    binary_op_runtime!(eq, eq);
-    binary_op_runtime!(ne, ne);
+    binary_op_runtime!(and);
+    binary_op_runtime!(or);
+    binary_op_runtime!(lt);
+    binary_op_runtime!(le);
+    binary_op_runtime!(gt);
+    binary_op_runtime!(ge);
+    binary_op_runtime!(eq);
+    binary_op_runtime!(ne);
 
     pub fn run(&mut self) -> Result<()> {
         use Instruction::*;
         while self.running {
             let instruction = self.bytecode.read_safe()?;
-
             match instruction {
                 NOP => (),
 
@@ -236,10 +237,10 @@ impl<'bytecode> Runtime<'bytecode> {
                 LOAD_LOCAL(li) => self.load_local(li)?,
                 STORE_LOCAL(li) => self.store_local(li)?,
 
-                LOAD => self.load(),
-                STORE => self.store(),
+                LOAD => self.load()?,
+                STORE => self.store()?,
 
-                BOX_ALLOC => self.box_alloc(),
+                BOX_ALLOC(id) => self.box_alloc(id)?,
 
                 ADD => self.add()?,
                 SUB => self.sub()?,

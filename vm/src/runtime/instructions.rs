@@ -4,6 +4,7 @@ use crate::parser::{
     byte_reader::{ByteReader, ReadSafe},
     const_pool::ConstIndex,
     function_table::{CodeAddress, FunctionIndex, LocalIndex},
+    type_table::TypeId,
 };
 
 macro_rules! instructions {
@@ -57,7 +58,7 @@ instructions!(
     STORE_LOCAL(id: LocalIndex<u16>) = 0x12,
     LOAD = 0x31,
     STORE = 0x32,
-    BOX_ALLOC = 0x40,
+    BOX_ALLOC(id: TypeId<u32>) = 0x40,
     ADD = 0x50,
     SUB = 0x51,
     MUL = 0x52,

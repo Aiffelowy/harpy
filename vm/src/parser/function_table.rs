@@ -42,7 +42,7 @@ impl FunctionTable {
 
             let mut local_types = Vec::with_capacity(local_count);
             let mut offsets = Vec::with_capacity(local_count);
-            let mut stack_size: usize = 8;
+            let mut stack_size: usize = 16;
 
             for _ in 0..local_count {
                 let id = reader.read_safe()?;

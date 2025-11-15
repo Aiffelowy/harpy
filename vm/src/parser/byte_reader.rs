@@ -70,7 +70,7 @@ macro_rules! impl_readbe {
     };
 }
 
-impl_readbe!(u8 u16 u32 u64 i8 i16 i32 i64);
+impl_readbe!(u8 u16 u32 u64 i8 i16 i32 i64 usize);
 
 impl<const N: usize> ReadBE for [u8; N] {
     const SIZE: usize = std::mem::size_of::<[u8; N]>();
@@ -92,13 +92,5 @@ impl ReadBE for bool {
     const SIZE: usize = std::mem::size_of::<bool>();
     unsafe fn read_be(buf: &[u8]) -> Self {
         (buf.as_ptr() as *const bool).read_unaligned()
-    }
-}
-
-impl ReadBE for usize {
-    const SIZE: usize = std::mem::size_of::<usize>();
-    unsafe fn read_be(buf: &[u8]) -> Self {
-        let value = (buf.as_ptr() as *const u64).read_unaligned();
-        value as usize
     }
 }
