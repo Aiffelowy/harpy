@@ -142,6 +142,12 @@ impl Expr {
                 let expr = parser.parse_node()?;
                 return Ok(Expr::Box(Box::new(expr)));
             }
+            tt!("(") => {
+                parser.consume::<t!("(")>()?;
+                let expr = Expr::parse_expr(parser, 0)?;
+                parser.consume::<t!(")")>()?;
+                return Ok(expr);
+            }
             _ => (),
         }
 
@@ -150,7 +156,7 @@ impl Expr {
             return Ok(Expr::Prefix(op, Box::new(rhs)));
         }
 
-        return parser.unexpected("expression");
+        parser.unexpected("expression")
     }
 }
 
