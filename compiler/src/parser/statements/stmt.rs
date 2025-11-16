@@ -170,24 +170,40 @@ impl Generate for Stmt {
             Stmt::Expr(expr) => {
                 generator.gen_expr(expr);
             }
-            Stmt::AssignStmt(lhs, _, rhs) => match &**lhs {
-                Expr::Ident(ident) => {
-                    generator.gen_expr(rhs);
-                    let local = generator.get_local_mapping(ident.id());
-                    generator.push_instruction(Instruction::STORE_LOCAL(local));
-                }
+            Stmt::AssignStmt(lhs, assign_op, rhs) => {
+                match assign_op {
+                    AssignOp::Normal => {
+                        generator.gen_expr(rhs);
+                    }
+                    AssignOp::Add | AssignOp::Sub | AssignOp::Mult | AssignOp::Div => {
+                        generator.gen_expr(lhs);
+                        generator.gen_expr(rhs);
 
-                Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => {
-                    // Both references and pointers work the same for assignment:
-                    // they contain addresses, so just load the address and store
-                    generator.gen_expr(&**expr);
-                    generator.gen_expr(rhs);
-                    generator.push_instruction(Instruction::STORE);
-                }
+                        let infix_op = match assign_op {
+                            AssignOp::Add => Instruction::ADD,
+                            AssignOp::Sub => Instruction::SUB,
+                            AssignOp::Mult => Instruction::MUL,
+                            AssignOp::Div => Instruction::DIV,
+                            _ => unreachable!(),
+                        };
+                        generator.push_instruction(infix_op);
+                    }
+                };
 
-                _ => panic!("Invalid lvalue in assignment"),
-            },
+                match &**lhs {
+                    Expr::Ident(ident) => {
+                        let local = generator.get_local_mapping(ident.id());
+                        generator.push_instruction(Instruction::STORE_LOCAL(local));
+                    }
+
+                    Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => {
+                        generator.gen_expr(expr);
+                        generator.push_instruction(Instruction::STORE);
+                    }
+
+                    _ => panic!("Invalid lvalue in assignment"),
+                }
+            }
         }
     }
 }
-
