@@ -111,8 +111,8 @@ impl<'bytecode> Runtime<'bytecode> {
     }
 
     fn store(&mut self) -> Result<()> {
-        let value = self.operand_stack.pop()?;
         let reference = self.operand_stack.pop()?;
+        let value = self.operand_stack.pop()?;
 
         match reference {
             VmValue::Ref(stack_addr, type_id) => {
