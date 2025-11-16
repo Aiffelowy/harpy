@@ -4,7 +4,7 @@ use crate::{
     parser::{byte_reader::ReadSafe, type_table::TypeId},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HeapAddress(pub usize);
 
 impl ReadSafe for HeapAddress {
@@ -156,7 +156,7 @@ impl VmValue {
         let result = match (self, other) {
             (Int(a), Int(b)) => a == b,
             (Float(a), Float(b)) => a == b,
-            (Bool(a), Bool(b)) => a == b, // Equality supports bools too
+            (Bool(a), Bool(b)) => a == b,
             _ => return Err(RuntimeError::InvalidOperation),
         };
         Ok(Bool(result))

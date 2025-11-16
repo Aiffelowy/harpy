@@ -48,7 +48,8 @@ impl Stack {
         let type_info =
             &type_table[function_table[self.current_function].local_types[local_index.0]];
 
-        let mut reader = ByteReader::new(&self.data[offset..offset + size], size);
+        let mut reader =
+            unsafe { ByteReader::new(self.data.get_unchecked(offset..offset + size), size) };
         type_info.construct(&mut reader)
     }
 
@@ -73,7 +74,7 @@ impl Stack {
             function_table[self.current_function].local_offsets[local_index.0];
         let offset = self.frame_pointer.0 + local_offset;
 
-        value.write_bytes(&mut self.data[offset..offset + size]);
+        unsafe { value.write_bytes(self.data.get_unchecked_mut(offset..offset + size)) };
     }
 
     pub fn set_return_address(&mut self, return_address: usize) {
@@ -82,7 +83,10 @@ impl Stack {
     }
 
     pub fn get_return_address(&self) -> usize {
-        let bytes = &self.data[self.frame_pointer.0..self.frame_pointer.0 + 8];
+        let bytes = unsafe {
+            self.data
+                .get_unchecked(self.frame_pointer.0..self.frame_pointer.0 + 8)
+        };
         usize::from_be_bytes(bytes.try_into().unwrap())
     }
 
@@ -111,7 +115,7 @@ impl Stack {
         self.stack_pointer = StackAddress(self.frame_pointer.0 + frame_size);
         self.current_function = func;
 
-        self.data[self.frame_pointer.0..self.stack_pointer.0].fill(0);
+        //self.data[self.frame_pointer.0..self.stack_pointer.0].fill(0);
 
         Ok(())
     }
@@ -144,5 +148,18 @@ impl Stack {
         let memory_slice = &mut self.data[addr.0..addr.0 + size];
         value.write_bytes(memory_slice);
         Ok(())
+    }
+
+    // GC support methods
+    pub fn get_frame_pointer(&self) -> StackAddress {
+        self.frame_pointer
+    }
+
+    pub fn read_frame_data(&self, addr: usize, len: usize) -> &[u8] {
+        &self.data[addr..addr + len]
+    }
+
+    pub fn read_data_at(&self, addr: usize, len: usize) -> &[u8] {
+        &self.data[addr..addr + len]
     }
 }

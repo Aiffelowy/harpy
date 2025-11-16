@@ -1,3 +1,4 @@
+mod gc;
 mod heap;
 mod instructions;
 mod operand_stack;

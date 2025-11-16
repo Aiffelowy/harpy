@@ -10,7 +10,7 @@ pub struct OperandStack {
 impl OperandStack {
     pub fn new() -> Self {
         Self {
-            data: Vec::with_capacity(128),
+            data: Vec::with_capacity(512),
         }
     }
 
@@ -20,5 +20,14 @@ impl OperandStack {
 
     pub fn pop(&mut self) -> Result<VmValue> {
         self.data.pop().ok_or(RuntimeError::BadStack)
+    }
+
+    // GC support methods
+    pub fn iter(&self) -> impl Iterator<Item = &VmValue> {
+        self.data.iter()
+    }
+    
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut VmValue> {
+        self.data.iter_mut()
     }
 }

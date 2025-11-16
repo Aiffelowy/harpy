@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::{
-    heap::Heap, instructions::Instruction, operand_stack::OperandStack, stack::Stack,
+    gc::GarbageCollector, heap::Heap, instructions::Instruction, operand_stack::OperandStack, stack::Stack,
     values::VmValue,
 };
 
@@ -39,6 +39,7 @@ pub struct Runtime<'bytecode> {
     stack: Stack,
     heap: Heap,
     operand_stack: OperandStack,
+    gc: GarbageCollector,
     running: bool,
 }
 
@@ -62,6 +63,7 @@ impl<'bytecode> Runtime<'bytecode> {
             heap: Heap::new(),
             header,
             operand_stack: OperandStack::new(),
+            gc: GarbageCollector::new(),
             running: true,
         })
     }
@@ -128,6 +130,18 @@ impl<'bytecode> Runtime<'bytecode> {
     }
 
     fn box_alloc(&mut self, type_id: TypeId) -> Result<()> {
+        // Check if we should trigger garbage collection
+        if self.gc.should_collect(self.heap.bytes_allocated()) {
+            self.gc.collect(
+                &mut self.heap,
+                &mut self.stack,
+                &mut self.operand_stack,
+                &self.function_table,
+                &self.type_table,
+                &self.header,
+            )?;
+        }
+
         let type_info = &self.type_table[type_id];
         let size = type_info.size();
 

@@ -1,6 +1,6 @@
 use crate::{aliases::Result, err::RuntimeError};
 
-trait ReadBE {
+pub trait ReadBE {
     const SIZE: usize;
     unsafe fn read_be(buf: &[u8]) -> Self;
 }
