@@ -29,7 +29,10 @@ impl Analyze for LoopStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         analyzer.enter_scope();
         let block_status = self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();

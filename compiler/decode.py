@@ -104,6 +104,7 @@ def decode_bytecode(data):
         0x53: {"name": "DIV", "size": 1}, 
         0x54: {"name": "NEG", "size": 1}, 
         0x55: {"name": "INC", "size": 1},
+        0x56: {"name": "MOD", "size": 1},
         0x60: {"name": "JMP", "size": 9}, 
         0x61: {"name": "JMP_IF_TRUE", "size": 9}, 
         0x62: {"name": "JMP_IF_FALSE", "size": 9},

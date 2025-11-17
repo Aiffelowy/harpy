@@ -132,8 +132,6 @@ impl Analyze for Stmt {
                                 }
                             }
                             SymbolInfoKind::Param => {
-                                // Parameters are always initialized and immutable as variables
-                                // but their contents may be mutable (e.g., &mut T)
                                 if !lhs_type.assign_compatible(&rhs_type.ttype) {
                                     analyzer.report_semantic_error(
                                         SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
@@ -175,7 +173,11 @@ impl Generate for Stmt {
                     AssignOp::Normal => {
                         generator.gen_expr(rhs);
                     }
-                    AssignOp::Add | AssignOp::Sub | AssignOp::Mult | AssignOp::Div => {
+                    AssignOp::Add
+                    | AssignOp::Sub
+                    | AssignOp::Mult
+                    | AssignOp::Div
+                    | AssignOp::Mod => {
                         generator.gen_expr(lhs);
                         generator.gen_expr(rhs);
 
@@ -184,6 +186,7 @@ impl Generate for Stmt {
                             AssignOp::Sub => Instruction::SUB,
                             AssignOp::Mult => Instruction::MUL,
                             AssignOp::Div => Instruction::DIV,
+                            AssignOp::Mod => Instruction::MOD,
                             _ => unreachable!(),
                         };
                         generator.push_instruction(infix_op);

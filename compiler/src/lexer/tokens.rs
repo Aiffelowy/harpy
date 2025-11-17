@@ -370,6 +370,10 @@ define_tokens!(
         }
 
         ',' => Comma {}
+
+        '%' => Modulo {
+            '=' => ModuloAssign,
+        }
     }
 
     [literals] => {
@@ -478,6 +482,12 @@ macro_rules! t {
     };
     (-=) => {
         $crate::lexer::tokens::MinusAssign
+    };
+    (%) => {
+        $crate::lexer::tokens::Modulo
+    };
+    (%=) => {
+        $crate::lexer::tokens::ModuloAssign
     };
     (->) => {
         $crate::lexer::tokens::Arrow
@@ -639,6 +649,12 @@ macro_rules! tt {
     };
     (-=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::MinusAssign)
+    };
+    (%) => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Modulo)
+    };
+    (%=) => {
+        $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::ModuloAssign)
     };
     (->) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Arrow)

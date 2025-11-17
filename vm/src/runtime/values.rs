@@ -97,6 +97,7 @@ impl VmValue {
     arithmetic_op!(sub, -);
     arithmetic_op!(mul, *);
     arithmetic_op!(div, /);
+    arithmetic_op!(modulo, %);
 
     pub fn neg(self) -> Result<VmValue> {
         match self {

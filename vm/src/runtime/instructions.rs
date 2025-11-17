@@ -65,6 +65,7 @@ instructions!(
     DIV = 0x53,
     NEG = 0x54,
     INC = 0x55,
+    MOD = 0x56,
     JMP(ca: CodeAddress<u64>) = 0x60,
     JMP_IF_TRUE(ca: CodeAddress<u64>) = 0x61,
     JMP_IF_FALSE(ca: CodeAddress<u64>) = 0x62,

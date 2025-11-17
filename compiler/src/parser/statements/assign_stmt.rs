@@ -9,6 +9,7 @@ pub enum AssignOp {
     Sub,
     Mult,
     Div,
+    Mod,
 }
 
 impl Parse for AssignOp {
@@ -19,6 +20,7 @@ impl Parse for AssignOp {
             tt!(-=) => Self::Sub,
             tt!(*=) => Self::Mult,
             tt!(/=) => Self::Div,
+            tt!(%=) => Self::Mod,
             _ => {
                 return parser.unexpected("assignment operator");
             }

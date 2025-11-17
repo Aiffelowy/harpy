@@ -14,6 +14,7 @@ pub enum InfixOpKind {
     Minus,
     Mult,
     Div,
+    Mod,
     And,
     Or,
     Gt,
@@ -33,7 +34,7 @@ pub struct InfixOp {
 impl InfixOp {
     pub fn bp(&self) -> Bp {
         match self.op {
-            InfixOpKind::Mult | InfixOpKind::Div => (60, 61),
+            InfixOpKind::Mult | InfixOpKind::Div | InfixOpKind::Mod => (60, 61),
             InfixOpKind::Plus | InfixOpKind::Minus => (50, 51),
             InfixOpKind::GtEq
             | InfixOpKind::LtEq
@@ -60,6 +61,7 @@ impl Display for InfixOp {
             Minus => "subtract",
             Mult => "multiply",
             Div => "divide",
+            Mod => "modulo",
             And => "&&",
             Or => "||",
             Gt => ">",
@@ -81,6 +83,7 @@ impl Parse for InfixOp {
             tt!(-) => InfixOpKind::Minus,
             tt!(*) => InfixOpKind::Mult,
             tt!(/) => InfixOpKind::Div,
+            tt!(%) => InfixOpKind::Mod,
             tt!(&&) => InfixOpKind::And,
             tt!(||) => InfixOpKind::Or,
             tt!(>) => InfixOpKind::Gt,
@@ -108,6 +111,7 @@ impl Generate for InfixOp {
             Minus => generator.push_instruction(Instruction::SUB),
             Mult => generator.push_instruction(Instruction::MUL),
             Div => generator.push_instruction(Instruction::DIV),
+            Mod => generator.push_instruction(Instruction::MOD),
             And => generator.push_instruction(Instruction::AND),
             Or => generator.push_instruction(Instruction::OR),
             Gt => generator.push_instruction(Instruction::GT),

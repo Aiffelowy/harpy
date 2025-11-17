@@ -81,6 +81,7 @@ define_instruction_enum!(
         DIV = 0x53,
         NEG = 0x54,
         INC = 0x55,
+        MOD = 0x56,
 
         JMP(Label) = 0x60,
         JMP_IF_TRUE(Label) = 0x61,

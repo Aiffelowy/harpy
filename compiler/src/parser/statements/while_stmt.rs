@@ -1,12 +1,13 @@
 use crate::generator::compile_trait::Generate;
 use crate::generator::instruction::Instruction;
+use crate::lexer::tokens::Lit;
 use crate::parser::node::Node;
 use crate::parser::parser::Parser;
 use crate::parser::types::Type;
 use crate::parser::{expr::Expr, parse_trait::Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
-use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::err::SemanticError;
+use crate::semantic_analyzer::return_status::ReturnStatus;
 use crate::semantic_analyzer::scope::ScopeKind;
 use crate::t;
 
@@ -35,7 +36,10 @@ impl Analyze for WhileStmt {
         builder.pop_scope();
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         analyzer.enter_scope();
         if let Some(expr_type) = analyzer.resolve_expr(&self.expr) {
             if !expr_type.compatible(&Type::bool()) {
@@ -48,9 +52,19 @@ impl Analyze for WhileStmt {
 
         let block_status = self.block.analyze_semantics(analyzer);
         analyzer.exit_scope();
-        match block_status {
-            ReturnStatus::Always => ReturnStatus::Sometimes,
-            _ => ReturnStatus::Never,
+
+        let is_infinite_loop = match &*self.expr {
+            Expr::Literal(lit) => matches!(lit.value(), Lit::LitBool(true)),
+            _ => false,
+        };
+
+        if is_infinite_loop {
+            block_status
+        } else {
+            match block_status {
+                ReturnStatus::Always => ReturnStatus::Sometimes,
+                _ => ReturnStatus::Never,
+            }
         }
     }
 }

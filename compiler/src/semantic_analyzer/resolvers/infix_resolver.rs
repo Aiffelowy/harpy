@@ -23,7 +23,6 @@ impl InfixResolver {
     }
 
     fn validate(op: &InfixOp, lhs: &Type, rhs: &Type) -> bool {
-
         if matches!(lhs.inner, TypeInner::Boxed(_)) || matches!(rhs.inner, TypeInner::Boxed(_)) {
             return false;
         }
@@ -33,7 +32,11 @@ impl InfixResolver {
                 TypeInner::Base(BaseType::Primitive(lhs_p)),
                 TypeInner::Base(BaseType::Primitive(rhs_p)),
             ) => match op.op {
-                InfixOpKind::Plus | InfixOpKind::Minus | InfixOpKind::Mult | InfixOpKind::Div => {
+                InfixOpKind::Plus
+                | InfixOpKind::Minus
+                | InfixOpKind::Mult
+                | InfixOpKind::Div
+                | InfixOpKind::Mod => {
                     matches!(
                         (lhs_p, rhs_p),
                         (PrimitiveType::Int, PrimitiveType::Int)
@@ -64,11 +67,12 @@ impl InfixResolver {
     }
 
     fn result(op: &InfixOp, lhs: &Type, _rhs: &Type) -> Type {
-
         match op.op {
-            InfixOpKind::Plus | InfixOpKind::Minus | InfixOpKind::Mult | InfixOpKind::Div => {
-                lhs.clone()
-            }
+            InfixOpKind::Plus
+            | InfixOpKind::Minus
+            | InfixOpKind::Mult
+            | InfixOpKind::Div
+            | InfixOpKind::Mod => lhs.clone(),
 
             InfixOpKind::Eq
             | InfixOpKind::Lt

@@ -11,8 +11,8 @@ use crate::{
 };
 
 use super::{
-    gc::GarbageCollector, heap::Heap, instructions::Instruction, operand_stack::OperandStack, stack::Stack,
-    values::VmValue,
+    gc::GarbageCollector, heap::Heap, instructions::Instruction, operand_stack::OperandStack,
+    stack::Stack, values::VmValue,
 };
 
 static STACK_SIZE: usize = 1048576;
@@ -158,6 +158,7 @@ impl<'bytecode> Runtime<'bytecode> {
     binary_op_runtime!(sub);
     binary_op_runtime!(mul);
     binary_op_runtime!(div);
+    binary_op_runtime!(modulo);
 
     fn neg(&mut self) -> Result<()> {
         let v1 = self.operand_stack.pop()?;
@@ -262,6 +263,7 @@ impl<'bytecode> Runtime<'bytecode> {
                 DIV => self.div()?,
                 NEG => self.neg()?,
                 INC => self.inc()?,
+                MOD => self.modulo()?,
 
                 JMP(ca) => self.bytecode.jump_to(ca.0 as usize)?,
                 JMP_IF_TRUE(ca) => self.jmp_condition(ca, true)?,
