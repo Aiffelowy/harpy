@@ -84,7 +84,7 @@ impl ReadBE for f64 {
     const SIZE: usize = std::mem::size_of::<f64>();
     unsafe fn read_be(buf: &[u8]) -> Self {
         let value = (buf.as_ptr() as *const u64).read_unaligned();
-        f64::from_bits(value)
+        f64::from_bits(u64::from_be(value))
     }
 }
 
