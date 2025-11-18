@@ -1,0 +1,87 @@
+fn main() -> bool {
+    let largest_pal = largest_palindrome_below(12321);
+    return is_palindrome(largest_pal);
+}
+
+fn is_palindrome(n: int) -> bool {
+    let original = n;
+    let reversed = reverse_number(n);
+    return original == reversed;
+}
+
+fn reverse_number(n: int) -> int {
+    let num :mut int = abs(n);
+    let reversed :mut int = 0;
+
+    while num > 0 {
+        reversed = reversed * 10 + (num % 10);
+        num = num / 10;
+    }
+
+    return reversed;
+}
+
+fn abs(n: int) -> int {
+    if n < 0 {
+        return -n;
+    }
+    return n;
+}
+
+fn count_digits(n: int) -> int {
+    let num :mut int = abs(n);
+    let count :mut int = 0;
+
+    if num == 0 {
+        return 1;
+    }
+
+    while num > 0 {
+        count += 1;
+        num = num / 10;
+    }
+
+    return count;
+}
+
+fn largest_palindrome_below(n: int) -> int {
+    let i :mut int = n - 1;
+
+    while i > 0 {
+        if is_palindrome(i) {
+            return i;
+        }
+        i -= 1;
+    }
+
+    return -1; // No palindrome found
+}
+
+fn make_palindrome(half: int, odd_length: bool) -> int {
+    let left_half = half;
+    let right_half :mut int = 0;
+    let temp :mut int = half;
+
+    if odd_length {
+        temp = temp / 10;
+    }
+
+    while temp > 0 {
+        right_half = right_half * 10 + (temp % 10);
+        temp = temp / 10;
+    }
+
+    return left_half * power_of_10(count_digits(right_half)) + right_half;
+}
+
+fn power_of_10(n: int) -> int {
+    let result :mut int = 1;
+    let i :mut int = 0;
+
+    while i < n {
+        result *= 10;
+        i += 1;
+    }
+
+    return result;
+}

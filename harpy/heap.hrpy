@@ -1,0 +1,15 @@
+fn main() -> int {
+  let ptr :boxed mut int = box 0;
+
+  //test gc
+  for i in 0 => 10000 {
+    let waste_ptr = box i;
+    add_to_ptr(ptr, waste_ptr);
+  }
+
+  return *ptr;
+}
+
+fn add_to_ptr(destination: boxed mut int, n: boxed int) {
+  *destination += *n;
+}

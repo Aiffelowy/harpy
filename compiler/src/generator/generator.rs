@@ -13,7 +13,7 @@ use crate::{
 use super::{
     compile_trait::Generate,
     expr_generators::expr_gen::ExprGenerator,
-    instruction::{Instruction, Label, LocalAddress},
+    instruction::{Instruction, Label, LocalAddress, GlobalAddress},
 };
 
 static PREALLOC_CODE_BUFFER: usize = 4096;
@@ -30,7 +30,6 @@ pub struct Generator {
     function_entry_points: HashMap<FuncIndex, Label>,
     analysis_result: RuntimeAnalysisResult,
 
-    main_index: FuncIndex,
     next_label: u64,
 }
 
@@ -40,7 +39,6 @@ impl Generator {
             code: Vec::with_capacity(PREALLOC_CODE_BUFFER),
             function_entry_points: HashMap::new(),
             analysis_result: analysis,
-            main_index: FuncIndex(0),
             next_label: 0,
         }
     }
@@ -59,9 +57,6 @@ impl Generator {
         label
     }
 
-    pub fn set_main(&mut self, idx: FuncIndex) {
-        self.main_index = idx;
-    }
 
     pub fn register_function(&mut self, function: FuncIndex, label: Label) {
         self.function_entry_points.insert(function, label);
@@ -79,8 +74,24 @@ impl Generator {
         self.analysis_result.locals_map[&id]
     }
 
+    pub fn get_global_mapping(&self, id: NodeId) -> GlobalAddress {
+        self.analysis_result.global_table.get_mapping(id)
+    }
+
+    pub fn is_global(&self, id: NodeId) -> bool {
+        self.analysis_result.global_table.contains_node(id)
+    }
+
+    pub fn is_local(&self, id: NodeId) -> bool {
+        self.analysis_result.locals_map.contains_key(&id)
+    }
+
     pub fn get_call_mapping(&self, id: NodeId) -> FuncIndex {
         self.analysis_result.function_table.get_mapping(id)
+    }
+
+    pub fn get_main_index(&self) -> FuncIndex {
+        self.analysis_result.main_id
     }
 
     pub fn get_const_mapping(&self, id: NodeId) -> ConstIndex {
@@ -138,6 +149,16 @@ impl Generator {
                     data.push(0x00);
                 }
             }
+        }
+
+        data
+    }
+
+    fn generate_global_table(&self) -> Vec<u8> {
+        let mut data: Vec<u8> = Vec::new();
+
+        for global in self.analysis_result.global_table.iter() {
+            data.extend(global.type_index.0.to_be_bytes());
         }
 
         data
@@ -209,6 +230,10 @@ impl Generator {
                     | Instruction::STORE_LOCAL(addr) => {
                         data.extend(addr.0.to_be_bytes());
                     }
+                    Instruction::LOAD_GLOBAL(addr)
+                    | Instruction::STORE_GLOBAL(addr) => {
+                        data.extend(addr.0.to_be_bytes());
+                    }
                     Instruction::BOX_ALLOC(rti) => {
                         data.extend(rti.0.to_be_bytes());
                     }
@@ -234,7 +259,9 @@ impl Generator {
             Instruction::LOAD_CONST(_) => 1 + 4,
             Instruction::PUSH_ADDR_LOCAL(_)
             | Instruction::LOAD_LOCAL(_)
-            | Instruction::STORE_LOCAL(_) => 1 + 2,
+            | Instruction::STORE_LOCAL(_)
+            | Instruction::LOAD_GLOBAL(_)
+            | Instruction::STORE_GLOBAL(_) => 1 + 2,
             Instruction::BOX_ALLOC(_) => 1 + 4,
             Instruction::JMP(_) | Instruction::JMP_IF_TRUE(_) | Instruction::JMP_IF_FALSE(_) => {
                 1 + 8
@@ -248,6 +275,7 @@ impl Generator {
         let mut output = Vec::new();
 
         let type_table = self.generate_type_table();
+        let global_table = self.generate_global_table();
         let const_pool = self.generate_const_pool();
         let (bytecode, label_positions) = self.generate_bytecode();
         let function_table = self.generate_function_table(&label_positions);
@@ -256,15 +284,17 @@ impl Generator {
         output.extend(VERSION.to_be_bytes());
         output.extend(0x0000u16.to_be_bytes());
 
-        let header_size = 33u32; // 5 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 4
+        let header_size = 37u32; // 5 + 2 + 2 + 4 + 4 + 4 + 4 + 4 + 4 + 4
         let type_table_offset = header_size;
-        let const_pool_offset = type_table_offset + type_table.len() as u32;
+        let global_table_offset = type_table_offset + type_table.len() as u32;
+        let const_pool_offset = global_table_offset + global_table.len() as u32;
         let function_table_offset = const_pool_offset + const_pool.len() as u32;
         let bytecode_offset = function_table_offset + function_table.len() as u32;
 
-        output.extend((self.main_index.0).to_be_bytes());
+        output.extend((self.analysis_result.main_id.0).to_be_bytes());
 
         output.extend(type_table_offset.to_be_bytes());
+        output.extend(global_table_offset.to_be_bytes());
         output.extend(const_pool_offset.to_be_bytes());
         output.extend(function_table_offset.to_be_bytes());
         output.extend(bytecode_offset.to_be_bytes());
@@ -272,6 +302,7 @@ impl Generator {
         output.extend((bytecode.len() as u32).to_be_bytes());
 
         output.extend(type_table);
+        output.extend(global_table);
         output.extend(const_pool);
         output.extend(function_table);
         output.extend(bytecode);

@@ -108,7 +108,7 @@ impl GarbageCollector {
 
         while current_fp.0 >= 16 {
             let func_index = if current_fp.0 == 16 {
-                header.entry_point
+                header.main_index
             } else {
                 let saved_func_start = current_fp.0 - 16;
                 let saved_func_bytes = stack.read_frame_data(saved_func_start + 8, 8);

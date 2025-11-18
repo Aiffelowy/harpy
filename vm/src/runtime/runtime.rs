@@ -5,6 +5,7 @@ use crate::{
         byte_reader::ByteReader,
         const_pool::{ConstIndex, ConstPool},
         function_table::{CodeAddress, FunctionIndex, FunctionTable, LocalIndex},
+        global_table::{GlobalIndex, GlobalTable},
         header::Header,
         type_table::{TypeId, TypeTable},
     },
@@ -32,6 +33,7 @@ macro_rules! binary_op_runtime {
 pub struct Runtime<'bytecode> {
     header: Header,
     type_table: TypeTable,
+    global_table: GlobalTable,
     const_pool: ConstPool<'bytecode>,
     function_table: FunctionTable,
     bytecode: ByteReader<'bytecode>,
@@ -40,23 +42,23 @@ pub struct Runtime<'bytecode> {
     heap: Heap,
     operand_stack: OperandStack,
     gc: GarbageCollector,
-    running: bool,
 }
 
 impl<'bytecode> Runtime<'bytecode> {
     pub fn new(
         header: Header,
         type_table: TypeTable,
+        global_table: GlobalTable,
         const_pool: ConstPool<'bytecode>,
         function_table: FunctionTable,
         bytecode: &'bytecode [u8],
     ) -> Result<Self> {
-        let mut bytecode = ByteReader::new(bytecode, bytecode.len());
-        bytecode.jump_to(function_table[header.entry_point].code_offset.0 as usize)?;
+        let bytecode = ByteReader::new(bytecode, bytecode.len());
 
         Ok(Self {
-            stack: Stack::new(header.entry_point, &function_table, STACK_SIZE)?,
+            stack: Stack::new(header.main_index, &function_table, STACK_SIZE)?,
             type_table,
+            global_table,
             const_pool,
             function_table,
             bytecode,
@@ -64,7 +66,6 @@ impl<'bytecode> Runtime<'bytecode> {
             header,
             operand_stack: OperandStack::new(),
             gc: GarbageCollector::new(),
-            running: true,
         })
     }
 
@@ -88,6 +89,18 @@ impl<'bytecode> Runtime<'bytecode> {
     fn store_local(&mut self, local_id: LocalIndex) -> Result<()> {
         let v = self.operand_stack.pop()?;
         self.stack.write_local(&self.function_table, local_id, v);
+        Ok(())
+    }
+
+    fn load_global(&mut self, global_id: GlobalIndex) -> Result<()> {
+        let v = self.global_table.read_global(global_id, &self.type_table)?;
+        self.operand_stack.push(v);
+        Ok(())
+    }
+
+    fn store_global(&mut self, global_id: GlobalIndex) -> Result<()> {
+        let v = self.operand_stack.pop()?;
+        self.global_table.write_global(global_id, v);
         Ok(())
     }
 
@@ -204,14 +217,6 @@ impl<'bytecode> Runtime<'bytecode> {
     fn ret(&mut self) -> Result<()> {
         let return_addr = self.stack.get_return_address();
 
-        if self.stack.is_main() {
-            self.running = false;
-            if let Ok(v) = self.operand_stack.pop() {
-                println!("{:?}", v);
-            }
-            return Ok(());
-        }
-
         self.stack.pop_frame()?;
         self.bytecode.jump_to(return_addr)?;
         Ok(())
@@ -241,7 +246,7 @@ impl<'bytecode> Runtime<'bytecode> {
 
     pub fn run(&mut self) -> Result<()> {
         use Instruction::*;
-        while self.running {
+        loop {
             let instruction = self.bytecode.read_safe()?;
             match instruction {
                 NOP => (),
@@ -251,6 +256,8 @@ impl<'bytecode> Runtime<'bytecode> {
                 PUSH_ADDR_LOCAL(li) => self.push_addr_local(li),
                 LOAD_LOCAL(li) => self.load_local(li)?,
                 STORE_LOCAL(li) => self.store_local(li)?,
+                LOAD_GLOBAL(gi) => self.load_global(gi)?,
+                STORE_GLOBAL(gi) => self.store_global(gi)?,
 
                 LOAD => self.load()?,
                 STORE => self.store()?,
@@ -288,7 +295,12 @@ impl<'bytecode> Runtime<'bytecode> {
                 }
                 DUP => self.dup()?,
 
-                HALT => break,
+                HALT => {
+                    if let Ok(v) = self.operand_stack.pop() {
+                        println!("{:?}", v);
+                    }
+                    break;
+                }
             }
         }
 

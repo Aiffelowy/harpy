@@ -117,10 +117,6 @@ impl Scope {
         self.parent.upgrade_then(|p| p.get_function_symbol())?
     }
 
-    pub(in crate::semantic_analyzer) fn main_exists(&self) -> bool {
-        self.symbols.contains_key("main")
-    }
-
     pub(in crate::semantic_analyzer) fn depth(&self) -> Depth {
         self.depth
     }

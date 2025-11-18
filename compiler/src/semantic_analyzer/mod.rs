@@ -3,6 +3,7 @@ pub mod analyzer;
 pub mod const_pool;
 pub mod err;
 pub mod function_table;
+pub mod global_table;
 pub mod resolvers;
 pub mod result;
 pub mod return_status;

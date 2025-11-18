@@ -67,7 +67,15 @@ impl ExprResolver {
             }
         }
 
-        analyzer.map_ident_to_local_with_symbol(ident, &symbol);
+        match symbol.kind {
+            SymbolInfoKind::Variable(_) | SymbolInfoKind::Param => {
+                analyzer.map_ident_to_local_with_symbol(ident, &symbol);
+            }
+            SymbolInfoKind::Global(_) => {
+                analyzer.map_ident_to_global_with_symbol(ident, &symbol);
+            }
+            _ => {}
+        }
 
         Ok(symbol.ty.ttype.clone())
     }
@@ -136,6 +144,7 @@ impl ExprResolver {
         let Expr::Ident(ref i) = **expr else {
             return HarpyError::semantic(SemanticError::InvalidBorrow, expr.span());
         };
+        
         let symbol = analyzer.get_symbol(i)?;
         let ttype = symbol.get().ty.clone();
 

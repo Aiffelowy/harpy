@@ -1,0 +1,12 @@
+fn main() -> float {
+  let f: mut . = 250f;
+  refs(&mut f);
+
+  return f;
+}
+
+
+fn refs(ref: &mut float) {
+  *ref /= 10.;
+  *ref = *ref + 67F;
+}

@@ -13,8 +13,13 @@ pub struct ExprGenerator;
 
 impl ExprGenerator {
     fn generate_ident(node: &Node<Ident>, generator: &mut Generator) {
-        let local = generator.get_local_mapping(node.id());
-        generator.push_instruction(Instruction::LOAD_LOCAL(local))
+        if generator.is_global(node.id()) {
+            let global = generator.get_global_mapping(node.id());
+            generator.push_instruction(Instruction::LOAD_GLOBAL(global));
+        } else {
+            let local = generator.get_local_mapping(node.id());
+            generator.push_instruction(Instruction::LOAD_LOCAL(local));
+        }
     }
 
     fn generate_infix(lhs: &Expr, op: &InfixOp, rhs: &Expr, generator: &mut Generator) {
@@ -40,7 +45,7 @@ impl ExprGenerator {
     fn generate_borrow(expr: &Expr, generator: &mut Generator) {
         let id = expr.lvalue().unwrap().id();
         let local = generator.get_local_mapping(id);
-        generator.push_instruction(Instruction::PUSH_ADDR_LOCAL(local))
+        generator.push_instruction(Instruction::PUSH_ADDR_LOCAL(local));
     }
 
     fn generate_lit(lit: &Node<Literal>, generator: &mut Generator) {

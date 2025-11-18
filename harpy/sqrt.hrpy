@@ -1,0 +1,26 @@
+fn sqrt(n: float, l: float) -> float {
+  let x :mut float = n;
+
+  loop {
+    let new_x = 0.5 * (x + (n/x));
+    if abs(new_x - x) < l {
+      return new_x;
+    }
+    x = new_x;
+  }
+
+  return 0.0f; //bad "all paths must return a value" checker
+}
+
+
+fn abs(x: float) -> float {
+  if x < 0f {
+    return -x;
+  }
+
+  return x;
+}
+
+fn main() -> float {
+  return sqrt(123f, 0.0001);
+}

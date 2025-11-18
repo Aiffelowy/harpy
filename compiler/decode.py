@@ -16,18 +16,20 @@ def decode_bytecode(data):
     flags = int.from_bytes(data[7:9], 'big')
     print(f"Flags: 0x{flags:04x}")
     
-    # Entry point (4 bytes)
-    entry_point = int.from_bytes(data[9:13], 'big')
-    print(f"Entry point: 0x{entry_point:04x}")
+    # Main function index (4 bytes)
+    main_index = int.from_bytes(data[9:13], 'big')
+    print(f"Main function index: {main_index}")
     
     # Offsets
     type_table_offset = int.from_bytes(data[13:17], 'big')
-    const_pool_offset = int.from_bytes(data[17:21], 'big')
-    function_table_offset = int.from_bytes(data[21:25], 'big')
-    bytecode_offset = int.from_bytes(data[25:29], 'big')
-    bytecode_size = int.from_bytes(data[29:33], 'big')
+    global_table_offset = int.from_bytes(data[17:21], 'big')
+    const_pool_offset = int.from_bytes(data[21:25], 'big')
+    function_table_offset = int.from_bytes(data[25:29], 'big')
+    bytecode_offset = int.from_bytes(data[29:33], 'big')
+    bytecode_size = int.from_bytes(data[33:37], 'big')
     
     print(f"Type table offset: {type_table_offset}")
+    print(f"Global table offset: {global_table_offset}")
     print(f"Const pool offset: {const_pool_offset}")
     print(f"Function table offset: {function_table_offset}")
     print(f"Bytecode offset: {bytecode_offset}")
@@ -36,7 +38,7 @@ def decode_bytecode(data):
     type_table = []
 
     pos = type_table_offset
-    while pos < const_pool_offset:
+    while pos < global_table_offset:
         type_id = data[pos]
         if type_id == 0x01:
             prim_type_id = data[pos+1]
@@ -61,6 +63,13 @@ def decode_bytecode(data):
         else:
             print("BAD TYPE TABLE")
             exit(0)
+    
+    global_table = []
+    pos = global_table_offset
+    while pos < const_pool_offset:
+        type_index = int.from_bytes(data[pos:pos+4], 'big')
+        global_table.append({"type_index": type_index})
+        pos += 4
     
     const_pool = []
     pos = const_pool_offset
@@ -95,6 +104,8 @@ def decode_bytecode(data):
         0x10: {"name": "PUSH_ADDR_LOCAL", "size": 3}, 
         0x11: {"name": "LOAD_LOCAL", "size": 3}, 
         0x12: {"name": "STORE_LOCAL", "size": 3},
+        0x13: {"name": "LOAD_GLOBAL", "size": 3},
+        0x14: {"name": "STORE_GLOBAL", "size": 3},
         0x31: {"name": "LOAD", "size": 1}, 
         0x32: {"name": "STORE", "size": 1}, 
         0x40: {"name": "BOX_ALLOC", "size": 5},
@@ -137,9 +148,9 @@ def decode_bytecode(data):
         if opcode == 0x01:  # LOAD_CONST
             const_idx = int.from_bytes(data[pos+1:pos+5], 'big')
             bytecode.append({"opcode": name, "param": const_idx, "size": size, "byte_offset": pos - bytecode_start})
-        elif opcode in [0x10, 0x11, 0x12]:  # LOCAL operations
-            local_addr = int.from_bytes(data[pos+1:pos+3], 'big')
-            bytecode.append({"opcode": name, "param": local_addr, "size": size, "byte_offset": pos - bytecode_start})
+        elif opcode in [0x10, 0x11, 0x12, 0x13, 0x14]:  # LOCAL and GLOBAL operations
+            addr = int.from_bytes(data[pos+1:pos+3], 'big')
+            bytecode.append({"opcode": name, "param": addr, "size": size, "byte_offset": pos - bytecode_start})
         elif opcode == 0x40:
             type_id = int.from_bytes(data[pos+1:pos+5], 'big')
             bytecode.append({ "opcode": name, "param": type_id, "size": size, "byte_offset": pos - bytecode_start })
@@ -154,7 +165,7 @@ def decode_bytecode(data):
         
         pos += size
 
-    return type_table, const_pool, function_table, bytecode
+    return type_table, global_table, const_pool, function_table, bytecode
 
 def print_type_table(tt):
     print(f"\n=== TYPE TABLE ===")
@@ -185,6 +196,12 @@ def print_type_table(tt):
             print(f", Points to: {pt}")
         else:
             print()
+
+def print_global_table(gt, tt):
+    print(f"\n=== GLOBAL TABLE ===")
+    for i, global_var in enumerate(gt):
+        type_idx = global_var["type_index"]
+        print(f"Global {i}: Type {type_idx}")
 
 def print_const_pool(cp, tt):
     print(f"\n=== CONST POOL ===")
@@ -232,9 +249,10 @@ if __name__ == "__main__":
     data = file.read()
     file.close()
     
-    tt, cp, ft, bc = decode_bytecode(data)
+    tt, gt, cp, ft, bc = decode_bytecode(data)
     
     print_type_table(tt)
+    print_global_table(gt, tt)
     print()
     print_const_pool(cp, tt)
     print()

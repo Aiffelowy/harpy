@@ -18,12 +18,15 @@ macro_rules! impl_extend {
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Hash, Eq)]
 pub struct LocalAddress(pub u16);
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Hash, Eq)]
+pub struct GlobalAddress(pub u16);
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Hash, Eq)]
 pub struct CodeAddress(pub u64);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Label(pub u64);
 
 impl_extend!(LocalAddress, 2);
+impl_extend!(GlobalAddress, 2);
 impl_extend!(FuncIndex, 4);
 impl_extend!(ConstIndex, 4);
 impl_extend!(RuntimeTypeIndex, 4);
@@ -69,6 +72,9 @@ define_instruction_enum!(
         PUSH_ADDR_LOCAL(LocalAddress) = 0x10,
         LOAD_LOCAL(LocalAddress) = 0x11,
         STORE_LOCAL(LocalAddress) = 0x12,
+
+        LOAD_GLOBAL(GlobalAddress) = 0x13,
+        STORE_GLOBAL(GlobalAddress) = 0x14,
 
         LOAD = 0x31,
         STORE = 0x32,

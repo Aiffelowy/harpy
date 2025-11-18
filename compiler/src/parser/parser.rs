@@ -31,7 +31,7 @@ impl<'parser> Parser<'parser> {
         }
     }
 
-    fn next_id(&mut self) -> NodeId {
+    pub(in crate::parser) fn next_id(&mut self) -> NodeId {
         let i = self.next_id;
         self.next_id.0 += 1;
         i
@@ -55,9 +55,21 @@ impl<'parser> Parser<'parser> {
         Ok(Node::new(self.next_id(), span, value))
     }
 
-    pub(in crate::parser) fn parse_expr_node(&mut self, min_bp: u8) -> Result<Node<super::expr::Expr>> {
+    pub(in crate::parser) fn parse_expr_node(
+        &mut self,
+        min_bp: u8,
+    ) -> Result<Node<super::expr::Expr>> {
         let start = self.lexer.current_position_start();
         let value = super::expr::Expr::parse_expr(self, min_bp)?;
+        let end = self.lexer.current_position_end();
+        let span = Span::new(start, end);
+
+        Ok(Node::new(self.next_id(), span, value))
+    }
+
+    pub(in crate::parser) fn parse_null_den_node(&mut self) -> Result<Node<super::expr::Expr>> {
+        let start = self.lexer.current_position_start();
+        let value = super::expr::Expr::parse_null_den(self)?;
         let end = self.lexer.current_position_end();
         let span = Span::new(start, end);
 

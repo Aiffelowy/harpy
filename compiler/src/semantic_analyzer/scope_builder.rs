@@ -2,9 +2,9 @@ use crate::{
     aliases::{ScopeRc, SymbolInfoRef, TypeInfoRc},
     err::{HarpyError, HarpyErrorKind},
     extensions::{ScopeRcExt, SymbolInfoRefExt, WeakScopeExt},
-    generator::instruction::LocalAddress,
+    generator::instruction::{LocalAddress},
     lexer::tokens::Ident,
-    parser::{node::Node, program::Program, types::TypeSpanned},
+    parser::{node::{Node}, program::Program, types::TypeSpanned},
 };
 
 use super::{
@@ -13,7 +13,7 @@ use super::{
     err::SemanticError,
     result::AnalysisResult,
     scope::{Scope, ScopeKind},
-    symbol_info::{FunctionInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
+    symbol_info::{FunctionInfo, GlobalInfo, SymbolInfo, SymbolInfoKind, VariableInfo},
 };
 
 pub struct ScopeBuilder {
@@ -122,7 +122,10 @@ impl ScopeBuilder {
     pub fn define_func(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
         let s = self.define_symbol(ident, ty, SymbolInfoKind::Function(FunctionInfo::new()));
         if let Some(s) = s {
-            self.result.function_table.register(ident, s.clone());
+            let func_id = self.result.function_table.register(ident, s.clone());
+            if ident.value() == "main" {
+                self.result.main_id = Some(func_id);
+            }
         }
     }
 
@@ -134,6 +137,17 @@ impl ScopeBuilder {
             ));
         }
         self.result.type_table.register(ttype)
+    }
+
+    pub fn define_global(&mut self, ident: &Node<Ident>, ty: TypeInfoRc) {
+        let sym = self.define_symbol(
+            ident,
+            ty.clone(),
+            SymbolInfoKind::Global(GlobalInfo),
+        );
+        if let Some(s) = sym {
+            self.result.global_table.register(ident, s);
+        }
     }
 
     pub(in crate::semantic_analyzer) fn build_analyzer(

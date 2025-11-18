@@ -123,9 +123,6 @@ impl Generate for FuncDelc {
         let func_label = generator.create_label();
         let id = generator.get_function_mapping(self.name.id());
         generator.register_function(id, func_label);
-        if self.name.value() == "main" {
-            generator.set_main(id);
-        }
         generator.place_label(func_label);
         self.block.generate(generator);
         generator.place_ret()

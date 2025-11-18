@@ -76,7 +76,7 @@ impl Parse for CallExpr {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Infix(Box<Expr>, InfixOp, Box<Expr>),
+    Infix(Box<Node<Expr>>, InfixOp, Box<Node<Expr>>),
     Prefix(PrefixOp, Box<Node<Expr>>),
     Literal(Node<Literal>),
     Ident(Node<Ident>),
@@ -87,7 +87,7 @@ pub enum Expr {
 
 impl Expr {
     pub(in crate::parser) fn parse_expr(parser: &mut Parser, min_bp: u8) -> Result<Self> {
-        let mut lhs = Expr::parse_null_den(parser)?;
+        let mut lhs = parser.parse_null_den_node()?;
 
         loop {
             let mut fork = parser.fork();
@@ -102,14 +102,18 @@ impl Expr {
 
             parser.parse::<InfixOp>()?;
 
-            let rhs = Expr::parse_expr(parser, bp.right)?;
-            lhs = Expr::Infix(Box::new(lhs), op, Box::new(rhs));
+            let rhs = parser.parse_expr_node(bp.right)?;
+            lhs = Node::new(
+                parser.next_id(),
+                Span::new(lhs.span().start, rhs.span().end),
+                Expr::Infix(Box::new(lhs), op, Box::new(rhs)),
+            );
         }
 
-        Ok(lhs)
+        Ok((*lhs).clone())
     }
 
-    fn parse_null_den(parser: &mut Parser) -> Result<Self> {
+    pub(in crate::parser) fn parse_null_den(parser: &mut Parser) -> Result<Self> {
         match parser.peek()? {
             tt!(lit) => {
                 let val = parser.parse_node()?;

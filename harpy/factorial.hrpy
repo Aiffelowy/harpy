@@ -1,0 +1,13 @@
+fn factorial(n :int) -> int {
+  let ans :mut . = 1;
+  for i in 2 => n+1 {
+    ans *= i;
+  }
+
+  return ans;
+}
+
+
+fn main() -> int {
+    return factorial(20);
+}

@@ -208,10 +208,6 @@ impl Analyzer {
         self.current_scope.get_mut().register_borrow(info);
     }
 
-    pub fn main_exists(&self) -> bool {
-        self.current_scope.get().main_exists()
-    }
-
     pub fn analyze(program: &Program) -> std::result::Result<AnalysisResult, Vec<HarpyError>> {
         let mut s = ScopeBuilder::build_analyzer(program)?;
         let _return_status = program.analyze_semantics(&mut s);
@@ -258,6 +254,19 @@ impl Analyzer {
             let original_node_id = symbol.node_id;
             if let Some(&local_addr) = self.result.locals_map.get(&original_node_id) {
                 self.result.locals_map.insert(ident_node.id(), local_addr);
+            }
+        }
+    }
+
+    pub fn map_ident_to_global_with_symbol(
+        &mut self,
+        ident_node: &Node<Ident>,
+        symbol: &SymbolInfo,
+    ) {
+        if matches!(symbol.kind, SymbolInfoKind::Global(_)) {
+            let original_node_id = symbol.node_id;
+            if let Some(global_addr) = self.result.global_table.get_mapping_opt(original_node_id) {
+                self.result.global_table.map_node_to_global(ident_node.id(), global_addr);
             }
         }
     }

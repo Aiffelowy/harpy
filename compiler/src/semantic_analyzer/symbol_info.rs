@@ -90,6 +90,9 @@ pub struct RuntimeFunctionInfo {
 }
 
 #[derive(Debug, Clone)]
+pub struct GlobalInfo;
+
+#[derive(Debug, Clone)]
 pub struct LiteralInfo {
     pub const_idx: ConstIndex,
 }
@@ -103,6 +106,7 @@ pub struct RuntimeLiteralInfo {
 pub enum SymbolInfoKind {
     Function(FunctionInfo),
     Variable(VariableInfo),
+    Global(GlobalInfo),
     Literal(LiteralInfo),
     Param,
     Expr,
@@ -187,6 +191,7 @@ impl Display for SymbolInfoKind {
             Self::Literal(_) => "literal",
             Self::Function(_) => "function",
             Self::Variable(_) => "variable",
+            Self::Global(_) => "global variable",
         };
 
         write!(f, "{s}")

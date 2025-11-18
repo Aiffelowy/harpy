@@ -4,6 +4,7 @@ use crate::parser::{
     byte_reader::{ByteReader, ReadSafe},
     const_pool::ConstIndex,
     function_table::{CodeAddress, FunctionIndex, LocalIndex},
+    global_table::GlobalIndex,
     type_table::TypeId,
 };
 
@@ -56,6 +57,8 @@ instructions!(
     PUSH_ADDR_LOCAL(id: LocalIndex<u16>) = 0x10,
     LOAD_LOCAL(id: LocalIndex<u16>) = 0x11,
     STORE_LOCAL(id: LocalIndex<u16>) = 0x12,
+    LOAD_GLOBAL(id: GlobalIndex<u16>) = 0x13,
+    STORE_GLOBAL(id: GlobalIndex<u16>) = 0x14,
     LOAD = 0x31,
     STORE = 0x32,
     BOX_ALLOC(id: TypeId<u32>) = 0x40,

@@ -281,6 +281,7 @@ macro_rules! define_tokens {
 define_tokens!(
     [keywords] => {
         "let" => Let,
+        "global" => Global,
         "mut" => Mut,
 
         "fn" => Fn,
@@ -388,6 +389,9 @@ define_tokens!(
 macro_rules! t {
     (let) => {
         $crate::lexer::tokens::Let
+    };
+    (global) => {
+        $crate::lexer::tokens::Global
     };
     (mut) => {
         $crate::lexer::tokens::Mut
@@ -574,6 +578,9 @@ macro_rules! t {
 macro_rules! tt {
     (let) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Let)
+    };
+    (global) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Global)
     };
     (mut) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Mut)

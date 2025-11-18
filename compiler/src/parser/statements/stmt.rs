@@ -132,6 +132,28 @@ impl Analyze for Stmt {
                                 }
                             }
                             SymbolInfoKind::Param => {
+                                if !lhs_type.mutable {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignToConst(lhs.clone()),
+                                        lhs.span(),
+                                    );
+                                }
+
+                                if !lhs_type.assign_compatible(&rhs_type.ttype) {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
+                                        rhs.span(),
+                                    );
+                                }
+                            }
+                            SymbolInfoKind::Global(_) => {
+                                if !lhs_type.mutable {
+                                    analyzer.report_semantic_error(
+                                        SemanticError::AssignToConst(lhs.clone()),
+                                        lhs.span(),
+                                    );
+                                }
+
                                 if !lhs_type.assign_compatible(&rhs_type.ttype) {
                                     analyzer.report_semantic_error(
                                         SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
@@ -195,8 +217,13 @@ impl Generate for Stmt {
 
                 match &**lhs {
                     Expr::Ident(ident) => {
-                        let local = generator.get_local_mapping(ident.id());
-                        generator.push_instruction(Instruction::STORE_LOCAL(local));
+                        if generator.is_global(ident.id()) {
+                            let global = generator.get_global_mapping(ident.id());
+                            generator.push_instruction(Instruction::STORE_GLOBAL(global));
+                        } else {
+                            let local = generator.get_local_mapping(ident.id());
+                            generator.push_instruction(Instruction::STORE_LOCAL(local));
+                        }
                     }
 
                     Expr::Prefix(PrefixOp { op, .. }, expr) if *op == PrefixOpKind::Star => {
