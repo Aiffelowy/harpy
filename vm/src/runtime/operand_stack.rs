@@ -26,7 +26,7 @@ impl OperandStack {
     pub fn iter(&self) -> impl Iterator<Item = &VmValue> {
         self.data.iter()
     }
-    
+
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut VmValue> {
         self.data.iter_mut()
     }

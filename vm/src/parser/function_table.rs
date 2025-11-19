@@ -70,6 +70,6 @@ impl Index<FunctionIndex> for FunctionTable {
     type Output = FunctionInfo;
 
     fn index(&self, index: FunctionIndex) -> &Self::Output {
-        &self.func_infos[index.0]
+        unsafe { self.func_infos.get_unchecked(index.0) }
     }
 }

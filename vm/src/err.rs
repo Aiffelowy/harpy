@@ -15,6 +15,7 @@ pub enum RuntimeError {
     InvalidOpcode,
     InvalidOperation,
     IO(std::io::Error),
+    Halt,
 }
 
 impl From<std::io::Error> for RuntimeError {

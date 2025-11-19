@@ -125,6 +125,6 @@ impl Index<TypeId> for TypeTable {
     type Output = Type;
 
     fn index(&self, index: TypeId) -> &Self::Output {
-        &self.tt[index.0]
+        unsafe { self.tt.get_unchecked(index.0) }
     }
 }

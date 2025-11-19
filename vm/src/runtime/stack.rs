@@ -12,11 +12,11 @@ use super::values::{StackAddress, VmValue};
 
 #[derive(Debug)]
 pub struct Stack {
-    data: Vec<u8>,
-    frame_pointer: StackAddress,
-    stack_pointer: StackAddress,
+    pub data: Vec<u8>,
+    pub frame_pointer: StackAddress,
+    pub stack_pointer: StackAddress,
 
-    current_function: FunctionIndex,
+    pub current_function: FunctionIndex,
 }
 
 impl Stack {
@@ -118,10 +118,6 @@ impl Stack {
         //self.data[self.frame_pointer.0..self.stack_pointer.0].fill(0);
 
         Ok(())
-    }
-
-    pub fn is_main(&self) -> bool {
-        self.frame_pointer.0 == 16
     }
 
     pub fn pop_frame(&mut self) -> Result<()> {
