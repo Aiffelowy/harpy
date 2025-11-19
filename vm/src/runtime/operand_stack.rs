@@ -2,32 +2,48 @@ use crate::{aliases::Result, err::RuntimeError};
 
 use super::values::VmValue;
 
+const MAX_STACK_SIZE: usize = 32;
+
 #[derive(Debug)]
 pub struct OperandStack {
-    data: Vec<VmValue>,
+    data: [VmValue; MAX_STACK_SIZE],
+    len: usize,
 }
 
 impl OperandStack {
     pub fn new() -> Self {
         Self {
-            data: Vec::with_capacity(512),
+            data: [VmValue::Int(0); MAX_STACK_SIZE],
+            len: 0,
         }
     }
 
+    #[inline(always)]
     pub fn push(&mut self, value: VmValue) {
-        self.data.push(value);
+        if self.len >= MAX_STACK_SIZE {
+            panic!("Operand stack overflow");
+        }
+        unsafe {
+            *self.data.get_unchecked_mut(self.len) = value;
+        }
+        self.len += 1;
     }
 
+    #[inline(always)]
     pub fn pop(&mut self) -> Result<VmValue> {
-        self.data.pop().ok_or(RuntimeError::BadStack)
+        if self.len == 0 {
+            return Err(RuntimeError::BadStack);
+        }
+        self.len -= 1;
+        unsafe { Ok(*self.data.get_unchecked(self.len)) }
     }
 
     // GC support methods
     pub fn iter(&self) -> impl Iterator<Item = &VmValue> {
-        self.data.iter()
+        self.data[..self.len].iter()
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut VmValue> {
-        self.data.iter_mut()
+        self.data[..self.len].iter_mut()
     }
 }
