@@ -4,7 +4,7 @@ use crate::{
     aliases::{NodeInfo, ScopeRc},
     err::HarpyError,
     extensions::SymbolInfoRefExt,
-    generator::instruction::{LocalAddress},
+    generator::instruction::LocalAddress,
     parser::node::NodeId,
 };
 
@@ -64,7 +64,9 @@ impl AnalysisResult {
     pub fn into_runtime(self) -> std::result::Result<RuntimeAnalysisResult, Vec<HarpyError>> {
         let Some(main_id) = self.main_id else {
             return Err(vec![HarpyError::new(
-                crate::err::HarpyErrorKind::SemanticError(crate::semantic_analyzer::err::SemanticError::MissingMain),
+                crate::err::HarpyErrorKind::SemanticError(
+                    crate::semantic_analyzer::err::SemanticError::MissingMain,
+                ),
                 crate::lexer::span::Span::default(),
             )]);
         };

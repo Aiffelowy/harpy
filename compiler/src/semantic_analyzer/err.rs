@@ -26,6 +26,7 @@ pub enum SemanticError {
     ForTypeMismatch(TypeInfoRc, Type),
     WhileTypeMismatch(TypeInfoRc),
     IfTypeMismatch(TypeInfoRc),
+    SwitchTypeMismatch(TypeInfoRc, TypeInfoRc),
     ReturnNotInFunc,
     ReturnTypeMismatch(TypeInfoRc, TypeInfoRc),
     AssignTypeMismatch(TypeInfoRc, Type),
@@ -96,6 +97,9 @@ impl Display for SemanticError {
             IfTypeMismatch(got) => format!(
                 "type mismatch, expected {}bool{} got {}{}{}",
                 Green, Reset, Red, got, Reset,
+            ),
+            SwitchTypeMismatch(got, expected) => format!(
+                "type mismatch, expected {Green}{expected}{Reset} got {Red}{got}{Reset}"
             ),
 
             ReturnNotInFunc => format!(

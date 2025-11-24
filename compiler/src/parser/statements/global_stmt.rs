@@ -2,20 +2,12 @@ use crate::{
     generator::{compile_trait::Generate, instruction::Instruction},
     get_symbol_mut,
     lexer::tokens::Ident,
-    parser::{
-        expr::Expr,
-        node::Node,
-        parse_trait::Parse,
-        parser::Parser,
-        types::TypeSpanned,
-    },
+    parser::{expr::Expr, node::Node, parse_trait::Parse, parser::Parser, types::TypeSpanned},
     semantic_analyzer::{
-        analyze_trait::Analyze, 
-        err::SemanticError, 
-        return_status::ReturnStatus, 
+        analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus,
         symbol_info::SymbolInfoKind,
     },
-    t, tt,
+    t,
 };
 
 #[derive(Debug, Clone)]
@@ -36,9 +28,7 @@ impl Parse for GlobalStmt {
         parser.consume::<t!(=)>()?;
         let rhs = parser.parse_node::<Expr>()?;
 
-        if let tt!(;) = parser.peek()? {
-            parser.consume::<t!(;)>()?;
-        }
+        parser.consume::<t!(;)>()?;
 
         Ok(Self { var, ttype, rhs })
     }
@@ -50,7 +40,10 @@ impl Analyze for GlobalStmt {
         builder.define_global(&self.var, type_info);
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         let Some(expr_type) = analyzer.resolve_expr(&self.rhs) else {
             return ReturnStatus::Never;
         };
@@ -67,7 +60,7 @@ impl Analyze for GlobalStmt {
                 v.initialized = true;
             }
         });
-        
+
         ReturnStatus::Never
     }
 }

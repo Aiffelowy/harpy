@@ -299,6 +299,7 @@ define_tokens!(
 
         "if" => If,
         "else" => Else,
+        "switch" => Switch,
 
         "boxed" => Boxed,
         "box" => Box,
@@ -431,6 +432,9 @@ macro_rules! t {
     };
     (else) => {
         $crate::lexer::tokens::Else
+    };
+    (switch) => {
+        $crate::lexer::tokens::Switch
     };
     (boxed) => {
         $crate::lexer::tokens::Boxed
@@ -620,6 +624,9 @@ macro_rules! tt {
     };
     (else) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Else)
+    };
+    (switch) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Switch)
     };
     (boxed) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Boxed)

@@ -7,6 +7,7 @@ mod let_stmt;
 mod loop_stmt;
 mod return_stmt;
 mod stmt;
+mod switch_stmt;
 mod while_stmt;
 
 pub use block_stmt::BlockStmt;
@@ -17,4 +18,5 @@ pub use let_stmt::LetStmt;
 pub use loop_stmt::LoopStmt;
 pub use return_stmt::ReturnStmt;
 pub use stmt::Stmt;
+pub use switch_stmt::SwitchStmt;
 pub use while_stmt::WhileStmt;

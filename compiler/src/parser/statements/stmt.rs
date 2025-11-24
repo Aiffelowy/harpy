@@ -18,7 +18,8 @@ use crate::{
 };
 
 use super::{
-    assign_stmt::AssignOp, BlockStmt, ForStmt, IfStmt, LetStmt, LoopStmt, ReturnStmt, WhileStmt,
+    assign_stmt::AssignOp, BlockStmt, ForStmt, IfStmt, LetStmt, LoopStmt, ReturnStmt, SwitchStmt,
+    WhileStmt,
 };
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,7 @@ pub enum Stmt {
     ReturnStmt(Node<ReturnStmt>),
     AssignStmt(Node<Expr>, AssignOp, Node<Expr>),
     BlockStmt(Node<BlockStmt>),
+    SwitchStmt(Node<SwitchStmt>),
     Expr(Node<Expr>),
 }
 
@@ -44,18 +46,15 @@ impl Parse for Stmt {
             tt!(while) => Self::WhileStmt(parser.parse_node::<WhileStmt>()?),
             tt!(loop) => Self::LoopStmt(parser.parse_node::<LoopStmt>()?),
             tt!(return) => Self::ReturnStmt(parser.parse_node::<ReturnStmt>()?),
+            tt!(switch) => Self::SwitchStmt(parser.parse_node()?),
             _ => {
                 let expr = parser.parse_node::<Expr>()?;
                 if let Some(assign) = parser.try_parse::<AssignOp>() {
                     let s = Self::AssignStmt(expr, assign, parser.parse_node::<Expr>()?);
-                    if let tt!(;) = parser.peek()? {
-                        parser.consume::<t!(;)>()?;
-                    }
+                    parser.consume::<t!(;)>()?;
                     s
                 } else {
-                    if let tt!(;) = parser.peek()? {
-                        parser.consume::<t!(;)>()?;
-                    }
+                    parser.consume::<t!(;)>()?;
                     Self::Expr(expr)
                 }
             }
@@ -76,6 +75,7 @@ impl Analyze for Stmt {
             WhileStmt(whiles) => whiles.build(builder),
             LoopStmt(loops) => loops.build(builder),
             ReturnStmt(returns) => returns.build(builder),
+            SwitchStmt(switch) => switch.build(builder),
             _ => (),
         }
     }
@@ -93,6 +93,7 @@ impl Analyze for Stmt {
             WhileStmt(whiles) => whiles.analyze_semantics(analyzer),
             LoopStmt(loops) => loops.analyze_semantics(analyzer),
             ReturnStmt(returns) => returns.analyze_semantics(analyzer),
+            SwitchStmt(switch) => switch.analyze_semantics(analyzer),
             Expr(expr) => {
                 analyzer.resolve_expr(expr);
                 ReturnStatus::Never
@@ -187,6 +188,7 @@ impl Generate for Stmt {
             Stmt::WhileStmt(whiles) => whiles.generate(generator),
             Stmt::LoopStmt(loops) => loops.generate(generator),
             Stmt::ReturnStmt(returns) => returns.generate(generator),
+            Stmt::SwitchStmt(switch) => switch.generate(generator),
             Stmt::Expr(expr) => {
                 generator.gen_expr(expr);
             }

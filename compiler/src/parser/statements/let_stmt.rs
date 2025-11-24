@@ -9,7 +9,10 @@ use crate::{
         parser::Parser,
         types::{Type, TypeInner, TypeSpanned},
     },
-    semantic_analyzer::{analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus, symbol_info::SymbolInfoKind},
+    semantic_analyzer::{
+        analyze_trait::Analyze, err::SemanticError, return_status::ReturnStatus,
+        symbol_info::SymbolInfoKind,
+    },
     t, tt,
 };
 
@@ -37,9 +40,7 @@ impl Parse for LetStmt {
             rhs = Some(parser.parse_node::<Expr>()?);
         }
 
-        if let tt!(;) = parser.peek()? {
-            parser.consume::<t!(;)>()?;
-        }
+        parser.consume::<t!(;)>()?;
 
         Ok(Self { var, ttype, rhs })
     }
@@ -51,8 +52,13 @@ impl Analyze for LetStmt {
         builder.define_var(&self.var, type_info)
     }
 
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
-        let Some(rhs) = &self.rhs else { return ReturnStatus::Never };
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
+        let Some(rhs) = &self.rhs else {
+            return ReturnStatus::Never;
+        };
 
         let Some(expr_type) = analyzer.resolve_expr(rhs) else {
             return ReturnStatus::Never;
@@ -75,7 +81,7 @@ impl Analyze for LetStmt {
             }
 
         });
-        
+
         ReturnStatus::Never
     }
 }

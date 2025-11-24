@@ -1,0 +1,130 @@
+use crate::generator::compile_trait::Generate;
+use crate::parser::{expr::Expr, node::Node, Parse};
+use crate::semantic_analyzer::analyze_trait::Analyze;
+use crate::semantic_analyzer::err::SemanticError;
+use crate::semantic_analyzer::return_status::ReturnStatus;
+use crate::{t, tt};
+
+use super::Stmt;
+
+#[derive(Debug, Clone)]
+pub struct CaseStmt {
+    expr: Node<Expr>,
+    stmt: Stmt,
+}
+
+impl Parse for CaseStmt {
+    fn parse(parser: &mut crate::parser::parser::Parser) -> crate::aliases::Result<Self> {
+        let expr = parser.parse_node()?;
+        parser.consume::<t!(->)>()?;
+        let stmt = parser.parse()?;
+        //parser.consume::<t!(,)>()?;
+
+        Ok(Self { expr, stmt })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SwitchStmt {
+    expr: Node<Expr>,
+    cases: Vec<CaseStmt>,
+}
+
+impl Parse for SwitchStmt {
+    fn parse(parser: &mut crate::parser::parser::Parser) -> crate::aliases::Result<Self> {
+        parser.consume::<t!(switch)>()?;
+        let expr = parser.parse_node()?;
+        let mut cases = vec![];
+        parser.consume::<t!("{")>()?;
+        loop {
+            if let tt!("}") | tt!(eof) = parser.peek()? {
+                break;
+            }
+            match parser.parse::<CaseStmt>() {
+                Ok(case) => cases.push(case),
+                Err(e) => parser.report_error(e, &[tt!(,)])?,
+            }
+        }
+
+        parser.consume::<t!("}")>()?;
+        Ok(Self { expr, cases })
+    }
+}
+
+impl Analyze for SwitchStmt {
+    fn build(&self, builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {
+        for case in &self.cases {
+            builder.push_scope(crate::semantic_analyzer::scope::ScopeKind::Block);
+            case.stmt.build(builder);
+            builder.pop_scope();
+        }
+    }
+
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> crate::semantic_analyzer::return_status::ReturnStatus {
+        let Some(main_expr_ty) = analyzer.resolve_expr(&self.expr) else {
+            analyzer.report_semantic_error(SemanticError::UnresolvedType, self.expr.span());
+            return ReturnStatus::Never;
+        };
+
+        let mut return_status = ReturnStatus::Never;
+
+        for case in &self.cases {
+            analyzer.enter_scope();
+            let Some(case_expr_ty) = analyzer.resolve_expr(&case.expr) else {
+                analyzer.report_semantic_error(SemanticError::UnresolvedType, case.expr.span());
+                analyzer.exit_scope();
+                continue;
+            };
+
+            if !case_expr_ty.compatible(&main_expr_ty) {
+                analyzer.report_semantic_error(
+                    SemanticError::SwitchTypeMismatch(case_expr_ty, main_expr_ty.clone()),
+                    case.expr.span(),
+                );
+            }
+
+            let status = case.stmt.analyze_semantics(analyzer);
+            return_status = return_status.intersect(status);
+            analyzer.exit_scope();
+        }
+
+        return_status
+    }
+}
+
+impl Generate for SwitchStmt {
+    fn generate(&self, generator: &mut crate::generator::generator::Generator) {
+        generator.gen_expr(&self.expr);
+
+        let end_label = generator.create_label();
+        let case_labels: Vec<_> = self
+            .cases
+            .iter()
+            .map(|_| generator.create_label())
+            .collect();
+
+        for (i, case) in self.cases.iter().enumerate() {
+            generator.push_instruction(crate::generator::instruction::Instruction::DUP);
+            generator.gen_expr(&case.expr);
+            generator.push_instruction(crate::generator::instruction::Instruction::EQ);
+            generator.push_instruction(crate::generator::instruction::Instruction::JMP_IF_TRUE(
+                case_labels[i],
+            ));
+        }
+
+        generator.push_instruction(crate::generator::instruction::Instruction::POP);
+        generator.push_instruction(crate::generator::instruction::Instruction::JMP(end_label));
+
+        for (i, case) in self.cases.iter().enumerate() {
+            generator.place_label(case_labels[i]);
+            generator.push_instruction(crate::generator::instruction::Instruction::POP);
+            case.stmt.generate(generator);
+            generator.push_instruction(crate::generator::instruction::Instruction::JMP(end_label));
+        }
+
+        generator.place_label(end_label);
+    }
+}
