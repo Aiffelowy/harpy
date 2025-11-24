@@ -75,9 +75,19 @@ macro_rules! define_token_struct {
     ($name:ident, { $($token_type:tt)+ } $(,$value:ident: $($type:tt)+)?) => {
         #[allow(unused)]
         #[derive(Debug, Clone, PartialEq)]
+        #[cfg(not(test))]
         pub struct $name {
             span: Span,
             $($value: $($type)+)?
+        }
+
+
+        #[allow(unused)]
+        #[derive(Debug, Clone, PartialEq)]
+        #[cfg(test)]
+        pub struct $name {
+            pub span: Span,
+            $(pub $value: $($type)+)?
         }
 
         impl Tokenize for $name {

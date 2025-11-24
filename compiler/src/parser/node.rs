@@ -51,3 +51,15 @@ impl<T: Parse + Display> Display for Node<T> {
         write!(f, "{}", self.value)
     }
 }
+
+#[cfg(test)]
+impl<T: Parse> Node<T> {
+    pub fn dummy(node: T) -> Self {
+        Self { id: NodeId(0), span: Span::default(), value: node }
+    }
+
+
+    pub fn dummy_with_id(node: T, id: NodeId) -> Self {
+        Self { id, span: Span::default(), value: node }
+    }
+}

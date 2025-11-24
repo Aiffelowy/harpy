@@ -140,3 +140,46 @@ impl RuntimeTypeTable {
         self.pool.iter()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::types::Type;
+
+    #[test]
+    fn test_type_table_creation() {
+        let table = TypeTable::new();
+        assert_eq!(table.pool.len(), 1);
+        assert!(table.map.contains_key(&Type::void()));
+    }
+
+    #[test]
+    fn test_type_table_register_void() {
+        let mut table = TypeTable::new();
+        let void_type = Type::void();
+        let type_info = table.register(&void_type);
+        assert_eq!(type_info.ttype, void_type);
+        assert_eq!(type_info.idx, TypeIndex(0));
+        assert_eq!(table.pool.len(), 1);
+    }
+
+    #[test]
+    fn test_type_table_register_new_type() {
+        let mut table = TypeTable::new();
+        let int_type = Type::int();
+        let type_info = table.register(&int_type);
+        assert_eq!(type_info.ttype, int_type);
+        assert_eq!(type_info.idx, TypeIndex(1));
+        assert_eq!(table.pool.len(), 2);
+    }
+
+    #[test]
+    fn test_type_table_register_duplicate() {
+        let mut table = TypeTable::new();
+        let int_type = Type::int();
+        let first = table.register(&int_type);
+        let second = table.register(&int_type);
+        assert_eq!(first.idx, second.idx);
+        assert_eq!(table.pool.len(), 2);
+    }
+}

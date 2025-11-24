@@ -44,16 +44,20 @@ impl InfixResolver {
                     )
                 }
 
-                InfixOpKind::Eq
-                | InfixOpKind::Lt
-                | InfixOpKind::Gt
-                | InfixOpKind::GtEq
-                | InfixOpKind::Neq
-                | InfixOpKind::LtEq => {
+                InfixOpKind::Lt | InfixOpKind::Gt | InfixOpKind::GtEq | InfixOpKind::LtEq => {
                     matches!(
                         (lhs_p, rhs_p),
                         (PrimitiveType::Int, PrimitiveType::Int)
                             | (PrimitiveType::Float, PrimitiveType::Float)
+                    )
+                }
+
+                InfixOpKind::Neq | InfixOpKind::Eq => {
+                    matches!(
+                        (lhs_p, rhs_p),
+                        (PrimitiveType::Int, PrimitiveType::Int)
+                            | (PrimitiveType::Float, PrimitiveType::Float)
+                            | (PrimitiveType::Bool, PrimitiveType::Bool)
                     )
                 }
 

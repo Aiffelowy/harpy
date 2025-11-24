@@ -59,8 +59,7 @@ mod primitive {
         match op.op {
             PrefixOpKind::Star => false,
             PrefixOpKind::Neg => match ttype {
-                PrimitiveType::Int => true,
-                PrimitiveType::Float => true,
+                PrimitiveType::Bool => true,
                 _ => false,
             },
             PrefixOpKind::Plus => match ttype {

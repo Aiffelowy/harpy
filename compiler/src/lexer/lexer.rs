@@ -43,7 +43,7 @@ impl<'lexer> Lexer<'lexer> {
             return Some(c);
         }
 
-        return None;
+        None
     }
 
     pub(in crate::lexer) fn peek_char(&mut self) -> Option<char> {
@@ -121,16 +121,21 @@ impl<'lexer> Lexer<'lexer> {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::lexer::tokens::{Key, Lit, Sym, TokenType};
 
-    fn make_lexer(input: &str) -> Lexer {
-        Lexer::new(input).unwrap()
+    macro_rules! make_lexer {
+        ($name:ident, $input:literal) => {
+            let source = SourceFile::new(Cursor::new($input)).unwrap();
+            let mut $name = Lexer::new(&source).unwrap();
+        };
     }
 
     #[test]
     fn test_token_peek_and_next() {
-        let mut lexer = make_lexer("let x = 42;");
+        make_lexer!(lexer, "let x = 42;");
         let peeked = lexer.peek().unwrap().clone();
         let token = lexer.next_token().unwrap();
         assert_eq!(token.t, peeked);
@@ -144,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_multiple_tokens() {
-        let mut lexer = make_lexer("let x = 5;\nlet y = 10;");
+        make_lexer!(lexer, "let x = 5;\nlet y = 10;");
         let t1 = lexer.next_token().unwrap();
         let t2 = lexer.next_token().unwrap();
         let t3 = lexer.next_token().unwrap();
@@ -155,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_next_token_initial() {
-        let mut lexer = make_lexer("let x = 5;");
+        make_lexer!(lexer, "let x = 5;");
 
         let first = lexer.next_token().unwrap();
         assert_eq!(first.t, TokenType::Keyword(Key::Let));
@@ -169,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_basic_tokens() {
-        let mut lexer = make_lexer("let x = 42;");
+        make_lexer!(lexer, "let x = 42;");
 
         let t1 = lexer.next_token().unwrap();
         assert_eq!(t1.t, TokenType::Keyword(Key::Let));
@@ -192,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_multiline() {
-        let mut lexer = make_lexer("\nlet\n\n\nx\n=\n\n42\n\n\n;");
+        make_lexer!(lexer, "\nlet\n\n\nx\n=\n\n42\n\n\n;");
 
         let t1 = lexer.next_token().unwrap();
         assert_eq!(t1.t, TokenType::Keyword(Key::Let));
@@ -215,8 +220,7 @@ mod tests {
 
     #[test]
     fn test_token_spans() {
-        let input = "let x = 42;\nfoo";
-        let mut lexer = make_lexer(input);
+        make_lexer!(lexer, "let x = 42;\nfoo");
 
         let t1 = lexer.next_token().unwrap();
         assert_eq!(t1.t, TokenType::Keyword(Key::Let));
@@ -270,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_unicode_identifier() {
-        let mut lexer = make_lexer("变量 = 42");
+        make_lexer!(lexer, "变量 = 42");
 
         let t1 = lexer.next_token().unwrap();
         assert_eq!(t1.t, TokenType::Ident("变量".to_string()));
@@ -287,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_unicode_column_tracking() {
-        let mut lexer = make_lexer("\"foo😀\"");
+        make_lexer!(lexer, "\"foo😀\"");
 
         let t1 = lexer.next_token().unwrap();
         assert_eq!(t1.t, TokenType::Literal(Lit::LitStr("foo😀".to_string())));
@@ -299,7 +303,10 @@ mod tests {
 
     #[test]
     fn test_literals() {
-        let mut lexer = make_lexer("5 21352135 5.0 0.2 235f 214F 0.4F \"string\" true false");
+        make_lexer!(
+            lexer,
+            "5 21352135 5.0 0.2 235f 214F 0.4F \"string\" true false"
+        );
         assert_eq!(
             lexer.next_token().unwrap().t,
             TokenType::Literal(Lit::LitInt(5))
@@ -310,23 +317,23 @@ mod tests {
         );
         assert_eq!(
             lexer.next_token().unwrap().t,
-            TokenType::Literal(Lit::LitFloat(5.0))
+            TokenType::Literal(Lit::LitFloat(5.0f64.to_bits()))
         );
         assert_eq!(
             lexer.next_token().unwrap().t,
-            TokenType::Literal(Lit::LitFloat(0.2))
+            TokenType::Literal(Lit::LitFloat(0.2f64.to_bits()))
         );
         assert_eq!(
             lexer.next_token().unwrap().t,
-            TokenType::Literal(Lit::LitFloat(235.0))
+            TokenType::Literal(Lit::LitFloat(235.0f64.to_bits()))
         );
         assert_eq!(
             lexer.next_token().unwrap().t,
-            TokenType::Literal(Lit::LitFloat(214.0))
+            TokenType::Literal(Lit::LitFloat(214.0f64.to_bits()))
         );
         assert_eq!(
             lexer.next_token().unwrap().t,
-            TokenType::Literal(Lit::LitFloat(0.4))
+            TokenType::Literal(Lit::LitFloat(0.4f64.to_bits()))
         );
         assert_eq!(
             lexer.next_token().unwrap().t,

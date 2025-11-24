@@ -48,3 +48,26 @@ impl Generate for LoopStmt {
         generator.push_instruction(Instruction::JMP(loop_start));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::LoopStmt;
+    use crate::{lexer::Lexer, parser::{parser::Parser, Parse}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_loop(input: &str) -> LoopStmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        LoopStmt::parse(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn test_loop_stmt_empty() {
+        parse_loop("loop { }");
+    }
+
+    #[test]
+    fn test_loop_stmt_with_body() {
+        parse_loop("loop { if x > 10 { return; } x += 1; }");
+    }
+}

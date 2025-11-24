@@ -13,7 +13,7 @@ use crate::{
 use super::{
     compile_trait::Generate,
     expr_generators::expr_gen::ExprGenerator,
-    instruction::{Instruction, Label, LocalAddress, GlobalAddress},
+    instruction::{GlobalAddress, Instruction, Label, LocalAddress},
 };
 
 static PREALLOC_CODE_BUFFER: usize = 4096;
@@ -56,7 +56,6 @@ impl Generator {
         self.next_label += 1;
         label
     }
-
 
     pub fn register_function(&mut self, function: FuncIndex, label: Label) {
         self.function_entry_points.insert(function, label);
@@ -102,7 +101,10 @@ impl Generator {
         self.analysis_result.expr_map[&id]
     }
 
-    pub fn get_type_info(&self, type_idx: RuntimeTypeIndex) -> &crate::semantic_analyzer::symbol_info::RuntimeTypeInfo {
+    pub fn get_type_info(
+        &self,
+        type_idx: RuntimeTypeIndex,
+    ) -> &crate::semantic_analyzer::symbol_info::RuntimeTypeInfo {
         self.analysis_result.type_table.get(type_idx)
     }
 
@@ -230,8 +232,7 @@ impl Generator {
                     | Instruction::STORE_LOCAL(addr) => {
                         data.extend(addr.0.to_be_bytes());
                     }
-                    Instruction::LOAD_GLOBAL(addr)
-                    | Instruction::STORE_GLOBAL(addr) => {
+                    Instruction::LOAD_GLOBAL(addr) | Instruction::STORE_GLOBAL(addr) => {
                         data.extend(addr.0.to_be_bytes());
                     }
                     Instruction::BOX_ALLOC(rti) => {
@@ -314,5 +315,228 @@ impl Generator {
         let mut s = Self::new(analysis);
         ast.generate(&mut s);
         s.finalize()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        lexer::Lexer, parser::parser::Parser, semantic_analyzer::analyzer::Analyzer,
+        source::SourceFile,
+    };
+    use std::io::Cursor;
+
+    fn create_generator_with_ast(
+        source_code: &str,
+    ) -> Result<Generator, Vec<crate::err::HarpyError>> {
+        let reader = Cursor::new(source_code);
+        let source = SourceFile::new(reader).map_err(|e| vec![e])?;
+
+        let lexer = Lexer::new(&source).map_err(|e| vec![e])?;
+        let parser = Parser::new(lexer);
+
+        let ast = parser.build_ast()?;
+        let analysis_result = Analyzer::analyze(&ast)?.into_runtime()?;
+
+        let mut generator = Generator::new(analysis_result);
+        ast.generate(&mut generator);
+        Ok(generator)
+    }
+
+    #[test]
+    fn test_generate_empty_main() {
+        let source = "fn main() {}";
+        let generator = create_generator_with_ast(source).unwrap();
+
+        assert!(!generator.code.is_empty());
+        assert!(generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::RET))));
+    }
+
+    #[test]
+    fn test_generate_simple_return() {
+        let source = "fn main() -> int { return 42; }";
+        let generator = create_generator_with_ast(source).unwrap();
+
+        let has_load_const = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::LOAD_CONST(_))));
+        let has_ret = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::RET)));
+
+        assert!(
+            has_load_const,
+            "Should have LOAD_CONST instruction for literal 42"
+        );
+        assert!(has_ret, "Should have RET instruction");
+    }
+
+    #[test]
+    fn test_generate_function_with_params() {
+        let source = "fn add(a: int, b: int) -> int { return a + b; } fn main() {}";
+        let generator = create_generator_with_ast(source).unwrap();
+
+        let has_add = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::ADD)));
+        let has_ret = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::RET)));
+
+        assert!(has_add, "Should have ADD instruction for a + b");
+        assert!(has_ret, "Should have RET instruction");
+    }
+
+    #[test]
+    fn test_generate_labels() {
+        let source = "fn main() {} fn helper() {}";
+        let generator = create_generator_with_ast(source).unwrap();
+
+        let label_count = generator
+            .code
+            .iter()
+            .filter(|node| matches!(node, BytecodeNode::Label(_)))
+            .count();
+
+        assert!(
+            label_count >= 2,
+            "Should have at least 2 labels for 2 functions"
+        );
+    }
+
+    #[test]
+    fn test_generate_global_access() {
+        let source = "global x: int = 42; fn main() -> int { return x; }";
+        let generator = create_generator_with_ast(source).unwrap();
+
+        let has_load_global = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::LOAD_GLOBAL(_))));
+
+        assert!(
+            has_load_global,
+            "Should have LOAD_GLOBAL instruction for accessing global x"
+        );
+    }
+
+    #[test]
+    fn test_generate_switch_statement() {
+        let source = r#"
+            fn main(x: int) -> int {
+                switch x {
+                    1 -> return 10;
+                    2 -> return 20;
+                }
+                return 0;
+            }
+        "#;
+        let generator = create_generator_with_ast(source).unwrap();
+
+        let has_dup = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::DUP)));
+        let has_eq = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::EQ)));
+        let has_jmp_if_true = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::JMP_IF_TRUE(_))));
+        let has_pop = generator
+            .code
+            .iter()
+            .any(|node| matches!(node, BytecodeNode::Instruction(Instruction::POP)));
+
+        assert!(
+            has_dup,
+            "Switch should use DUP instruction to cache switch value"
+        );
+        assert!(
+            has_eq,
+            "Switch should use EQ instruction for case comparison"
+        );
+        assert!(
+            has_jmp_if_true,
+            "Switch should use JMP_IF_TRUE for case branches"
+        );
+        assert!(has_pop, "Switch should use POP to clean up stack");
+    }
+
+    #[test]
+    fn test_bytecode_compilation_full() {
+        let generator = create_generator_with_ast("fn main() {}").unwrap();
+        let bytecode = generator.finalize();
+
+        assert!(!bytecode.is_empty());
+        assert!(bytecode.starts_with(&crate::aliases::MAGIC_NUMBER));
+
+        let version_bytes = &bytecode[5..7];
+        let version = u16::from_be_bytes([version_bytes[0], version_bytes[1]]);
+        assert_eq!(version, crate::aliases::VERSION);
+    }
+
+    #[test]
+    fn test_bytecode_size() {
+        let generator = create_generator_with_ast("fn main() {}").unwrap();
+        let bytecode = generator.finalize();
+        let bytecode_offset_pos = 5 + 2 + 2 + 4 + 4 + 4 + 4 + 4;
+        let bytecode_offset = u32::from_be_bytes([
+            bytecode[bytecode_offset_pos],
+            bytecode[bytecode_offset_pos + 1],
+            bytecode[bytecode_offset_pos + 2],
+            bytecode[bytecode_offset_pos + 3],
+        ]) as usize;
+        let bytecode_size_pos = bytecode_offset_pos + 4;
+        let bytecode_size = u32::from_be_bytes([
+            bytecode[bytecode_size_pos],
+            bytecode[bytecode_size_pos + 1],
+            bytecode[bytecode_size_pos + 2],
+            bytecode[bytecode_size_pos + 3],
+        ]) as usize;
+        let bytecode_chunk = &bytecode[bytecode_offset..];
+        assert_eq!(bytecode_chunk.len(), bytecode_size)
+    }
+
+    #[test]
+    fn test_exact_instruction_sequence() {
+        let generator = create_generator_with_ast(
+            "global x:int = 1; fn add(a:int, b:int) -> int { return a+b; }  fn main() -> int { return add(x,4); }",
+        )
+        .unwrap();
+        let instructions: Vec<_> = generator
+            .code
+            .into_iter()
+            .filter_map(|node| match node {
+                BytecodeNode::Instruction(i) => Some(i),
+                BytecodeNode::Label(_) => None,
+            })
+            .collect();
+        let expected = vec![
+            Instruction::LOAD_CONST(ConstIndex(1)),
+            Instruction::STORE_GLOBAL(GlobalAddress(0)),
+            Instruction::CALL(FuncIndex(1)),
+            Instruction::HALT,
+            Instruction::LOAD_LOCAL(LocalAddress(0)),
+            Instruction::LOAD_LOCAL(LocalAddress(1)),
+            Instruction::ADD,
+            Instruction::RET,
+            Instruction::LOAD_GLOBAL(GlobalAddress(0)),
+            Instruction::LOAD_CONST(ConstIndex(2)),
+            Instruction::CALL(FuncIndex(0)),
+            Instruction::RET,
+        ];
+
+        assert_eq!(instructions, expected)
     }
 }

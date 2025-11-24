@@ -128,3 +128,32 @@ impl Generate for SwitchStmt {
         generator.place_label(end_label);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SwitchStmt;
+    use crate::{lexer::Lexer, parser::parser::Parser, source::SourceFile};
+    use std::io::Cursor;
+
+    #[test]
+    fn test_switch_stmt() {
+        let source =
+            SourceFile::new(Cursor::new("switch x { 1 -> return 1; 2 -> return 2; }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        parser.parse::<SwitchStmt>().unwrap();
+    }
+
+    #[test]
+    fn test_switch_stmt_empty() {
+        let source = SourceFile::new(Cursor::new("switch x {}")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        parser.parse::<SwitchStmt>().unwrap();
+    }
+
+    #[test]
+    fn test_switch_stmt_single_case() {
+        let source = SourceFile::new(Cursor::new("switch x { 42 -> { let y = x; } }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        parser.parse::<SwitchStmt>().unwrap();
+    }
+}

@@ -220,3 +220,58 @@ impl Display for Expr {
         write!(f, "{s}")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+    use crate::{lexer::Lexer, parser::parser::Parser, source::SourceFile};
+    use super::Expr;
+
+    #[test]
+    fn test_literal_expr() {
+        let source = SourceFile::new(Cursor::new("42")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Literal(_)));
+    }
+
+    #[test]
+    fn test_ident_expr() {
+        let source = SourceFile::new(Cursor::new("variable")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Ident(_)));
+    }
+
+    #[test]
+    fn test_infix_expr() {
+        let source = SourceFile::new(Cursor::new("a + b")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Infix(_, _, _)));
+    }
+
+    #[test]
+    fn test_call_expr() {
+        let source = SourceFile::new(Cursor::new("func(a, b)")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Call(_)));
+    }
+
+    #[test]
+    fn test_borrow_expr() {
+        let source = SourceFile::new(Cursor::new("&mut x")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Borrow(_, true)));
+    }
+
+    #[test]
+    fn test_box_expr() {
+        let source = SourceFile::new(Cursor::new("box value")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = parser.parse::<Expr>().unwrap();
+        assert!(matches!(expr, Expr::Box(_)));
+    }
+}

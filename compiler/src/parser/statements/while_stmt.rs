@@ -83,3 +83,31 @@ impl Generate for WhileStmt {
         generator.place_label(loop_end);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::WhileStmt;
+    use crate::{lexer::Lexer, parser::{parser::Parser, Parse}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_while(input: &str) -> WhileStmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        WhileStmt::parse(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn test_while_stmt_simple() {
+        parse_while("while true { }");
+    }
+
+    #[test]
+    fn test_while_stmt_with_body() {
+        parse_while("while x < 10 { x += 1; }");
+    }
+
+    #[test]
+    fn test_while_stmt_complex_condition() {
+        parse_while("while x > 0 && y != 5 { let z = x * y; x -= 1; }");
+    }
+}

@@ -62,3 +62,40 @@ impl Generate for BlockStmt {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::BlockStmt;
+    use crate::{lexer::Lexer, parser::{parser::Parser, Parse}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_block(input: &str) -> BlockStmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        BlockStmt::parse(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn test_block_stmt_empty() {
+        let block = parse_block("{}");
+        assert_eq!(block.stmts.len(), 0);
+    }
+
+    #[test]
+    fn test_block_stmt_single_statement() {
+        let block = parse_block("{ let x = 5; }");
+        assert_eq!(block.stmts.len(), 1);
+    }
+
+    #[test]
+    fn test_block_stmt_multiple_statements() {
+        let block = parse_block("{ let x = 5; let y = 10; return x + y; }");
+        assert_eq!(block.stmts.len(), 3);
+    }
+
+    #[test]
+    fn test_block_stmt_nested() {
+        let block = parse_block("{ { let x = 1; let y = 2; } }");
+        assert_eq!(block.stmts.len(), 1);
+    }
+}

@@ -125,3 +125,40 @@ impl Generate for ForStmt {
         generator.place_label(loop_end);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ForStmt;
+    use crate::{lexer::Lexer, parser::{parser::Parser, Parse}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_for(input: &str) -> ForStmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        ForStmt::parse(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn test_for_stmt_basic() {
+        let for_stmt = parse_for("for i in 0 => 10 { }");
+        assert_eq!(for_stmt.var.value(), "i");
+    }
+
+    #[test]
+    fn test_for_stmt_arithmetic() {
+        let for_stmt = parse_for("for i in 5+2 => 50%4 { }");
+        assert_eq!(for_stmt.var.value(), "i");
+    }
+
+    #[test]
+    fn test_for_stmt_with_body() {
+        let for_stmt = parse_for("for i in 1 => 5 { let x = i; }");
+        assert_eq!(for_stmt.var.value(), "i");
+    }
+
+    #[test]
+    fn test_for_stmt_complex_range() {
+        let for_stmt = parse_for("for j in start => end { return j; }");
+        assert_eq!(for_stmt.var.value(), "j");
+    }
+}

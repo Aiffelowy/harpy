@@ -95,7 +95,7 @@ impl<'parser> Parser<'parser> {
         }
 
         self.lexer = old;
-        return None;
+        None
     }
 
     pub(in crate::parser) fn fork(&self) -> Self {
@@ -109,10 +109,10 @@ impl<'parser> Parser<'parser> {
     pub(in crate::parser) fn unexpected<P: Parse>(&mut self, expected: &'static str) -> Result<P> {
         let t = self.lexer.next_token()?;
         let span = t.span();
-        return HarpyError::lexer(
+        HarpyError::lexer(
             crate::lexer::err::LexerError::UnexpectedToken(expected, t),
             span,
-        );
+        )
     }
 
     pub(in crate::parser) fn report_error(
@@ -125,7 +125,7 @@ impl<'parser> Parser<'parser> {
         loop {
             let t = self.lexer.peek()?;
 
-            if recovery_points.contains(&t) {
+            if recovery_points.contains(t) {
                 break;
             }
 
@@ -145,12 +145,12 @@ impl<'parser> Parser<'parser> {
                     return Ok(p);
                 }
 
-                return Err(self.errors);
+                Err(self.errors)
             }
 
             Err(e) => {
                 self.errors.push(e);
-                return Err(self.errors);
+                Err(self.errors)
             }
         }
     }

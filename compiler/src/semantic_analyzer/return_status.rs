@@ -13,7 +13,7 @@ impl ReturnStatus {
             _ => ReturnStatus::Sometimes,
         }
     }
-    
+
     pub fn then(self, other: Self) -> Self {
         match self {
             ReturnStatus::Always => ReturnStatus::Always,

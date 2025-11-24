@@ -41,7 +41,10 @@ impl Parse for ReturnStmt {
 
 impl Analyze for ReturnStmt {
     fn build(&self, _builder: &mut crate::semantic_analyzer::scope_builder::ScopeBuilder) {}
-    fn analyze_semantics(&self, analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer) -> ReturnStatus {
+    fn analyze_semantics(
+        &self,
+        analyzer: &mut crate::semantic_analyzer::analyzer::Analyzer,
+    ) -> ReturnStatus {
         let Some(rt) = analyzer.get_func_info() else {
             analyzer.report_semantic_error(SemanticError::ReturnNotInFunc, self.span);
             return ReturnStatus::Always;
@@ -100,13 +103,16 @@ impl Generate for ReturnStmt {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use crate::{lexer::Lexer, parser::parser::Parser};
 
     use super::ReturnStmt;
 
     #[test]
     fn test_return_stmt() {
-        let mut parser = Parser::new(Lexer::new("return a == b").unwrap());
+        let source = crate::source::SourceFile::new(Cursor::new("return a == b;")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
         parser.parse::<ReturnStmt>().unwrap();
     }
 }

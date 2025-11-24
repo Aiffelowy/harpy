@@ -37,17 +37,21 @@ impl HarpyError {
     }
 
     pub fn lexer<S>(err: LexerError, span: Span) -> Result<S> {
-        return Err(Self {
+        Err(Self {
             kind: HarpyErrorKind::LexerError(err),
             span,
-        });
+        })
     }
 
     pub fn semantic<S>(err: SemanticError, span: Span) -> Result<S> {
-        return Err(Self {
+        Err(Self {
             kind: HarpyErrorKind::SemanticError(err),
             span,
-        });
+        })
+    }
+
+    pub fn kind(&self) -> &HarpyErrorKind {
+        &self.kind
     }
 
     fn highlight_err(line: &str, span: Span) -> String {

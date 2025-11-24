@@ -144,7 +144,7 @@ impl ExprResolver {
         let Expr::Ident(ref i) = **expr else {
             return HarpyError::semantic(SemanticError::InvalidBorrow, expr.span());
         };
-        
+
         let symbol = analyzer.get_symbol(i)?;
         let ttype = symbol.get().ty.clone();
 
@@ -202,10 +202,7 @@ impl ExprResolver {
 
     fn resolve_box(expr: &Node<Expr>, analyzer: &mut Analyzer) -> Result<Type> {
         if let Some(ty) = analyzer.resolve_expr(expr) {
-            Ok(Type {
-                mutable: false,
-                inner: TypeInner::Boxed(Box::new(ty.ttype.clone())),
-            })
+            Ok(Type::boxed(ty.ttype.clone()))
         } else {
             HarpyError::semantic(SemanticError::UnresolvedType, expr.span())
         }
@@ -233,5 +230,113 @@ impl ExprResolver {
             Expr::Borrow(expr, mutable) => Self::resolve_borrow(expr, *mutable, analyzer),
             Expr::Box(expr) => Self::resolve_box(expr, analyzer),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use crate::{
+        lexer::Lexer,
+        parser::{expr::Expr, parser::Parser, types::Type, Parse},
+        semantic_analyzer::{analyzer::Analyzer, err::SemanticError, result::AnalysisResult},
+        source::SourceFile,
+    };
+
+    use super::ExprResolver;
+
+    fn create_analyzer(input: &str) -> (crate::semantic_analyzer::analyzer::Analyzer, Expr) {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let expr = Expr::parse(&mut parser).unwrap();
+        let analyzer = Analyzer::new(AnalysisResult::new(), vec![]);
+        (analyzer, expr)
+    }
+
+    #[test]
+    fn test_resolve_int() {
+        let (mut analyzer, expr) = create_analyzer("3+4");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::int())
+    }
+
+    #[test]
+    fn test_resolve_float() {
+        let (mut analyzer, expr) = create_analyzer("3f+4f");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::float())
+    }
+
+    #[test]
+    fn test_resolve_bool() {
+        let (mut analyzer, expr) = create_analyzer("false==true");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::bool())
+    }
+
+    #[test]
+    fn test_resolve_comparison() {
+        let (mut analyzer, expr) = create_analyzer("5 >= 2");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::bool())
+    }
+
+    #[test]
+    fn test_type_mismatch() {
+        let (mut analyzer, expr) = create_analyzer("5 + 2f");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap_err();
+        let assert = matches!(
+            ty.kind(),
+            crate::err::HarpyErrorKind::SemanticError(SemanticError::InfixTypeMismatch(..),),
+        );
+
+        assert!(assert)
+    }
+
+    #[test]
+    fn test_prefix_not() {
+        let (mut analyzer, expr) = create_analyzer("!false");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::bool())
+    }
+
+    #[test]
+    fn test_box() {
+        let (mut analyzer, expr) = create_analyzer("box 5");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::boxed(Type::int()))
+    }
+
+    #[test]
+    fn test_box_deref() {
+        let (mut analyzer, expr) = create_analyzer("*box 5");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::int())
+    }
+
+    #[test]
+    fn test_nested_arithmetic() {
+        let (mut analyzer, expr) = create_analyzer("(1+3)*4 <= 7/(5 % 2)");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::bool())
+    }
+
+
+    #[test]
+    fn test_nested_box() {
+        let (mut analyzer, expr) = create_analyzer("box box box 3.14");
+        let ty =
+            ExprResolver::resolve_expr(&expr, &mut analyzer, super::ResolveMode::Read).unwrap();
+        assert_eq!(ty, Type::boxed(Type::boxed(Type::boxed(Type::float())))  )
     }
 }

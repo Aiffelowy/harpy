@@ -158,4 +158,8 @@ impl ScopeBuilder {
 
         Ok(Analyzer::new(s.result, s.errors))
     }
+
+    pub fn into_analyzer(self) -> Analyzer {
+        Analyzer::new(self.result, self.errors)
+    }
 }

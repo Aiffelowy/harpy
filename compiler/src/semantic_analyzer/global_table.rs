@@ -124,3 +124,188 @@ impl RuntimeGlobalTable {
         self.pool.iter()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        aliases::{SymbolInfoRef, TypeInfoRc},
+        extensions::SymbolInfoRefExt,
+        lexer::{span::Span, tokens::Ident},
+        parser::{node::Node, types::{Type}},
+        semantic_analyzer::{
+            symbol_info::{GlobalInfo, SymbolInfo, SymbolInfoKind},
+            type_table::{TypeTable},
+        },
+    };
+    use std::{cell::RefCell, rc::Rc};
+
+    fn create_global_symbol(node_id: NodeId, type_info: TypeInfoRc) -> SymbolInfoRef {
+        let symbol_info = SymbolInfo {
+            kind: SymbolInfoKind::Global(GlobalInfo {}),
+            span: Span::default(),
+            ty: type_info,
+            node_id,
+            ref_count: 0,
+            scope_depth: crate::semantic_analyzer::scope::Depth(0)
+        };
+        Rc::new(RefCell::new(symbol_info))
+    }
+
+
+    #[test]
+    fn test_global_table_initialization() {
+        let table = GlobalTable::new();
+        assert_eq!(table.pool.len(), 0);
+        assert!(table.node_map.is_empty());
+    }
+
+    #[test]
+    fn test_global_table_register() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let ident = Node::dummy(Ident { span: Span::default(), value: "global_var".to_owned() });
+        let int_info = type_table.register(&Type::int());
+        
+        let symbol = create_global_symbol( NodeId(0), int_info );
+        let addr = table.register(&ident, symbol.clone());
+        
+        assert_eq!(addr, GlobalAddress(0));
+        assert_eq!(table.pool.len(), 1);
+        assert!(table.contains_node(ident.id()));
+        
+        let retrieved = table.get(addr);
+        let ty = (*retrieved.get().ty).ttype.clone();
+        assert_eq!(ty, Type::int());
+    }
+
+    #[test]
+    fn test_global_table_multiple_globals() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let globals = vec![
+            ("x", Type::int()),
+            ("y", Type::float()),
+            ("flag", Type::bool()),
+            ("message", Type::str()),
+        ];
+        
+        let mut addresses = Vec::new();
+        for (i, (name, ty)) in globals.iter().enumerate() {
+            let ident = Node::dummy_with_id(Ident { span: Span::default(), value: name.to_string() }, NodeId(i));
+            let type_info = type_table.register(ty);
+            let symbol = create_global_symbol(ident.id(), type_info);
+            
+            let addr = table.register(&ident, symbol);
+            addresses.push((addr, ident.id()));
+        }
+        
+        assert_eq!(table.pool.len(), 4);
+        
+        for (i, (addr, node_id)) in addresses.iter().enumerate() {
+            assert_eq!(*addr, GlobalAddress(i as u16));
+            assert_eq!(table.get_mapping(*node_id), *addr);
+            assert!(table.contains_node(*node_id));
+            
+            let symbol = table.get(*addr);
+            let ty = (*symbol.get().ty).ttype.clone();
+            assert_eq!(ty, globals[i].1);
+        }
+    }
+
+    #[test]
+    fn test_global_table_node_mapping() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let ident = Node::dummy(Ident { span: Span::default(), value: "test_var".to_owned() });
+        let int_info = type_table.register(&Type::int());
+        let symbol = create_global_symbol(ident.id(), int_info);
+        
+        let addr = table.register(&ident, symbol);
+        
+        assert_eq!(table.get_mapping(ident.id()), addr);
+        assert_eq!(table.get_mapping_opt(ident.id()), Some(addr));
+        
+        let non_existent_id = NodeId(12341);
+        assert_eq!(table.get_mapping_opt(non_existent_id), None);
+        assert!(!table.contains_node(non_existent_id));
+    }
+
+    #[test]
+    fn test_global_table_to_runtime_conversion() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let ident = Node::dummy(Ident { span: Span::default(), value: "global_int".to_owned() });
+        let int_info = type_table.register(&Type::int());
+        let symbol = create_global_symbol(ident.id(), int_info);
+        
+        let addr = table.register(&ident, symbol);
+        
+        let runtime_type_table = type_table.into_conversion().unwrap();
+        let runtime_table = table.into_runtime(&runtime_type_table).unwrap();
+        
+        assert_eq!(runtime_table.pool.len(), 1);
+        assert!(runtime_table.contains_node(ident.id()));
+        assert_eq!(runtime_table.get_mapping(ident.id()), addr);
+        
+        let runtime_global = runtime_table.get(addr);
+        assert_eq!(runtime_global.type_index.0, 1);
+    }
+
+    #[test]
+    fn test_global_table_runtime_conversion_with_unknown_type() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let ident = Node::dummy(Ident { span: Span::default(), value: "unknown_global".to_owned() });
+        let unknown_info = type_table.register(&Type::unknown());
+        let symbol = create_global_symbol(ident.id(), unknown_info);
+        
+        table.register(&ident, symbol);
+        
+        let runtime_type_table = type_table.into_conversion().unwrap();
+        let result = table.into_runtime(&runtime_type_table);
+        
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn test_global_table_integration_with_mixed_types() {
+        let mut table = GlobalTable::new();
+        let mut type_table = TypeTable::new();
+        
+        let valid_globals = vec![
+            ("counter", Type::int()),
+            ("pi", Type::float()),
+            ("enabled", Type::bool()),
+        ];
+        
+        let mut node_ids = Vec::new();
+        for (name, ty) in &valid_globals {
+            let ident = Node::dummy(Ident { span: Span::default(), value: name.to_string() });
+            let type_info = type_table.register(ty);
+            let symbol = create_global_symbol(ident.id(), type_info);
+            
+            table.register(&ident, symbol);
+            node_ids.push(ident.id());
+        }
+        
+        let unknown_ident = Node::dummy(Ident { span: Span::default(), value: "unknown".to_owned() });
+        let unknown_info = type_table.register(&Type::unknown());
+        let unknown_symbol = create_global_symbol(unknown_ident.id(), unknown_info);
+        table.register(&unknown_ident, unknown_symbol);
+        
+        let runtime_type_table = type_table.into_conversion().unwrap();
+        let result = table.into_runtime(&runtime_type_table);
+        
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert_eq!(errors.len(), 1);
+    }
+}

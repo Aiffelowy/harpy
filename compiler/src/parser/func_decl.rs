@@ -128,3 +128,48 @@ impl Generate for FuncDelc {
         generator.place_ret()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+    use crate::{lexer::Lexer, parser::parser::Parser, source::SourceFile};
+    use super::FuncDelc;
+
+    #[test]
+    fn test_simple_function() {
+        let source = SourceFile::new(Cursor::new("fn test() -> int { return 42; }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let func = parser.parse::<FuncDelc>().unwrap();
+        assert_eq!(func.name.value().as_str(), "test");
+        assert!(func.params.is_empty());
+    }
+
+    #[test]
+    fn test_function_with_params() {
+        let source = SourceFile::new(Cursor::new("fn add(a: int, b: int) -> int { return a + b; }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let func = parser.parse::<FuncDelc>().unwrap();
+        assert_eq!(func.name.value().as_str(), "add");
+        assert_eq!(func.params.len(), 2);
+        assert_eq!(func.params[0].name.value().as_str(), "a");
+        assert_eq!(func.params[1].name.value().as_str(), "b");
+    }
+
+    #[test]
+    fn test_void_function() {
+        let source = SourceFile::new(Cursor::new("fn print_hello() { }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let func = parser.parse::<FuncDelc>().unwrap();
+        assert_eq!(func.name.value().as_str(), "print_hello");
+        assert!(func.params.is_empty());
+    }
+
+    #[test]
+    fn test_function_no_params() {
+        let source = SourceFile::new(Cursor::new("fn get_answer() -> int { return 42; }")).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        let func = parser.parse::<FuncDelc>().unwrap();
+        assert_eq!(func.name.value().as_str(), "get_answer");
+        assert!(func.params.is_empty());
+    }
+}

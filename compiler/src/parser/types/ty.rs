@@ -74,6 +74,13 @@ impl Type {
         }
     }
 
+    pub fn float() -> Self {
+        Self {
+            mutable: false,
+            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Float)),
+        }
+    }
+
     pub fn bool() -> Self {
         Self {
             mutable: false,
@@ -81,10 +88,32 @@ impl Type {
         }
     }
 
+
+    pub fn str() -> Self {
+        Self {
+            mutable: false,
+            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Str)),
+        }
+    }
+
     pub fn void() -> Self {
         Self {
             mutable: false,
             inner: TypeInner::Void,
+        }
+    }
+
+    pub fn boxed(ty: Type) -> Self {
+        Self {
+            mutable: false,
+            inner: TypeInner::Boxed(Box::new(ty)),
+        }
+    }
+
+    pub fn refed(ty: Type) -> Self {
+        Self {
+            mutable: false,
+            inner: TypeInner::Ref(Box::new(ty)),
         }
     }
 
@@ -231,5 +260,131 @@ impl Display for Type {
         );
 
         write!(f, "{s}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_type_compatibility_edge_cases() {
+        let mut_int = Type { 
+            mutable: true, 
+            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Int)) 
+        };
+        let immut_int = Type::int();
+        
+        assert!(mut_int.compatible(&immut_int), "mutable should be compatible with immutable");
+        assert!(!immut_int.compatible(&mut_int), "immutable should not be compatible with mutable");
+    }
+
+    #[test]
+    fn test_strict_compatibility() {
+        let mut_int = Type { 
+            mutable: true, 
+            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Int)) 
+        };
+        let immut_int = Type::int();
+        
+        assert!(!mut_int.strict_compatible(&immut_int), "strict compatibility requires exact mutability match");
+        assert!(!immut_int.strict_compatible(&mut_int), "strict compatibility is symmetric");
+        assert!(mut_int.strict_compatible(&mut_int), "same types should be strictly compatible");
+        assert!(immut_int.strict_compatible(&immut_int), "same types should be strictly compatible");
+    }
+
+    #[test]
+    fn test_param_compatibility() {
+        let mut_ref_int = Type { 
+            mutable: true, 
+            inner: TypeInner::Ref(Box::new(
+                    Type {
+                        mutable: true,
+                        inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Int))
+                    }
+            ))
+        };
+        let immut_ref_int = Type::refed(Type::int());
+        
+        assert!(!mut_ref_int.param_compatible(&immut_ref_int), "mutable ref param cannot accept immutable ref arg");
+        assert!(immut_ref_int.param_compatible(&mut_ref_int), "immutable ref param can accept mutable ref arg");
+    }
+
+    #[test]
+    fn test_return_compatibility() {
+        let int_type = Type::int();
+        let bool_type = Type::bool();
+        
+        assert!(int_type.return_compatible(&int_type), "same types should be return compatible");
+        assert!(!int_type.return_compatible(&bool_type), "different types should not be return compatible");
+    }
+
+    #[test]
+    fn test_assign_compatibility() {
+        let mut_int = Type { 
+            mutable: true, 
+            inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Int)) 
+        };
+        let immut_int = Type::int();
+        
+        assert!(mut_int.assign_compatible(&immut_int), "can assign immutable to mutable");
+        assert!(immut_int.assign_compatible(&immut_int), "can assign same type");
+    }
+
+    #[test]
+    fn test_reference_mutability() {
+        let mut_ref_mut_int = Type { 
+            mutable: false, 
+            inner: TypeInner::Ref(Box::new(Type { 
+                mutable: true, 
+                inner: TypeInner::Base(BaseType::Primitive(PrimitiveType::Int)) 
+            })) 
+        };
+        let immut_ref_immut_int = Type::refed(Type::int());
+        
+        assert!(!mut_ref_mut_int.assign_compatible(&immut_ref_immut_int), 
+            "cannot assign &T to &mut T through reference");
+    }
+
+    #[test]
+    fn test_boxed_type_compatibility() {
+        let box_int = Type::boxed(Type::int());
+        let box_bool = Type::boxed(Type::bool());
+        let int_type = Type::int();
+        
+        assert!(box_int.compatible(&box_int), "boxed type compatible with itself");
+        assert!(!box_int.compatible(&box_bool), "different boxed types not compatible");
+        assert!(!box_int.compatible(&int_type), "boxed type not compatible with unboxed");
+    }
+
+    #[test]
+    fn test_type_deref() {
+        let ref_int = Type::refed(Type::int());
+        let nested_ref = Type::refed(Type::refed(Type::int()));
+        
+        assert_eq!(ref_int.deref(), &Type::int());
+        assert_eq!(nested_ref.deref(), &Type::int(), "deref should traverse all reference levels");
+    }
+
+    #[test]
+    fn test_is_ref() {
+        let ref_int = Type::refed(Type::int());
+        let int_type = Type::int();
+        let box_int = Type::boxed(Type::int());
+        
+        assert!(ref_int.is_ref(), "reference type should return true");
+        assert!(!int_type.is_ref(), "non-reference type should return false");
+        assert!(!box_int.is_ref(), "boxed type should return false");
+    }
+
+    #[test]
+    fn test_verify_pointers() {
+        let valid_box_int = Type::boxed(Type::int());
+        let invalid_box_ref = Type::boxed(Type::refed(Type::int()));
+        let valid_ref_box = Type::refed(Type::boxed(Type::int()));
+        
+        assert!(valid_box_int.verify_pointers(), "box<int> should be valid");
+        assert!(!invalid_box_ref.verify_pointers(), "box<&T> should be invalid");
+        assert!(valid_ref_box.verify_pointers(), "&box<T> should be valid");
     }
 }

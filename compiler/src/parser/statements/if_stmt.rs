@@ -141,3 +141,40 @@ impl Generate for IfStmt {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::IfStmt;
+    use crate::{lexer::Lexer, parser::{parser::Parser, Parse}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_if(input: &str) -> IfStmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        IfStmt::parse(&mut parser).unwrap()
+    }
+
+    #[test]
+    fn test_if_stmt_simple() {
+        let if_stmt = parse_if("if true { let x = 1; }");
+        assert!(if_stmt.else_stmt.is_none());
+    }
+
+    #[test]
+    fn test_if_stmt_with_else() {
+        let if_stmt = parse_if("if false { } else { let y = 2; }");
+        assert!(if_stmt.else_stmt.is_some());
+    }
+
+    #[test]
+    fn test_if_stmt_elif() {
+        let if_stmt = parse_if("if x > 0 { return 1; } else if x < 0 { return -1; } else { return 0; }");
+        assert!(if_stmt.else_stmt.is_some());
+    }
+
+    #[test]
+    fn test_if_stmt_complex_condition() {
+        let if_stmt = parse_if("if x == 5 && y != 3 { let z = x + y; }");
+        assert!(if_stmt.else_stmt.is_none());
+    }
+}

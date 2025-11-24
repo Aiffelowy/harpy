@@ -38,7 +38,7 @@ impl Display for PrefixOp {
         let s = match self.op {
             Minus => "-",
             Plus => "+",
-            Neg => "-",
+            Neg => "!",
             Star => "*",
         };
 

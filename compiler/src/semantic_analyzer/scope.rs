@@ -148,3 +148,44 @@ impl Scope {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    #[test]
+    fn test_depth_add() {
+        let depth = Depth(5);
+        let result = depth + 3;
+        assert_eq!(result, Depth(8));
+    }
+
+    #[test]
+    fn test_scope_creation() {
+        let scope = Scope::new(ScopeKind::Global, None, Depth(0));
+        assert_eq!(scope.kind, ScopeKind::Global);
+        assert_eq!(scope.depth(), Depth(0));
+        assert!(scope.symbols.is_empty());
+        assert!(!scope.visited);
+    }
+
+    #[test]
+    fn test_scope_with_parent() {
+        let parent = Rc::new(RefCell::new(Scope::new(ScopeKind::Global, None, Depth(0))));
+        let scope = Scope::new(ScopeKind::Block, Some(&parent), Depth(1));
+        assert_eq!(scope.depth(), Depth(1));
+        assert!(scope.parent.is_some());
+    }
+
+    #[test]
+    fn test_in_scopekind() {
+        let global_scope = Rc::new(RefCell::new(Scope::new(ScopeKind::Global, None, Depth(0))));
+        let block_scope = Scope::new(ScopeKind::Block, Some(&global_scope), Depth(1));
+
+        assert!(block_scope.in_scopekind(ScopeKind::Block));
+        assert!(block_scope.in_scopekind(ScopeKind::Global));
+        assert!(!block_scope.in_scopekind(ScopeKind::Loop));
+    }
+}

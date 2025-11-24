@@ -31,3 +31,53 @@ impl Parse for AssignOp {
         Ok(s)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AssignOp;
+    use crate::{lexer::Lexer, parser::{parser::Parser, statements::Stmt}, source::SourceFile};
+    use std::io::Cursor;
+
+    fn parse_stmt(input: &str) -> Stmt {
+        let source = SourceFile::new(Cursor::new(input)).unwrap();
+        let mut parser = Parser::new(Lexer::new(&source).unwrap());
+        parser.parse::<Stmt>().unwrap()
+    }
+
+
+    #[test]
+    fn test_assign_op_normal() {
+        let stmt = parse_stmt("var = 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Normal, _)));
+    }
+
+    #[test]
+    fn test_assign_op_add() {
+        let stmt = parse_stmt("var += 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Add, _)));
+    }
+
+    #[test]
+    fn test_assign_op_sub() {
+        let stmt = parse_stmt("var -= 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Sub, _)));
+    }
+
+    #[test]
+    fn test_assign_op_mult() {
+        let stmt = parse_stmt("var *= 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Mult, _)));
+    }
+
+    #[test]
+    fn test_assign_op_div() {
+        let stmt = parse_stmt("var /= 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Div, _)));
+    }
+
+    #[test]
+    fn test_assign_op_mod() {
+        let stmt = parse_stmt("var %= 5;");
+        assert!(matches!(stmt, Stmt::AssignStmt(_, AssignOp::Mod, _)));
+    }
+}
