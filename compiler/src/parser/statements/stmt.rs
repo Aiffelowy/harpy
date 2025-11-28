@@ -99,40 +99,35 @@ impl Analyze for Stmt {
                 ReturnStatus::Never
             }
             AssignStmt(lhs, _, rhs) => {
-                let Some(lhs_type) = analyzer.resolve_expr_write(lhs) else {
-                    return ReturnStatus::Never;
-                };
                 let Some(rhs_type) = analyzer.resolve_expr(rhs) else {
                     return ReturnStatus::Never;
                 };
-
-                let mut lhs_type = &lhs_type.ttype;
 
                 if let Some(i) = lhs.lvalue() {
                     get_symbol_mut!((analyzer, i) info {
                         match &mut info.kind {
                             SymbolInfoKind::Variable(ref mut v) => {
-                                if !lhs_type.mutable && v.initialized {
-                                    analyzer.report_semantic_error(
-                                        SemanticError::AssignToConst(lhs.clone()),
-                                        lhs.span(),
-                                    );
-                                }
-
                                 if !v.initialized {
                                     v.initialized = true;
                                     info.infer_type(&rhs_type);
-                                    lhs_type = &rhs_type.ttype;
-                                }
-
-                                if !lhs_type.assign_compatible(&rhs_type.ttype) {
-                                    analyzer.report_semantic_error(
-                                        SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
-                                        rhs.span(),
-                                    );
+                                } else {
+                                    let lhs_type = &info.ty.ttype;
+                                    if !lhs_type.mutable {
+                                        analyzer.report_semantic_error(
+                                            SemanticError::AssignToConst(lhs.clone()),
+                                            lhs.span(),
+                                        );
+                                    }
+                                    if !lhs_type.assign_compatible(&rhs_type.ttype) {
+                                        analyzer.report_semantic_error(
+                                            SemanticError::AssignTypeMismatch(rhs_type.clone(), lhs_type.clone()),
+                                            rhs.span(),
+                                        );
+                                    }
                                 }
                             }
                             SymbolInfoKind::Param => {
+                                let lhs_type = &info.ty.ttype;
                                 if !lhs_type.mutable {
                                     analyzer.report_semantic_error(
                                         SemanticError::AssignToConst(lhs.clone()),
@@ -148,6 +143,7 @@ impl Analyze for Stmt {
                                 }
                             }
                             SymbolInfoKind::Global(_) => {
+                                let lhs_type = &info.ty.ttype;
                                 if !lhs_type.mutable {
                                     analyzer.report_semantic_error(
                                         SemanticError::AssignToConst(lhs.clone()),
@@ -167,6 +163,8 @@ impl Analyze for Stmt {
                             }
                         }
                     });
+                    
+                    analyzer.resolve_expr_write(lhs);
                 } else {
                     analyzer.report_semantic_error(SemanticError::AssignToRValue, lhs.span());
                     return ReturnStatus::Never;
