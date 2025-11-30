@@ -5,6 +5,7 @@ use crate::{
     parser::{
         byte_reader::ByteReader,
         function_table::{FunctionIndex, FunctionTable},
+        global_table::GlobalTable,
         type_table::{Type, TypeTable},
     },
 };
@@ -43,6 +44,7 @@ impl GarbageCollector {
         heap: &mut Heap,
         stack: &mut Stack,
         operand_stack: &mut OperandStack,
+        global_table: &mut GlobalTable,
         function_table: &FunctionTable,
         type_table: &TypeTable,
         header: &Header,
@@ -53,6 +55,8 @@ impl GarbageCollector {
         heap.start_copying_gc();
 
         self.copy_and_update_operand_stack(&mut address_map, operand_stack, heap, type_table);
+
+        self.copy_and_update_global_table(&mut address_map, global_table, heap, type_table)?;
 
         self.copy_and_update_stack_frames(
             &mut address_map,
@@ -93,6 +97,40 @@ impl GarbageCollector {
                 *old_addr = new_addr; // Update the pointer in-place
             }
         }
+    }
+
+    fn copy_and_update_global_table(
+        &self,
+        address_map: &mut HashMap<HeapAddress, HeapAddress>,
+        global_table: &mut GlobalTable,
+        heap: &mut Heap,
+        type_table: &TypeTable,
+    ) -> Result<()> {
+        for i in 0..global_table.global_infos.len() {
+            let global_info = &global_table.global_infos[i];
+            
+            if matches!(&type_table[global_info.type_id], Type::Pointer(_)) {
+                let global_data = &global_table.global_memory[global_info.offset..global_info.offset + global_info.size];
+                let mut reader = ByteReader::new(global_data, global_info.size);
+                
+                if let Ok(VmValue::Pointer(old_addr, pointed_type_id)) = 
+                    type_table[global_info.type_id].construct(&mut reader) 
+                {
+                    let new_addr = self.copy_object_if_needed(
+                        address_map,
+                        old_addr,
+                        pointed_type_id,
+                        heap,
+                        type_table,
+                    );
+                    
+                    let new_pointer = VmValue::Pointer(new_addr, pointed_type_id);
+                    let memory_slice = &mut global_table.global_memory[global_info.offset..global_info.offset + global_info.size];
+                    new_pointer.write_bytes(memory_slice);
+                }
+            }
+        }
+        Ok(())
     }
 
     fn copy_and_update_stack_frames(

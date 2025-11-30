@@ -20,8 +20,8 @@ pub struct GlobalInfo {
 
 #[derive(Debug)]
 pub struct GlobalTable {
-    global_infos: Vec<GlobalInfo>,
-    global_memory: Vec<u8>,
+    pub global_infos: Vec<GlobalInfo>,
+    pub global_memory: Vec<u8>,
     total_size: usize,
 }
 
