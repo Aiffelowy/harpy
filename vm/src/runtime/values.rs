@@ -89,6 +89,7 @@ impl VmValue {
         }
     }
 
+    #[allow(unused)]
     pub fn heap_string(len: usize, ptr: HeapAddress) -> Self {
         VmValue::StringHandle { len, ptr }
     }
@@ -174,12 +175,10 @@ impl VmValue {
             VmValue::Bool(b) => b.to_string(),
             VmValue::StringHandle { len, ptr } => {
                 if ptr.0 == 0 {
-                    // This is a const pool string
                     const_pool.get_string(*len)
                         .map(|s| format!("\"{}\"", s))
                         .unwrap_or_else(|| format!("StringHandle {{ len: {}, ptr: {:?} }}", len, ptr))
                 } else {
-                    // This would be a heap string (not implemented)
                     format!("StringHandle {{ len: {}, ptr: {:?} }}", len, ptr)
                 }
             }

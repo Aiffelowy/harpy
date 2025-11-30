@@ -41,16 +41,17 @@ impl Stack {
         type_table: &TypeTable,
         function_table: &FunctionTable,
         local_index: LocalIndex,
-    ) -> Result<VmValue> {
-        let (local_offset, size) =
-            function_table[self.current_function].local_offsets[local_index.0];
-        let offset = self.frame_pointer.0 + local_offset;
-        let type_info =
-            &type_table[function_table[self.current_function].local_types[local_index.0]];
+    ) -> VmValue {
+        let func_info = &function_table[self.current_function];
+        let (local_offset, size) = unsafe { *func_info.local_offsets.get_unchecked(local_index.0) };
+        let type_id = unsafe { *func_info.local_types.get_unchecked(local_index.0) };
+        let type_info = &type_table[type_id];
 
-        let mut reader =
-            unsafe { ByteReader::new(self.data.get_unchecked(offset..offset + size), size) };
-        type_info.construct(&mut reader)
+        let offset = self.frame_pointer.0 + local_offset;
+        let data = unsafe { self.data.get_unchecked(offset..offset + size) };
+
+        let mut reader = ByteReader::new(data, size);
+        unsafe { type_info.construct(&mut reader).unwrap_unchecked() }
     }
 
     pub fn get_local_address(

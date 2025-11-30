@@ -20,7 +20,6 @@ pub struct CodeAddress(pub u64);
 pub struct FunctionInfo {
     pub code_offset: CodeAddress,
     pub param_count: usize,
-    pub local_count: usize,
     pub local_types: Vec<TypeId>,
 
     pub stack_size: usize,
@@ -55,7 +54,6 @@ impl FunctionTable {
             func_infos.push(FunctionInfo {
                 code_offset: CodeAddress(offset),
                 param_count,
-                local_count,
                 local_types,
                 stack_size,
                 local_offsets: offsets,

@@ -78,16 +78,7 @@ impl<'bytecode> Runtime<'bytecode> {
     }
 
     pub(in crate::runtime) fn load_local(&mut self, local_id: LocalIndex) -> Result<()> {
-        let func_info = &self.function_table[self.stack.current_function];
-        let (local_offset, size) = unsafe { *func_info.local_offsets.get_unchecked(local_id.0) };
-        let type_id = unsafe { *func_info.local_types.get_unchecked(local_id.0) };
-        let type_info = &self.type_table[type_id];
-
-        let offset = self.stack.frame_pointer.0 + local_offset;
-        let data = unsafe { self.stack.data.get_unchecked(offset..offset + size) };
-
-        let mut reader = ByteReader::new(data, size);
-        let value = unsafe { type_info.construct(&mut reader).unwrap_unchecked() };
+        let value = self.stack.get_local(&self.type_table, &self.function_table, local_id);
         self.operand_stack.push(value);
         Ok(())
     }

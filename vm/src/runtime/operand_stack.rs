@@ -39,10 +39,6 @@ impl OperandStack {
     }
 
     // GC support methods
-    pub fn iter(&self) -> impl Iterator<Item = &VmValue> {
-        self.data[..self.len].iter()
-    }
-
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut VmValue> {
         self.data[..self.len].iter_mut()
     }

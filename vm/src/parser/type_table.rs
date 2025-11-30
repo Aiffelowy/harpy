@@ -56,9 +56,11 @@ impl PrimitiveType {
 pub struct TypeSize(pub usize);
 
 #[derive(Debug, Clone, Copy)]
+#[allow(unused)]
 pub struct Pointee(pub usize);
 
 #[derive(Debug)]
+#[allow(unused)]
 pub enum Type {
     Void,
     Primitive(PrimitiveType, TypeSize),

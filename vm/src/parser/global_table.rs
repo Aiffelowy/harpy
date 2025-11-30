@@ -22,7 +22,6 @@ pub struct GlobalInfo {
 pub struct GlobalTable {
     pub global_infos: Vec<GlobalInfo>,
     pub global_memory: Vec<u8>,
-    total_size: usize,
 }
 
 impl GlobalTable {
@@ -48,7 +47,6 @@ impl GlobalTable {
         Ok(Self {
             global_infos,
             global_memory,
-            total_size,
         })
     }
 
