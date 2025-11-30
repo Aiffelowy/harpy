@@ -1,7 +1,7 @@
 use crate::{
     aliases::Result,
     err::RuntimeError,
-    parser::{byte_reader::ReadSafe, type_table::TypeId},
+    parser::{byte_reader::ReadSafe, type_table::TypeId, const_pool::ConstPool},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -165,5 +165,26 @@ impl VmValue {
 
     pub fn ne(self, other: VmValue) -> Result<VmValue> {
         Ok(Self::Bool(!self.eq(other)?.as_bool()?))
+    }
+
+    pub fn display_with_const_pool(&self, const_pool: &ConstPool) -> String {
+        match self {
+            VmValue::Int(i) => i.to_string(),
+            VmValue::Float(f) => f.to_string(),
+            VmValue::Bool(b) => b.to_string(),
+            VmValue::StringHandle { len, ptr } => {
+                if ptr.0 == 0 {
+                    // This is a const pool string
+                    const_pool.get_string(*len)
+                        .map(|s| format!("\"{}\"", s))
+                        .unwrap_or_else(|| format!("StringHandle {{ len: {}, ptr: {:?} }}", len, ptr))
+                } else {
+                    // This would be a heap string (not implemented)
+                    format!("StringHandle {{ len: {}, ptr: {:?} }}", len, ptr)
+                }
+            }
+            VmValue::Pointer(addr, type_id) => format!("Pointer({:?}, {:?})", addr, type_id),
+            VmValue::Ref(addr, type_id) => format!("Ref({:?}, {:?})", addr, type_id),
+        }
     }
 }

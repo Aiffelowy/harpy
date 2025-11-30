@@ -24,6 +24,12 @@ pub struct ConstPool<'const_data> {
 }
 
 impl<'const_data> ConstPool<'const_data> {
+    pub fn get_string(&self, string_id: usize) -> Option<&str> {
+        let string_entry = self.strings.get(string_id)?;
+        let string_bytes = &self.const_data[string_entry.offset..string_entry.offset + string_entry.len];
+        std::str::from_utf8(string_bytes).ok()
+    }
+
     pub fn parse(const_data: &'const_data [u8], type_table: &TypeTable) -> Result<Self> {
         let mut consts = vec![];
         let mut strings = vec![];

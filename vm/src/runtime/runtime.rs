@@ -155,6 +155,7 @@ impl<'bytecode> Runtime<'bytecode> {
                 &mut self.heap,
                 &mut self.stack,
                 &mut self.operand_stack,
+                &mut self.global_table,
                 &self.function_table,
                 &self.type_table,
                 &self.header,
@@ -247,7 +248,7 @@ impl<'bytecode> Runtime<'bytecode> {
 
     pub(in crate::runtime) fn halt(&mut self) -> Result<()> {
         if let Ok(v) = self.operand_stack.pop() {
-            println!("{:?}", v);
+            println!("{}", v.display_with_const_pool(&self.const_pool));
         }
         Err(RuntimeError::Halt)
     }
