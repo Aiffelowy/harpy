@@ -1,4 +1,4 @@
-use crate::{aliases::Result, runtime::runtime::Runtime};
+use crate::{aliases::{Result, MAGIC_NUMBER, VERSION}, err::ParseError, runtime::runtime::Runtime};
 
 use super::{
     byte_reader::ByteReader,
@@ -10,8 +10,11 @@ use super::{
 
 #[derive(Debug)]
 pub struct Header {
+    #[allow(unused)]
     magic_number: [u8; 5],
+    #[allow(unused)]
     version: u16,
+    #[allow(unused)]
     flags: u16,
     pub main_index: FunctionIndex,
     type_table_offset: u32,
@@ -26,9 +29,19 @@ pub const HEADER_SIZE: usize = std::mem::size_of::<Header>() + 5;
 
 impl Header {
     pub fn parse(mut bytes: ByteReader) -> Result<Self> {
+        let magic_number = bytes.read()?;
+        if magic_number != MAGIC_NUMBER {
+            return Err(ParseError::InvalidFileType.into())
+        }
+
+        let version = bytes.read()?;
+        if version != VERSION {
+            return Err(ParseError::InvalidFileVersion.into());
+        }
+
         Ok(Self {
-            magic_number: bytes.read()?,
-            version: bytes.read()?,
+            magic_number,
+            version,
             flags: bytes.read()?,
             main_index: FunctionIndex(bytes.read::<u32>()? as usize),
             type_table_offset: bytes.read()?,

@@ -1,12 +1,12 @@
 #[derive(Debug)]
 pub enum ParseError {
     InvalidFileType,
-    InvalidHeaderSize,
+    InvalidFileVersion,
     UnknownTypeId,
-    OutOfBounds,
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub enum RuntimeError {
     ParserError(ParseError),
     OutOfBounds,
