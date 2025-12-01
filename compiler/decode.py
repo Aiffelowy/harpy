@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import sys;
+import sys
+import struct
 
 def decode_bytecode(data):
     print("=== HEADER ===")
@@ -76,10 +77,51 @@ def decode_bytecode(data):
     while pos < function_table_offset:
         type_id = int.from_bytes(data[pos:pos+4], 'big')
         pos += 4
-        size = type_table[type_id]["size"];
-        value = int.from_bytes(data[pos:pos+size], 'big')
-        pos += size
-        const_pool.append({ "type_id": type_id, "value": value })
+        
+        # Check if this is a primitive type
+        if type_table[type_id]["type"] == 0x01:
+            primitive_id = type_table[type_id].get("primitive_id")
+            
+            if primitive_id == 0x01:  # int
+                size = type_table[type_id]["size"]
+                if size == 8:
+                    value = int.from_bytes(data[pos:pos+size], 'big', signed=True)
+                else:
+                    value = int.from_bytes(data[pos:pos+size], 'big')
+                pos += size
+                const_pool.append({ "type_id": type_id, "value": value })
+            elif primitive_id == 0x02:  # float
+                size = type_table[type_id]["size"]
+                if size == 4:
+                    value = struct.unpack('>f', data[pos:pos+size])[0]
+                elif size == 8:
+                    value = struct.unpack('>d', data[pos:pos+size])[0]
+                else:
+                    value = int.from_bytes(data[pos:pos+size], 'big')
+                pos += size
+                const_pool.append({ "type_id": type_id, "value": value })
+            elif primitive_id == 0x03:  # str
+                str_len = int.from_bytes(data[pos:pos+8], 'big')
+                pos += 8
+                str_content = data[pos:pos+str_len].decode('utf-8')
+                pos += str_len
+                const_pool.append({ "type_id": type_id, "value": str_content })
+            elif primitive_id == 0x04:  # bool
+                size = type_table[type_id]["size"]
+                raw_value = int.from_bytes(data[pos:pos+size], 'big')
+                value = bool(raw_value)
+                pos += size
+                const_pool.append({ "type_id": type_id, "value": value })
+            else:
+                size = type_table[type_id]["size"]
+                value = int.from_bytes(data[pos:pos+size], 'big')
+                pos += size
+                const_pool.append({ "type_id": type_id, "value": value })
+        else:
+            size = type_table[type_id]["size"];
+            value = int.from_bytes(data[pos:pos+size], 'big')
+            pos += size
+            const_pool.append({ "type_id": type_id, "value": value })
     
     function_table = []
     pos = function_table_offset
