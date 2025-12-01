@@ -1,4 +1,5 @@
 use crate::generator::compile_trait::Generate;
+use crate::generator::instruction::Instruction;
 use crate::parser::{expr::Expr, node::Node, Parse};
 use crate::semantic_analyzer::analyze_trait::Analyze;
 use crate::semantic_analyzer::err::SemanticError;
@@ -9,13 +10,19 @@ use super::Stmt;
 
 #[derive(Debug, Clone)]
 pub struct CaseStmt {
-    expr: Node<Expr>,
+    expr: Option<Node<Expr>>,
     stmt: Stmt,
 }
 
 impl Parse for CaseStmt {
     fn parse(parser: &mut crate::parser::parser::Parser) -> crate::aliases::Result<Self> {
-        let expr = parser.parse_node()?;
+        let expr = if let tt!(.) = parser.peek()? {
+            parser.consume::<t!(.)>()?;
+            None
+        } else {
+            Some(parser.parse_node()?)
+        };
+
         parser.consume::<t!(->)>()?;
         let stmt = parser.parse()?;
         //parser.consume::<t!(,)>()?;
@@ -69,21 +76,24 @@ impl Analyze for SwitchStmt {
             return ReturnStatus::Never;
         };
 
-        let mut return_status = ReturnStatus::Never;
+        let has_default = self.cases.iter().any(|case| case.expr.is_none());
+        let mut return_status = if has_default { ReturnStatus::Always } else { ReturnStatus::Never };
 
         for case in &self.cases {
             analyzer.enter_scope();
-            let Some(case_expr_ty) = analyzer.resolve_expr(&case.expr) else {
-                analyzer.report_semantic_error(SemanticError::UnresolvedType, case.expr.span());
-                analyzer.exit_scope();
-                continue;
-            };
+            if let Some(case_expr) = &case.expr {
+                let Some(case_expr_ty) = analyzer.resolve_expr(&case_expr) else {
+                    analyzer.report_semantic_error(SemanticError::UnresolvedType, case_expr.span());
+                    analyzer.exit_scope();
+                    continue;
+                };
 
-            if !case_expr_ty.compatible(&main_expr_ty) {
-                analyzer.report_semantic_error(
-                    SemanticError::SwitchTypeMismatch(case_expr_ty, main_expr_ty.clone()),
-                    case.expr.span(),
-                );
+                if !case_expr_ty.compatible(&main_expr_ty) {
+                    analyzer.report_semantic_error(
+                        SemanticError::SwitchTypeMismatch(case_expr_ty, main_expr_ty.clone()),
+                        case_expr.span(),
+                    );
+                }
             }
 
             let status = case.stmt.analyze_semantics(analyzer);
@@ -107,22 +117,26 @@ impl Generate for SwitchStmt {
             .collect();
 
         for (i, case) in self.cases.iter().enumerate() {
-            generator.push_instruction(crate::generator::instruction::Instruction::DUP);
-            generator.gen_expr(&case.expr);
-            generator.push_instruction(crate::generator::instruction::Instruction::EQ);
-            generator.push_instruction(crate::generator::instruction::Instruction::JMP_IF_TRUE(
+            let Some(case_expr) = &case.expr else {
+                generator.push_instruction(Instruction::JMP(case_labels[i]));
+                continue;
+            };
+            generator.push_instruction(Instruction::DUP);
+            generator.gen_expr(case_expr);
+            generator.push_instruction(Instruction::EQ);
+            generator.push_instruction(Instruction::JMP_IF_TRUE(
                 case_labels[i],
             ));
         }
 
-        generator.push_instruction(crate::generator::instruction::Instruction::POP);
-        generator.push_instruction(crate::generator::instruction::Instruction::JMP(end_label));
+        generator.push_instruction(Instruction::POP);
+        generator.push_instruction(Instruction::JMP(end_label));
 
         for (i, case) in self.cases.iter().enumerate() {
             generator.place_label(case_labels[i]);
-            generator.push_instruction(crate::generator::instruction::Instruction::POP);
+            generator.push_instruction(Instruction::POP);
             case.stmt.generate(generator);
-            generator.push_instruction(crate::generator::instruction::Instruction::JMP(end_label));
+            generator.push_instruction(Instruction::JMP(end_label));
         }
 
         generator.place_label(end_label);
