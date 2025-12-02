@@ -7,7 +7,7 @@ use crate::parser::expr::expr::CallExpr;
 use crate::parser::expr::Expr;
 use crate::parser::node::Node;
 use crate::parser::program::Program;
-use crate::parser::types::{Type, TypeSpanned};
+use crate::parser::types::{Type, TypeInner, TypeSpanned};
 use crate::{aliases::ScopeRc, err::HarpyError, lexer::tokens::Ident};
 
 use super::analyze_trait::Analyze;
@@ -138,6 +138,10 @@ impl Analyzer {
                     self.current_scope.get().depth(),
                     expr.span(),
                 );
+                
+                if let TypeInner::Unknown = type_info.inner {
+                    return Some(type_info)
+                }
 
                 self.result
                     .node_info
