@@ -10,6 +10,7 @@ where
     Self: Sized,
 {
     fn tokenize(token_stream: &mut Lexer) -> Result<Self>;
+    fn span(&self) -> Span;
 }
 
 macro_rules! define_keywords_enum {
@@ -98,6 +99,10 @@ macro_rules! define_token_struct {
                 }
                 let span = token.span.clone();
                 return HarpyError::lexer(LexerError::UnexpectedToken(stringify!($name), token), span);
+            }
+
+            fn span(&self) -> Span {
+                self.span
             }
         }
 
@@ -305,6 +310,8 @@ define_tokens!(
         "in" => In,
         "while" => While,
         "loop" => Loop,
+        "break" => Break,
+        "continue" => Continue,
 
         "if" => If,
         "else" => Else,
@@ -313,8 +320,7 @@ define_tokens!(
         "boxed" => Boxed,
         "box" => Box,
 
-        "borrowed" => Borrowed,
-        "borrow" => Borrow,
+        "ref" => Ref,
     }
 
     [symbols] => {
@@ -436,6 +442,12 @@ macro_rules! t {
     (loop) => {
         $crate::lexer::tokens::Loop
     };
+    (break) => {
+        $crate::lexer::tokens::Break
+    };
+    (continue) => {
+        $crate::lexer::tokens::Continue
+    };
     (if) => {
         $crate::lexer::tokens::If
     };
@@ -451,11 +463,8 @@ macro_rules! t {
     (box) => {
         $crate::lexer::tokens::Box
     };
-    (borrow) => {
-        $crate::lexer::tokens::Borrow
-    };
-    (borrowed) => {
-        $crate::lexer::tokens::Borrowed
+    (ref) => {
+        $crate::lexer::tokens::Ref
     };
     (ident) => {
         $crate::lexer::tokens::Ident
@@ -628,6 +637,12 @@ macro_rules! tt {
     (loop) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Loop)
     };
+    (break) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Break)
+    };
+    (continue) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Continue)
+    };
     (if) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::If)
     };
@@ -643,13 +658,9 @@ macro_rules! tt {
     (box) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Box)
     };
-    (borrow) => {
-        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Borrow)
+    (ref) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Ref)
     };
-    (borrowed) => {
-        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Borrowed)
-    };
-
     (=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Assign)
     };

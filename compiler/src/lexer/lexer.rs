@@ -38,7 +38,7 @@ impl<'lexer> Lexer<'lexer> {
         self.chars.peek().copied()
     }
 
-    pub(in crate::lexer) fn position(&self) -> Position {
+    pub fn position(&self) -> Position {
         self.position
     }
 
