@@ -1,6 +1,11 @@
 use std::io::BufReader;
 
-use harpy_compiler::{aliases::Result, lexer::Lexer, source::SourceFile, tt};
+use harpy_compiler::{
+    aliases::Result,
+    lexer::Lexer,
+    parser::{pretty_print::AstPrettyPrint, Parser},
+    source::SourceFile,
+};
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -13,14 +18,18 @@ fn main() -> Result<()> {
     let reader = BufReader::new(std::fs::File::open(filename)?);
     let source = SourceFile::new(reader)?;
 
-    let mut lexer = Lexer::new(&source);
+    let lexer = Lexer::new(&source);
+    let parser = Parser::new(lexer);
 
-    while let Ok(token) = lexer.next_token() {
-        println!("{:?}", token);
-        if let tt!(eof) = lexer.peek()? {
-            break;
+    let ast = match parser.build_ast() {
+        Ok(a) => a,
+        Err(errors) => {
+            println!("{:?}", errors);
+            return Ok(());
         }
-    }
+    };
+
+    println!("{}", AstPrettyPrint::new().print(&ast));
 
     Ok(())
 }

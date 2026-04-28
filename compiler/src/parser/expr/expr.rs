@@ -7,7 +7,7 @@ use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Precedence {
+pub(in crate::parser) enum Precedence {
     Lowest,
     Assign,
     Range,
@@ -61,7 +61,7 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    fn parse_block_expr(&mut self) -> Result<BlockExpr> {
+    pub(in crate::parser) fn parse_block_expr(&mut self) -> Result<BlockExpr> {
         self.consume::<t!("{")>()?;
         let mut stmts = Vec::new();
 
@@ -77,7 +77,7 @@ impl<'parser> Parser<'parser> {
         }
 
         self.consume::<t!("}")>()?;
-        Ok(BlockExpr { exprs: stmts })
+        Ok(BlockExpr { stmts })
     }
 
     fn parse_loop_expr(&mut self) -> Result<LoopExpr> {
@@ -90,7 +90,7 @@ impl<'parser> Parser<'parser> {
         self.consume::<t!(if)>()?;
 
         let expr = Box::new(self.parse_node(Self::parse_expr)?);
-        let block = self.parse_block_expr()?;
+        let block = self.parse_node(Self::parse_block_expr)?;
         let mut else_block = None;
         if let tt!(else) = self.peek()? {
             self.consume::<t!(else)>()?;
@@ -104,7 +104,7 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    pub fn parse_function_arg(&mut self) -> Result<(Ident, Node<Type>)> {
+    pub(in crate::parser) fn parse_function_arg(&mut self) -> Result<(Ident, Node<Type>)> {
         let name = self.consume()?;
         self.consume::<t!(:)>()?;
         let ttype = self.parse_node(Self::parse_type)?;
@@ -112,7 +112,7 @@ impl<'parser> Parser<'parser> {
         Ok((name, ttype))
     }
 
-    pub fn parse_function_return_type(&mut self) -> Result<Type> {
+    pub(in crate::parser) fn parse_function_return_type(&mut self) -> Result<Type> {
         if self.peek()? != &tt!(->) {
             return Ok(Type::void());
         }
@@ -142,7 +142,7 @@ impl<'parser> Parser<'parser> {
 
         let return_type = self.parse_node(Self::parse_function_return_type)?;
 
-        let block = self.parse_block_expr()?;
+        let block = self.parse_node(Self::parse_block_expr)?;
 
         Ok(ClosureExpr {
             args,
@@ -154,7 +154,7 @@ impl<'parser> Parser<'parser> {
     fn parse_case_expr(&mut self) -> Result<CaseExpr> {
         let expr = self.parse_node(Self::parse_expr)?;
         self.consume::<t!(=>)>()?;
-        let block = self.parse_block_expr()?;
+        let block = self.parse_node(Self::parse_block_expr)?;
 
         Ok(CaseExpr { expr, block })
     }
@@ -188,8 +188,32 @@ impl<'parser> Parser<'parser> {
                 Ok(Expr::Literal(lit))
             }
             tt!(ident) => {
-                let ident = self.consume()?;
-                Ok(Expr::Ident(ident))
+                let name = self.consume()?;
+
+                if let tt!("{") = self.peek()? {
+                    self.consume::<t!("{")>()?;
+                    let mut fields = Vec::new();
+                    loop {
+                        if let tt!("}") | tt!(eof) = self.peek()? {
+                            break;
+                        }
+
+                        let field_name = self.consume()?;
+                        self.consume::<t!(:)>()?;
+                        let field_value = self.parse_node(Self::parse_expr)?;
+                        fields.push((field_name, field_value));
+
+                        if let tt!(,) = self.peek()? {
+                            self.consume::<t!(,)>()?;
+                        } else {
+                            break;
+                        }
+                    }
+                    self.consume::<t!("}")>()?;
+                    Ok(Expr::StructInit(name, fields))
+                } else {
+                    Ok(Expr::Ident(name))
+                }
             }
 
             tt!(-) | tt!(+) | tt!(!) | tt!(*) => {
@@ -341,6 +365,12 @@ impl<'parser> Parser<'parser> {
                 Expr::Iter(Box::new(left), Box::new(right))
             }
 
+            tt!(.) => {
+                self.consume::<t!(.)>()?;
+                let name = self.consume()?;
+                Expr::MemberAccess(Box::new(left), name)
+            }
+
             tt!(=) | tt!(+=) | tt!(-=) | tt!(*=) | tt!(/=) | tt!(%=) => {
                 let op = self.parse_assign_op()?;
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Lowest))?;
@@ -372,7 +402,7 @@ impl<'parser> Parser<'parser> {
         Ok(left.inner)
     }
 
-    pub fn parse_expr(&mut self) -> Result<Expr> {
+    pub(in crate::parser) fn parse_expr(&mut self) -> Result<Expr> {
         self.pratt_parser(Precedence::Lowest)
     }
 }

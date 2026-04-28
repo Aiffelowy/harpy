@@ -5,6 +5,7 @@ use crate::{
     t, tt,
 };
 
+#[derive(Debug, Clone)]
 pub enum Primitive {
     Int,
     Float,
@@ -12,16 +13,19 @@ pub enum Primitive {
     Str,
 }
 
+#[derive(Debug, Clone)]
 pub enum BaseType {
     Base(Primitive),
     Custom(Ident),
 }
 
+#[derive(Debug, Clone)]
 pub struct FunctionType {
     pub args: Vec<Node<Type>>,
     pub return_type: Box<Node<Type>>,
 }
 
+#[derive(Debug, Clone)]
 pub enum TypeInner {
     Base(Node<BaseType>),
     Boxed(Box<Node<Type>>),
@@ -32,6 +36,7 @@ pub enum TypeInner {
     Unknown,
 }
 
+#[derive(Debug, Clone)]
 pub struct Type {
     mutable: bool,
     inner: TypeInner,

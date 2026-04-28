@@ -6,7 +6,7 @@ use crate::{
         tokens::{Token, TokenType, Tokenize},
         Lexer,
     },
-    parser::{node::NodeId, Node},
+    parser::{node::NodeId, stmt::stmts::Program, Node},
     tt,
 };
 
@@ -97,5 +97,15 @@ impl<'parser> Parser<'parser> {
         let span = t.span();
 
         HarpyError::lexer(crate::lexer::err::LexerError::UnexpectedToken(msg, t), span)
+    }
+
+    pub fn build_ast(mut self) -> std::result::Result<Program, Vec<Box<HarpyError>>> {
+        match self.parse_program() {
+            Ok(p) => Ok(p),
+            Err(e) => {
+                self.errors.push(e);
+                Err(self.errors)
+            }
+        }
     }
 }

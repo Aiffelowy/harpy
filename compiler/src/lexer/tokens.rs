@@ -319,8 +319,9 @@ define_tokens!(
 
         "boxed" => Boxed,
         "box" => Box,
-
         "ref" => Ref,
+
+        "struct" => Struct,
     }
 
     [symbols] => {
@@ -471,6 +472,9 @@ macro_rules! t {
     };
     (lit) => {
         $crate::lexer::tokens::Literal
+    };
+    (struct) => {
+        $crate::lexer::tokens::Struct
     };
 
     (=) => {
@@ -660,6 +664,9 @@ macro_rules! tt {
     };
     (ref) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Ref)
+    };
+    (struct) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Struct)
     };
     (=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Assign)

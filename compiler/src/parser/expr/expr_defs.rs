@@ -1,51 +1,61 @@
 use crate::{
     lexer::tokens::{Ident, Literal},
-    parser::{expr::ops::*, types::type_parsing::Type, Node},
+    parser::{expr::ops::*, stmt::stmts::Stmt, types::type_parsing::Type, Node},
 };
 
+#[derive(Debug, Clone)]
 pub struct CallExpr {
     pub callee: Box<Node<Expr>>,
     pub args: Vec<Node<Expr>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct BlockExpr {
-    pub exprs: Vec<Node<Expr>>,
+    pub stmts: Vec<Node<Stmt>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct LoopExpr {
     pub block: BlockExpr,
 }
 
+#[derive(Debug, Clone)]
 pub struct IfExpr {
     pub expr: Box<Node<Expr>>,
-    pub block: BlockExpr,
+    pub block: Node<BlockExpr>,
     pub else_block: Option<Box<Node<Expr>>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClosureExpr {
     pub args: Vec<(Ident, Node<Type>)>,
     pub return_type: Node<Type>,
-    pub block: BlockExpr,
+    pub block: Node<BlockExpr>,
 }
 
+#[derive(Debug, Clone)]
 pub struct CaseExpr {
     pub expr: Node<Expr>,
-    pub block: BlockExpr,
+    pub block: Node<BlockExpr>,
 }
 
+#[derive(Debug, Clone)]
 pub struct SwitchExpr {
     pub expr: Box<Node<Expr>>,
     pub cases: Vec<Node<CaseExpr>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct BreakExpr {
     pub expr: Option<Node<Expr>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct ReturnExpr {
     pub expr: Option<Node<Expr>>,
 }
 
+#[derive(Debug, Clone)]
 pub enum Expr {
     Infix(Box<Node<Expr>>, InfixOp, Box<Node<Expr>>),
     Prefix(PrefixOp, Box<Node<Expr>>),
@@ -64,4 +74,15 @@ pub enum Expr {
     Borrow(Box<Node<Expr>>, bool),
     Box(Box<Node<Expr>>),
     Iter(Box<Node<Expr>>, Box<Node<Expr>>),
+    MemberAccess(Box<Node<Expr>>, Ident),
+    StructInit(Ident, Vec<(Ident, Node<Expr>)>),
+}
+
+impl Expr {
+    pub fn requires_semi(&self) -> bool {
+        !matches!(
+            self,
+            Expr::If(_) | Expr::Loop(_) | Expr::Switch(_) | Expr::Block(_) | Expr::Closure(_)
+        )
+    }
 }
