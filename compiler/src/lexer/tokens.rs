@@ -231,7 +231,6 @@ macro_rules! define_tokens {
 
 
             pub(super) fn parse(l: &mut Lexer) -> Result<Self> {
-                l.skip_whitespace();
                 let position_start = l.position();
                 let Some(c) = l.peek_char() else { return Ok(Self { t: TokenType::Eof, span: Span::new(position_start, position_start) }) };
 

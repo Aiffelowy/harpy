@@ -14,6 +14,7 @@ pub enum LexerError {
     InvalidFloat(ParseFloatError),
     UnclosedStr,
     UnexpectedToken(&'static str, Token),
+    UnexpectedEof,
 }
 
 impl Display for LexerError {
@@ -23,6 +24,7 @@ impl Display for LexerError {
             Self::InvalidInt(_) => "Invalid integer",
             Self::InvalidFloat(_) => "Invalid float",
             Self::UnclosedStr => "Unclosed String",
+            Self::UnexpectedEof => "Unexpected end of file",
             Self::UnexpectedToken(expected, got) => &format!(
                 "expected {}{}{}, got {}\"{}\"{}",
                 Color::Green,
