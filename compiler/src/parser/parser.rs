@@ -100,12 +100,18 @@ impl<'parser> Parser<'parser> {
     }
 
     pub fn build_ast(mut self) -> std::result::Result<Program, Vec<Box<HarpyError>>> {
-        match self.parse_program() {
-            Ok(p) => Ok(p),
+        let p = match self.parse_program() {
+            Ok(p) => p,
             Err(e) => {
                 self.errors.push(e);
-                Err(self.errors)
+                return Err(self.errors);
             }
+        };
+
+        if !self.errors.is_empty() {
+            return Err(self.errors);
         }
+
+        Ok(p)
     }
 }

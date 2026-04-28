@@ -66,7 +66,7 @@ impl<'parser> Parser<'parser> {
         let mut stmts = Vec::new();
 
         loop {
-            if let tt!("}") = self.peek()? {
+            if let tt!("}") | tt!(eof) = self.peek()? {
                 break;
             }
 

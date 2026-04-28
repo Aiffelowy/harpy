@@ -24,7 +24,9 @@ fn main() -> Result<()> {
     let ast = match parser.build_ast() {
         Ok(a) => a,
         Err(errors) => {
-            println!("{:?}", errors);
+            for error in errors {
+                error.print_diagnostic(&source, filename);
+            }
             return Ok(());
         }
     };
