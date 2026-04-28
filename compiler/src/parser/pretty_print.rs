@@ -43,7 +43,7 @@ impl AstPrettyPrint {
                 if let Some(_t) = &s.ttype {
                     self.push_line("Type:");
                     self.indent += 1;
-                    //self.push_line(&format!("{:?}", t.inner));
+                    self.push_line(&format!("{:?}", _t.inner));
                     self.indent -= 1;
                 }
                 if let Some(e) = &s.expr {
@@ -255,6 +255,21 @@ impl AstPrettyPrint {
                     self.visit_expr(&field.1.inner);
                     self.indent -= 1;
                 }
+                self.indent -= 1;
+            }
+            Expr::ArrayInit(exprs) => {
+                self.push_line("ArrayInit");
+                self.indent += 1;
+                for e in exprs {
+                    self.visit_expr(&e.inner);
+                }
+                self.indent -= 1;
+            }
+            Expr::Index(a, e) => {
+                self.push_line("Index");
+                self.indent += 1;
+                self.visit_expr(&a.inner);
+                self.visit_expr(&e.inner);
                 self.indent -= 1;
             }
         }

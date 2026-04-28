@@ -5,6 +5,7 @@ use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
 use crate::parser::types::type_parsing::Type;
 use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
+use crate::{parse_separated, parse_sequence};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(in crate::parser) enum Precedence {
@@ -30,7 +31,7 @@ impl Precedence {
             tt!(==) | tt!(>) | tt!(<) | tt!(<=) | tt!(>=) | tt!(!=) => Self::Compare,
             tt!(+) | tt!(-) => Self::Sum,
             tt!(*) | tt!(/) | tt!(%) => Self::Mul,
-            tt!("(") | tt!(.) => Self::Call,
+            tt!("(") | tt!(.) | tt!("[") => Self::Call,
             _ => Self::Lowest,
         }
     }
@@ -38,23 +39,7 @@ impl Precedence {
 
 impl<'parser> Parser<'parser> {
     fn parse_call_expr(&mut self, callee: Node<Expr>) -> Result<CallExpr> {
-        let mut args = Vec::new();
-        self.consume::<t!("(")>()?;
-        loop {
-            if let tt!(")") | tt!(eof) = self.peek()? {
-                break;
-            }
-
-            args.push(self.parse_node(Self::parse_expr)?);
-            if let tt!(,) = self.peek()? {
-                self.consume::<t!(,)>()?;
-            } else {
-                break;
-            }
-        }
-
-        self.consume::<t!(")")>()?;
-
+        let args = parse_separated!(self, "(", ")", ,, self.parse_node(Self::parse_expr)?);
         Ok(CallExpr {
             callee: Box::new(callee),
             args,
@@ -62,21 +47,7 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(in crate::parser) fn parse_block_expr(&mut self) -> Result<BlockExpr> {
-        self.consume::<t!("{")>()?;
-        let mut stmts = Vec::new();
-
-        loop {
-            if let tt!("}") | tt!(eof) = self.peek()? {
-                break;
-            }
-
-            match self.parse_node(Self::parse_stmt) {
-                Ok(stmt) => stmts.push(stmt),
-                Err(e) => self.report_error(e, &[])?,
-            }
-        }
-
-        self.consume::<t!("}")>()?;
+        let stmts = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_stmt), &[]);
         Ok(BlockExpr { stmts })
     }
 
@@ -123,23 +94,7 @@ impl<'parser> Parser<'parser> {
 
     fn parse_closure_expr(&mut self) -> Result<ClosureExpr> {
         self.consume::<t!(fn)>()?;
-        self.consume::<t!("(")>()?;
-        let mut args = vec![];
-        loop {
-            if let tt!(")") | tt!(eof) = self.peek()? {
-                break;
-            }
-
-            args.push(self.parse_function_arg()?);
-            if let tt!(,) = self.peek()? {
-                self.consume::<t!(,)>()?;
-            } else {
-                break;
-            }
-        }
-
-        self.consume::<t!(")")>()?;
-
+        let args = parse_separated!(self, "(", ")",,, self.parse_function_arg()?);
         let return_type = self.parse_node(Self::parse_function_return_type)?;
 
         let block = self.parse_node(Self::parse_block_expr)?;
@@ -162,22 +117,7 @@ impl<'parser> Parser<'parser> {
     fn parse_switch_expr(&mut self) -> Result<SwitchExpr> {
         self.consume::<t!(switch)>()?;
         let expr = Box::new(self.parse_node(Self::parse_expr)?);
-        let mut cases = vec![];
-        self.consume::<t!("{")>()?;
-
-        loop {
-            if let tt!("}") = self.peek()? {
-                break;
-            }
-
-            match self.parse_node(Self::parse_case_expr) {
-                Ok(case) => cases.push(case),
-                Err(e) => self.report_error(e, &[])?,
-            }
-        }
-
-        self.consume::<t!("}")>()?;
-
+        let cases = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_case_expr), &[]);
         Ok(SwitchExpr { expr, cases })
     }
 
@@ -190,29 +130,37 @@ impl<'parser> Parser<'parser> {
             tt!(ident) => {
                 let name = self.consume()?;
 
-                if let tt!("{") = self.peek()? {
-                    self.consume::<t!("{")>()?;
-                    let mut fields = Vec::new();
-                    loop {
-                        if let tt!("}") | tt!(eof) = self.peek()? {
-                            break;
-                        }
+                Ok(Expr::Ident(name))
+            }
 
-                        let field_name = self.consume()?;
-                        self.consume::<t!(:)>()?;
-                        let field_value = self.parse_node(Self::parse_expr)?;
-                        fields.push((field_name, field_value));
+            // hacky special syntax for spawn caged Object (sounds really cool ok?)
+            tt!(spawn) => {
+                let spawn = self.consume::<t!(spawn)>()?;
 
-                        if let tt!(,) = self.peek()? {
-                            self.consume::<t!(,)>()?;
-                        } else {
-                            break;
-                        }
-                    }
-                    self.consume::<t!("}")>()?;
-                    Ok(Expr::StructInit(name, fields))
+                let is_boxed = if let tt!(boxed) = self.peek()? {
+                    self.consume::<t!(boxed)>()?;
+                    true
                 } else {
-                    Ok(Expr::Ident(name))
+                    false
+                };
+
+                let name = self.consume()?;
+                let fields = parse_separated!(self, "{", "}",,, {
+                    let field_name = self.consume()?;
+                    self.consume::<t!(:)>()?;
+                    let field_value = self.parse_node(Self::parse_expr)?;
+                    (field_name, field_value)
+                });
+
+                if is_boxed {
+                    let node = Node {
+                        id: self.next_id(),
+                        span: Span::new(spawn.span().start, self.previous_end),
+                        inner: Expr::StructInit(name, fields),
+                    };
+                    Ok(Expr::Box(Box::new(node)))
+                } else {
+                    Ok(Expr::StructInit(name, fields))
                 }
             }
 
@@ -246,6 +194,11 @@ impl<'parser> Parser<'parser> {
                 let inner = self.parse_expr()?;
                 self.consume::<t!(")")>()?;
                 Ok(inner)
+            }
+            tt!("[") => {
+                let elements =
+                    parse_separated!(self, "[", "]",,, self.parse_node(Self::parse_expr)?);
+                Ok(Expr::ArrayInit(elements))
             }
             tt!("{") => Ok(Expr::Block(self.parse_node(Self::parse_block_expr)?)),
             tt!(if) => Ok(Expr::If(self.parse_node(Self::parse_if_expr)?)),
@@ -371,9 +324,16 @@ impl<'parser> Parser<'parser> {
                 Expr::MemberAccess(Box::new(left), name)
             }
 
+            tt!("[") => {
+                self.consume::<t!("[")>()?;
+                let index = self.parse_node(Self::parse_expr)?;
+                self.consume::<t!("]")>()?;
+                Expr::Index(Box::new(left), Box::new(index))
+            }
+
             tt!(=) | tt!(+=) | tt!(-=) | tt!(*=) | tt!(/=) | tt!(%=) => {
                 let op = self.parse_assign_op()?;
-                let right = self.parse_node(|p| p.pratt_parser(Precedence::Lowest))?;
+                let right = self.parse_node(Self::parse_expr)?;
                 Expr::Assign(Box::new(left), op, Box::new(right))
             }
 

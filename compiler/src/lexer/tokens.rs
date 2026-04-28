@@ -317,11 +317,12 @@ define_tokens!(
         "else" => Else,
         "switch" => Switch,
 
-        "boxed" => Boxed,
-        "box" => Box,
+        "caged" => Boxed,
+        "cage" => Box,
         "ref" => Ref,
 
-        "struct" => Struct,
+        "vessel" => Struct,
+        "spawn" => Spawn,
     }
 
     [symbols] => {
@@ -476,7 +477,9 @@ macro_rules! t {
     (struct) => {
         $crate::lexer::tokens::Struct
     };
-
+    (spawn) => {
+        $crate::lexer::tokens::Spawn
+    };
     (=) => {
         $crate::lexer::tokens::Assign
     };
@@ -667,6 +670,9 @@ macro_rules! tt {
     };
     (struct) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Struct)
+    };
+    (spawn) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Spawn)
     };
     (=) => {
         $crate::lexer::tokens::TokenType::Symbol($crate::lexer::tokens::Sym::Assign)

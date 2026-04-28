@@ -1,6 +1,7 @@
 use crate::{
     aliases::Result,
     lexer::tokens::Ident,
+    parse_separated,
     parser::{
         expr::expr_defs::{BlockExpr, Expr},
         types::type_parsing::Type,
@@ -118,21 +119,7 @@ impl<'parser> Parser<'parser> {
     fn parse_fn_decl(&mut self) -> Result<FunctionDecl> {
         self.consume::<t!(fn)>()?;
         let name = self.consume()?;
-
-        let mut args = vec![];
-        self.consume::<t!("(")>()?;
-        loop {
-            if let tt!(")") | tt!(eof) = self.peek()? {
-                break;
-            }
-            args.push(self.parse_function_arg()?);
-            if let tt!(,) = self.peek()? {
-                self.consume::<t!(,)>()?;
-            } else {
-                break;
-            }
-        }
-        self.consume::<t!(")")>()?;
+        let args = parse_separated!(self, "(", ")",,, self.parse_function_arg()?);
         let return_type = self.parse_node(Self::parse_function_return_type)?;
         let block = self.parse_node(Self::parse_block_expr)?;
 
@@ -166,23 +153,7 @@ impl<'parser> Parser<'parser> {
     fn parse_struct_decl(&mut self) -> Result<StructDecl> {
         self.consume::<t!(struct)>()?;
         let name = self.consume()?;
-        self.consume::<t!("{")>()?;
-        let mut fields = vec![];
-
-        loop {
-            if let tt!("}") | tt!(eof) = self.peek()? {
-                break;
-            }
-
-            fields.push(self.parse_node(Self::parse_struct_field)?);
-            if let tt!(;) = self.peek()? {
-                self.consume::<t!(;)>()?;
-            } else {
-                break;
-            }
-        }
-
-        self.consume::<t!("}")>()?;
+        let fields = parse_separated!(self, "{", "}",;, self.parse_node(Self::parse_struct_field)?);
         Ok(StructDecl { name, fields })
     }
 

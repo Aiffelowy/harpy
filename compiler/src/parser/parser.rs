@@ -10,6 +10,55 @@ use crate::{
     tt,
 };
 
+#[macro_export]
+macro_rules! parse_separated {
+    ($parser:expr, $open:tt, $close:tt, $sep:tt, $action:expr) => {{
+        $parser.consume::<t!($open)>()?;
+
+        let mut items = Vec::new();
+
+        loop {
+            if let tt!($close) | tt!(eof) = $parser.peek()? {
+                break;
+            }
+
+            items.push($action);
+
+            if let tt!($sep) = $parser.peek()? {
+                $parser.consume::<t!($sep)>()?;
+            } else {
+                break;
+            }
+        }
+
+        $parser.consume::<t!($close)>()?;
+
+        items
+    }};
+}
+
+#[macro_export]
+macro_rules! parse_sequence {
+    ($parser:expr, $open:tt, $close:tt, $parse_expr:expr, $sync_points:expr) => {{
+        $parser.consume::<t!($open)>()?;
+        let mut items = Vec::new();
+
+        loop {
+            if let tt!($close) | tt!(eof) = $parser.peek()? {
+                break;
+            }
+
+            match $parse_expr {
+                Ok(item) => items.push(item),
+                Err(e) => $parser.report_error(e, $sync_points)?,
+            }
+        }
+
+        $parser.consume::<t!($close)>()?;
+        items
+    }};
+}
+
 pub struct Parser<'parser> {
     lexer: Lexer<'parser>,
     next_id: u32,
