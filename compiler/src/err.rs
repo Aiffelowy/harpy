@@ -1,4 +1,5 @@
 use crate::aliases::Result;
+use crate::analyzer::err::AnalyzerError;
 use crate::color::Color;
 use crate::lexer::{err::LexerError, span::Span};
 use crate::source::SourceFile;
@@ -7,6 +8,7 @@ use crate::source::SourceFile;
 pub enum HarpyErrorKind {
     Lexer(LexerError),
     IO(std::io::Error),
+    Analyzer(AnalyzerError),
 }
 
 #[derive(Debug)]
@@ -20,6 +22,13 @@ impl HarpyError {
         Err(Box::new(Self {
             span,
             error: HarpyErrorKind::Lexer(error),
+        }))
+    }
+
+    pub fn analyzer<T>(error: AnalyzerError, span: Span) -> Result<T> {
+        Err(Box::new(Self {
+            span,
+            error: HarpyErrorKind::Analyzer(error),
         }))
     }
 }
@@ -41,6 +50,7 @@ impl HarpyError {
         let msg = match &self.error {
             HarpyErrorKind::Lexer(e) => format!("{}", e),
             HarpyErrorKind::IO(e) => format!("{}", e),
+            HarpyErrorKind::Analyzer(e) => format!("{:?}", e),
         };
 
         let line_text = source

@@ -147,7 +147,7 @@ impl<'parser> Parser<'parser> {
                 let name = self.consume()?;
                 let fields = parse_separated!(self, "{", "}",,, {
                     let field_name = self.consume()?;
-                    self.consume::<t!(:)>()?;
+                    self.consume::<t!(=)>()?;
                     let field_value = self.parse_node(Self::parse_expr)?;
                     (field_name, field_value)
                 });

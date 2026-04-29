@@ -39,8 +39,8 @@ pub enum TypeInner {
 
 #[derive(Debug, Clone)]
 pub struct Type {
-    mutable: bool,
-    inner: TypeInner,
+    pub mutable: bool,
+    pub inner: TypeInner,
 }
 
 impl Type {
