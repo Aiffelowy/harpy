@@ -4,6 +4,7 @@ use crate::lexer::span::Span;
 pub enum SymbolDeclError {
     AlreadyExists { name: String, original_def: Span },
     UnknownType(String),
+    UnknownFunction(String),
     ArraySizeInt,
 }
 
