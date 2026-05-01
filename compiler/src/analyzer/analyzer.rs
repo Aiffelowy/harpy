@@ -16,14 +16,11 @@ use crate::{
         types::types::{ResolvedType, TypeId},
     },
     err::HarpyError,
-    lexer::{
-        span::Span,
-        tokens::{Ident, Lit},
-    },
+    lexer::tokens::{Ident, Lit},
     parser::{
         expr::expr_defs::Expr,
         node::NodeId,
-        types::type_parsing::{BaseType, Primitive, Type, TypeInner},
+        types::type_parsing::{BaseType, TypeInner},
         Node,
     },
 };
@@ -70,14 +67,18 @@ pub struct Analyzer {
 }
 
 impl Analyzer {
-    fn resolve_type_base(&mut self, base_type: &Node<BaseType>) -> Result<TypeId> {
+    fn resolve_type_base(
+        &mut self,
+        module_id: ModuleId,
+        base_type: &Node<BaseType>,
+    ) -> Result<TypeId> {
         let bt = match &base_type.inner {
-            BaseType::Base(Primitive::Int) => ResolvedType::Int,
-            BaseType::Base(Primitive::Bool) => ResolvedType::Bool,
-            BaseType::Base(Primitive::Str) => ResolvedType::Str,
-            BaseType::Base(Primitive::Float) => ResolvedType::Float,
+            BaseType::Int => ResolvedType::Int,
+            BaseType::Bool => ResolvedType::Bool,
+            BaseType::Str => ResolvedType::Str,
+            BaseType::Float => ResolvedType::Float,
             BaseType::Custom(name) => {
-                if let Some(struct_id) = self.db.struct_table.name_to_id.get(name.value()) {
+                if let Some(struct_id) = self.db.modules[module_id.0].structs.get(name.value()) {
                     ResolvedType::Struct(*struct_id)
                 } else {
                     return HarpyError::analyzer(
@@ -91,8 +92,13 @@ impl Analyzer {
         Ok(self.db.type_table.register(bt))
     }
 
-    fn resolve_array_type(&mut self, ty: &Type, expr: &Option<Box<Node<Expr>>>) -> Result<TypeId> {
-        let resolved = self.resolve_type(&ty.inner)?;
+    fn resolve_array_type(
+        &mut self,
+        module_id: ModuleId,
+        ty: &TypeInner,
+        expr: &Option<Box<Node<Expr>>>,
+    ) -> Result<TypeId> {
+        let resolved = self.resolve_type(module_id, ty)?;
         let mut size = None;
         if let Some(expr) = expr {
             match &expr.inner {
@@ -113,16 +119,16 @@ impl Analyzer {
         Ok(self.db.type_table.register(ty))
     }
 
-    pub fn resolve_type(&mut self, parser_type: &TypeInner) -> Result<TypeId> {
+    pub fn resolve_type(&mut self, module_id: ModuleId, parser_type: &TypeInner) -> Result<TypeId> {
         let ty = match parser_type {
-            TypeInner::Base(base_node) => return self.resolve_type_base(base_node),
+            TypeInner::Base(base_node) => return self.resolve_type_base(module_id, base_node),
             TypeInner::Void => ResolvedType::Void,
             TypeInner::Ref(inner) => {
-                let resolved = self.resolve_type(&inner.inner.inner)?;
+                let resolved = self.resolve_type(module_id, &inner.inner)?;
                 ResolvedType::Ref(resolved)
             }
             TypeInner::Boxed(inner) => {
-                let resolved = self.resolve_type(&inner.inner.inner)?;
+                let resolved = self.resolve_type(module_id, &inner.inner)?;
                 ResolvedType::Boxed(resolved)
             }
 
@@ -130,12 +136,12 @@ impl Analyzer {
                 let args = f
                     .args
                     .iter()
-                    .map(|arg| self.resolve_type(&arg.inner.inner))
+                    .map(|arg| self.resolve_type(module_id, &arg.inner.inner))
                     .collect::<Result<Vec<_>>>()?;
-                let return_type = self.resolve_type(&f.return_type.inner.inner)?;
+                let return_type = self.resolve_type(module_id, &f.return_type.inner.inner)?;
                 ResolvedType::Function { args, return_type }
             }
-            TypeInner::Array(ty, s) => return self.resolve_array_type(&ty.inner, s),
+            TypeInner::Array(ty, s) => return self.resolve_array_type(module_id, &ty.inner, s),
             TypeInner::Unknown => ResolvedType::Unknown,
         };
 

@@ -7,16 +7,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Primitive {
+pub enum BaseType {
     Int,
     Float,
     Bool,
     Str,
-}
-
-#[derive(Debug, Clone)]
-pub enum BaseType {
-    Base(Primitive),
     Custom(Ident),
 }
 
@@ -28,11 +23,11 @@ pub struct FunctionType {
 
 #[derive(Debug, Clone)]
 pub enum TypeInner {
-    Base(Node<BaseType>),
-    Boxed(Box<Node<Type>>),
-    Ref(Box<Node<Type>>),
-    Array(Box<Node<Type>>, Option<Box<Node<Expr>>>),
+    Boxed(Box<Node<TypeInner>>),
+    Ref(Box<Node<TypeInner>>),
+    Array(Box<Node<TypeInner>>, Option<Box<Node<Expr>>>),
     FunctionType(FunctionType),
+    Base(Node<BaseType>),
     Void,
     Unknown,
 }
@@ -57,19 +52,19 @@ impl<'parser> Parser<'parser> {
         let base = match self.peek()? {
             tt!(int) => {
                 self.consume::<t!(int)>()?;
-                BaseType::Base(Primitive::Int)
+                BaseType::Int
             }
             tt!(float) => {
                 self.consume::<t!(float)>()?;
-                BaseType::Base(Primitive::Float)
+                BaseType::Float
             }
             tt!(str) => {
                 self.consume::<t!(str)>()?;
-                BaseType::Base(Primitive::Str)
+                BaseType::Str
             }
             tt!(bool) => {
                 self.consume::<t!(bool)>()?;
-                BaseType::Base(Primitive::Bool)
+                BaseType::Bool
             }
 
             _ => BaseType::Custom(self.consume()?),
@@ -85,22 +80,15 @@ impl<'parser> Parser<'parser> {
         Ok(FunctionType { args, return_type })
     }
 
-    pub fn parse_type(&mut self) -> Result<Type> {
-        let mutable = if let tt!(mut) = self.peek()? {
-            self.consume::<t!(mut)>()?;
-            true
-        } else {
-            false
-        };
-
+    fn parse_inner_type(&mut self) -> Result<TypeInner> {
         let inner = match self.peek()? {
             tt!(ref) => {
                 self.consume::<t!(ref)>()?;
-                TypeInner::Ref(Box::new(self.parse_node(Self::parse_type)?))
+                TypeInner::Ref(Box::new(self.parse_node(Self::parse_inner_type)?))
             }
             tt!(boxed) => {
                 self.consume::<t!(boxed)>()?;
-                TypeInner::Boxed(Box::new(self.parse_node(Self::parse_type)?))
+                TypeInner::Boxed(Box::new(self.parse_node(Self::parse_inner_type)?))
             }
             tt!(.) => {
                 self.consume::<t!(.)>()?;
@@ -108,7 +96,7 @@ impl<'parser> Parser<'parser> {
             }
             tt!("[") => {
                 self.consume::<t!("[")>()?;
-                let inner_type = Box::new(self.parse_node(Self::parse_type)?);
+                let inner_type = Box::new(self.parse_node(Self::parse_inner_type)?);
                 let mut size = None;
                 if let tt!(:) = self.peek()? {
                     self.consume::<t!(:)>()?;
@@ -124,6 +112,19 @@ impl<'parser> Parser<'parser> {
             }
             _ => TypeInner::Base(self.parse_node(Self::parse_base_type)?),
         };
+
+        Ok(inner)
+    }
+
+    pub fn parse_type(&mut self) -> Result<Type> {
+        let mutable = if let tt!(mut) = self.peek()? {
+            self.consume::<t!(mut)>()?;
+            true
+        } else {
+            false
+        };
+
+        let inner = self.parse_inner_type()?;
 
         Ok(Type { inner, mutable })
     }
