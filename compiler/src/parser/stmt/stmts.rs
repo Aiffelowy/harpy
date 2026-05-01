@@ -159,7 +159,7 @@ impl<'parser> Parser<'parser> {
     fn parse_struct_field(&mut self) -> Result<StructField> {
         let name = self.consume()?;
         self.consume::<t!(:)>()?;
-        let ttype = self.parse_node(Self::parse_type)?;
+        let ttype = self.parse_node(Self::parse_type_no_ref)?;
         Ok(StructField { name, ttype })
     }
 

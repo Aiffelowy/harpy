@@ -5,34 +5,28 @@ use crate::{
     analyzer::{
         err::SymbolDeclError,
         modules::{Module, ModuleId},
-        symbols::symbols::{Symbol, SymbolId},
         tables::{
             const_pool::ConstPool,
             function_table::{FunctionDef, FunctionId, FunctionTable},
-            global_table::GlobalTable,
+            global_table::{GlobalDef, GlobalId, GlobalTable},
             struct_table::{StructId, StructLayout, StructTable},
+            symbol_table::{Symbol, SymbolId, SymbolTable},
             type_table::TypeTable,
         },
-        types::types::{ResolvedType, TypeId},
+        types::types::TypeId,
     },
     err::HarpyError,
-    lexer::tokens::{Ident, Lit},
-    parser::{
-        expr::expr_defs::Expr,
-        node::NodeId,
-        types::type_parsing::{BaseType, TypeInner},
-        Node,
-    },
+    lexer::tokens::Ident,
+    parser::{node::NodeId, stmt::stmts::Program},
 };
 
 #[derive(Debug)]
 pub struct SemanticDB {
     pub modules: Vec<Module>,
 
-    pub symbols: Vec<Symbol>,
-    pub resolutions: HashMap<NodeId, SymbolId>,
     pub node_types: HashMap<NodeId, TypeId>,
 
+    pub symbol_table: SymbolTable,
     pub type_table: TypeTable,
     pub struct_table: StructTable,
 
@@ -47,9 +41,8 @@ impl Default for SemanticDB {
     fn default() -> Self {
         Self {
             modules: vec![Module::new("global", None)],
-            symbols: vec![],
-            resolutions: HashMap::new(),
             node_types: HashMap::new(),
+            symbol_table: SymbolTable::default(),
             type_table: TypeTable::default(),
             struct_table: StructTable::default(),
             const_pool: ConstPool::default(),
@@ -63,88 +56,11 @@ impl Default for SemanticDB {
 
 #[derive(Debug, Default)]
 pub struct Analyzer {
-    db: SemanticDB,
+    pub(in crate::analyzer) db: SemanticDB,
 }
 
 impl Analyzer {
-    fn resolve_type_base(
-        &mut self,
-        module_id: ModuleId,
-        base_type: &Node<BaseType>,
-    ) -> Result<TypeId> {
-        let bt = match &base_type.inner {
-            BaseType::Int => ResolvedType::Int,
-            BaseType::Bool => ResolvedType::Bool,
-            BaseType::Str => ResolvedType::Str,
-            BaseType::Float => ResolvedType::Float,
-            BaseType::Custom(name) => {
-                if let Some(struct_id) = self.db.modules[module_id.0].structs.get(name.value()) {
-                    ResolvedType::Struct(*struct_id)
-                } else {
-                    return HarpyError::analyzer(
-                        SymbolDeclError::UnknownType(name.value().clone()).into(),
-                        base_type.span,
-                    );
-                }
-            }
-        };
-
-        Ok(self.db.type_table.register(bt))
-    }
-
-    fn resolve_array_type(
-        &mut self,
-        module_id: ModuleId,
-        ty: &TypeInner,
-        expr: &Option<Box<Node<Expr>>>,
-    ) -> Result<TypeId> {
-        let resolved = self.resolve_type(module_id, ty)?;
-        let mut size = None;
-        if let Some(expr) = expr {
-            match &expr.inner {
-                Expr::Literal(lit) => {
-                    if let Lit::LitInt(i) = lit.value() {
-                        size = Some(*i);
-                    } else {
-                        return HarpyError::analyzer(
-                            SymbolDeclError::ArraySizeInt.into(),
-                            lit.span(),
-                        );
-                    }
-                }
-                _ => return HarpyError::analyzer(SymbolDeclError::ArraySizeInt.into(), expr.span),
-            }
-        }
-        let ty = ResolvedType::Array(resolved, size);
-        Ok(self.db.type_table.register(ty))
-    }
-
-    pub fn resolve_type(&mut self, module_id: ModuleId, parser_type: &TypeInner) -> Result<TypeId> {
-        let ty = match parser_type {
-            TypeInner::Base(base_node) => return self.resolve_type_base(module_id, base_node),
-            TypeInner::Void => ResolvedType::Void,
-            TypeInner::Boxed(inner) => {
-                let resolved = self.resolve_type(module_id, &inner.inner)?;
-                ResolvedType::Boxed(resolved)
-            }
-
-            TypeInner::FunctionType(f) => {
-                let args = f
-                    .args
-                    .iter()
-                    .map(|arg| self.resolve_type(module_id, &arg.inner.inner))
-                    .collect::<Result<Vec<_>>>()?;
-                let return_type = self.resolve_type(module_id, &f.return_type.inner.inner)?;
-                ResolvedType::Function { args, return_type }
-            }
-            TypeInner::Array(ty, s) => return self.resolve_array_type(module_id, &ty.inner, s),
-            TypeInner::Unknown => ResolvedType::Unknown,
-        };
-
-        Ok(self.db.type_table.register(ty))
-    }
-
-    pub fn register_struct(
+    pub(in crate::analyzer) fn register_struct(
         &mut self,
         module_id: ModuleId,
         layout: StructLayout,
@@ -171,7 +87,7 @@ impl Analyzer {
         Ok(struct_id)
     }
 
-    pub fn register_function(
+    pub(in crate::analyzer) fn register_function(
         &mut self,
         module_id: ModuleId,
         def: FunctionDef,
@@ -198,7 +114,59 @@ impl Analyzer {
         Ok(func_id)
     }
 
-    pub fn resolve_struct_name(&self, module_id: ModuleId, ident: &Ident) -> Result<StructId> {
+    pub(in crate::analyzer) fn register_symbol(&mut self, symbol: Symbol) -> Result<SymbolId> {
+        let id = self.db.symbol_table.register(symbol);
+        Ok(id)
+    }
+
+    pub(in crate::analyzer) fn register_global(
+        &mut self,
+        module_id: ModuleId,
+        def: GlobalDef,
+    ) -> Result<GlobalId> {
+        let name = def.name.clone();
+        let span = def.span;
+
+        if let Some(&existing_id) = self.db.modules[module_id.0].globals.get(&name) {
+            let orig_span = self.db.global_table.get(existing_id).span;
+
+            return HarpyError::analyzer(
+                SymbolDeclError::AlreadyExists {
+                    name,
+                    original_def: orig_span,
+                }
+                .into(),
+                span,
+            );
+        }
+
+        let global_id = self.db.global_table.register(def);
+        self.db.modules[module_id.0].globals.insert(name, global_id);
+        Ok(global_id)
+    }
+
+    pub(in crate::analyzer) fn resolve_global_name(
+        &self,
+        module_id: ModuleId,
+        ident: &Ident,
+    ) -> Result<GlobalId> {
+        let module = &self.db.modules[module_id.0];
+
+        if let Some(&id) = module.globals.get(ident.value()) {
+            Ok(id)
+        } else {
+            HarpyError::analyzer(
+                SymbolDeclError::UnknownSymbol(ident.value().to_owned()).into(),
+                ident.span(),
+            )
+        }
+    }
+
+    pub(in crate::analyzer) fn resolve_struct_name(
+        &self,
+        module_id: ModuleId,
+        ident: &Ident,
+    ) -> Result<StructId> {
         let module = &self.db.modules[module_id.0];
 
         if let Some(&id) = module.structs.get(ident.value()) {
@@ -211,7 +179,11 @@ impl Analyzer {
         }
     }
 
-    pub fn resolve_function_name(&self, module_id: ModuleId, ident: &Ident) -> Result<FunctionId> {
+    pub(in crate::analyzer) fn resolve_function_name(
+        &self,
+        module_id: ModuleId,
+        ident: &Ident,
+    ) -> Result<FunctionId> {
         let module = &self.db.modules[module_id.0];
 
         if let Some(&id) = module.functions.get(ident.value()) {
@@ -222,5 +194,11 @@ impl Analyzer {
                 ident.span(),
             )
         }
+    }
+
+    pub fn analyze(mut self, ast: &Program) -> Result<SemanticDB> {
+        self.pass_symbol_declaration(ast, ModuleId(0))?;
+
+        Ok(self.db)
     }
 }

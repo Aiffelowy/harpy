@@ -7,7 +7,6 @@ pub struct StructId(pub usize);
 pub struct Field {
     pub name: String,
     pub ty: TypeId,
-    pub offset: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -15,8 +14,22 @@ pub struct StructLayout {
     pub name: String,
     pub id: Option<StructId>,
     pub fields: Vec<Field>,
-    pub total_size: usize,
     pub span: Span,
+}
+
+impl StructLayout {
+    pub fn skeleton(name: String, span: Span) -> Self {
+        StructLayout {
+            name,
+            id: None,
+            fields: Vec::new(),
+            span,
+        }
+    }
+
+    pub fn set_fields(&mut self, fields: Vec<Field>) {
+        self.fields = fields
+    }
 }
 
 #[derive(Debug, Default)]
@@ -35,5 +48,9 @@ impl StructTable {
 
     pub fn get(&self, id: StructId) -> &StructLayout {
         &self.layouts[id.0]
+    }
+
+    pub fn get_mut(&mut self, id: StructId) -> &mut StructLayout {
+        &mut self.layouts[id.0]
     }
 }

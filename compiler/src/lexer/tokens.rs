@@ -305,6 +305,7 @@ define_tokens!(
         "float" => Float,
         "str" => Str,
         "bool" => Bool,
+        "void" => Void,
 
         "for" => For,
         "in" => In,
@@ -431,6 +432,9 @@ macro_rules! t {
     };
     (bool) => {
         $crate::lexer::tokens::Bool
+    };
+    (void) => {
+        $crate::lexer::tokens::Void
     };
     (for) => {
         $crate::lexer::tokens::For
@@ -631,6 +635,9 @@ macro_rules! tt {
     };
     (bool) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Bool)
+    };
+    (void) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Void)
     };
     (for) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::For)

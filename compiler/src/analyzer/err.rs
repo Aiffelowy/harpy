@@ -5,6 +5,7 @@ pub enum SymbolDeclError {
     AlreadyExists { name: String, original_def: Span },
     UnknownType(String),
     UnknownFunction(String),
+    UnknownSymbol(String),
     ArraySizeInt,
 }
 

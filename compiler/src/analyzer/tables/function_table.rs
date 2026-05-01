@@ -1,5 +1,5 @@
 use crate::{
-    analyzer::{symbols::symbols::SymbolId, types::types::TypeId},
+    analyzer::{tables::symbol_table::SymbolId, types::types::TypeId},
     lexer::span::Span,
 };
 
@@ -15,6 +15,19 @@ pub struct FunctionDef {
     pub span: Span,
 
     pub locals: Vec<SymbolId>,
+}
+
+impl FunctionDef {
+    pub fn skeleton(name: String, signature: TypeId, span: Span) -> Self {
+        FunctionDef {
+            name,
+            id: None,
+            signature,
+            params: Vec::new(),
+            span,
+            locals: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

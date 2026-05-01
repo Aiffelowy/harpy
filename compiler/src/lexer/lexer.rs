@@ -39,6 +39,9 @@ impl<'lexer> Lexer<'lexer> {
     }
 
     pub fn position(&self) -> Position {
+        if let Some(token) = &self.peeked {
+            return token.span.start;
+        }
         self.position
     }
 

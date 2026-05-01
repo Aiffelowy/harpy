@@ -15,7 +15,7 @@ pub enum BaseType {
     Custom(Ident),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Mutable(pub bool);
 
 #[derive(Debug, Clone)]
@@ -110,13 +110,26 @@ impl<'parser> Parser<'parser> {
                 let inner = self.parse_function_type()?;
                 TypeInner::FunctionType(inner)
             }
+            tt!(void) => {
+                self.consume::<t!(void)>()?;
+                TypeInner::Void
+            }
             _ => TypeInner::Base(self.parse_node(Self::parse_base_type)?),
         };
 
         Ok(inner)
     }
 
-    pub fn parse_type_with_infer(&mut self) -> Result<Type> {
+    pub(in crate::parser) fn parse_type_no_ref(&mut self) -> Result<Type> {
+        let inner = self.parse_inner_type(false)?;
+
+        Ok(Type {
+            inner,
+            is_ref: (false, Mutable(false)),
+        })
+    }
+
+    pub(in crate::parser) fn parse_type_with_infer(&mut self) -> Result<Type> {
         let is_ref = peek_and_consume!(self, ref);
         let mutable = is_ref && peek_and_consume!(self, mut);
 
@@ -128,7 +141,7 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    pub fn parse_type(&mut self) -> Result<Type> {
+    pub(in crate::parser) fn parse_type(&mut self) -> Result<Type> {
         let is_ref = peek_and_consume!(self, ref);
         let mutable = is_ref && peek_and_consume!(self, mut);
 
