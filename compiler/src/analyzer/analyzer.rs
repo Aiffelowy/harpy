@@ -85,22 +85,42 @@ impl Default for SemanticDB {
     }
 }
 
+#[derive(Debug)]
+struct AnalyzerContext {
+    current_module: ModuleId,
+}
+
+impl Default for AnalyzerContext {
+    fn default() -> Self {
+        Self {
+            current_module: ModuleId(0),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Analyzer {
     pub(in crate::analyzer) db: SemanticDB,
     pub(in crate::analyzer) errors: Vec<HarpyError>,
+    ctx: AnalyzerContext,
 }
 
 impl Analyzer {
+    pub(in crate::analyzer) fn current_module(&self) -> &Module {
+        &self.db.modules[self.ctx.current_module.0]
+    }
+    pub(in crate::analyzer) fn current_module_mut(&mut self) -> &mut Module {
+        &mut self.db.modules[self.ctx.current_module.0]
+    }
+
     pub(in crate::analyzer) fn register_struct(
         &mut self,
-        module_id: ModuleId,
         layout: StructLayout,
     ) -> Result<StructId> {
         let name = layout.name.clone();
         let span = layout.span;
 
-        if let Some(&existing_id) = self.db.modules[module_id.0].structs.get(&name) {
+        if let Some(&existing_id) = self.current_module().structs.get(&name) {
             let original_span = self.db.struct_table.get(existing_id).span;
 
             return HarpyError::analyzer(
@@ -114,20 +134,19 @@ impl Analyzer {
         }
 
         let struct_id = self.db.struct_table.register(layout);
-        self.db.modules[module_id.0].structs.insert(name, struct_id);
+        self.current_module_mut().structs.insert(name, struct_id);
 
         Ok(struct_id)
     }
 
     pub(in crate::analyzer) fn register_function(
         &mut self,
-        module_id: ModuleId,
         def: FunctionDef,
     ) -> Result<FunctionId> {
         let name = def.name.clone();
         let span = def.span;
 
-        if let Some(&existing_id) = self.db.modules[module_id.0].functions.get(&name) {
+        if let Some(&existing_id) = self.current_module().functions.get(&name) {
             let original_span = self.db.function_table.get(existing_id).span;
 
             return HarpyError::analyzer(
@@ -141,7 +160,7 @@ impl Analyzer {
         }
 
         let func_id = self.db.function_table.register(def);
-        self.db.modules[module_id.0].functions.insert(name, func_id);
+        self.current_module_mut().functions.insert(name, func_id);
 
         Ok(func_id)
     }
@@ -151,15 +170,11 @@ impl Analyzer {
         Ok(id)
     }
 
-    pub(in crate::analyzer) fn register_global(
-        &mut self,
-        module_id: ModuleId,
-        def: GlobalDef,
-    ) -> Result<GlobalId> {
+    pub(in crate::analyzer) fn register_global(&mut self, def: GlobalDef) -> Result<GlobalId> {
         let name = def.name.clone();
         let span = def.span;
 
-        if let Some(&existing_id) = self.db.modules[module_id.0].globals.get(&name) {
+        if let Some(&existing_id) = self.current_module().globals.get(&name) {
             let orig_span = self.db.global_table.get(existing_id).span;
 
             return HarpyError::analyzer(
@@ -173,16 +188,12 @@ impl Analyzer {
         }
 
         let global_id = self.db.global_table.register(def);
-        self.db.modules[module_id.0].globals.insert(name, global_id);
+        self.current_module_mut().globals.insert(name, global_id);
         Ok(global_id)
     }
 
-    pub(in crate::analyzer) fn resolve_global_name(
-        &self,
-        module_id: ModuleId,
-        ident: &Ident,
-    ) -> Result<GlobalId> {
-        let module = &self.db.modules[module_id.0];
+    pub(in crate::analyzer) fn resolve_global_name(&self, ident: &Ident) -> Result<GlobalId> {
+        let module = self.current_module();
 
         if let Some(&id) = module.globals.get(ident.value()) {
             Ok(id)
@@ -194,12 +205,8 @@ impl Analyzer {
         }
     }
 
-    pub(in crate::analyzer) fn resolve_struct_name(
-        &self,
-        module_id: ModuleId,
-        ident: &Ident,
-    ) -> Result<StructId> {
-        let module = &self.db.modules[module_id.0];
+    pub(in crate::analyzer) fn resolve_struct_name(&self, ident: &Ident) -> Result<StructId> {
+        let module = self.current_module();
 
         if let Some(&id) = module.structs.get(ident.value()) {
             Ok(id)
@@ -211,12 +218,8 @@ impl Analyzer {
         }
     }
 
-    pub(in crate::analyzer) fn resolve_function_name(
-        &self,
-        module_id: ModuleId,
-        ident: &Ident,
-    ) -> Result<FunctionId> {
-        let module = &self.db.modules[module_id.0];
+    pub(in crate::analyzer) fn resolve_function_name(&self, ident: &Ident) -> Result<FunctionId> {
+        let module = self.current_module();
 
         if let Some(&id) = module.functions.get(ident.value()) {
             Ok(id)
@@ -237,11 +240,11 @@ impl Analyzer {
     }
 
     pub fn analyze(mut self, ast: &Program) -> std::result::Result<SemanticDB, Vec<HarpyError>> {
-        self.pass_symbol_declaration(ast, ModuleId(0));
+        self.pass_symbol_declaration(ast);
         if !self.errors.is_empty() {
             return Err(self.errors);
         }
 
-        return Ok(self.db);
+        Ok(self.db)
     }
 }
