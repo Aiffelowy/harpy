@@ -85,7 +85,7 @@ impl AstPrettyPrint {
                 self.push_line(&format!("FunctionDecl (name: {})", s.name.value()));
                 let mut args = String::new();
                 for arg in &s.args {
-                    args.push_str(&format!("{} ", arg.0.value()));
+                    args.push_str(&format!("{} ", arg.name.value()));
                 }
                 self.indent += 1;
                 self.push_line(&format!("Args: {}", args));

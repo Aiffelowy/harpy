@@ -59,6 +59,18 @@ macro_rules! parse_sequence {
     }};
 }
 
+#[macro_export]
+macro_rules! peek_and_consume {
+    ($parser:expr, $token:tt) => {
+        if let tt!($token) = $parser.peek()? {
+            $parser.consume::<t!($token)>()?;
+            true
+        } else {
+            false
+        }
+    };
+}
+
 pub struct Parser<'parser> {
     lexer: Lexer<'parser>,
     next_id: u32,

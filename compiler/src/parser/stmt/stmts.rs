@@ -3,11 +3,11 @@ use crate::{
     lexer::tokens::Ident,
     parse_separated,
     parser::{
-        expr::expr_defs::{BlockExpr, Expr},
-        types::type_parsing::Type,
+        expr::expr_defs::{BlockExpr, Expr, FunctionArg},
+        types::type_parsing::{Mutable, Type},
         Node, Parser,
     },
-    t, tt,
+    peek_and_consume, t, tt,
 };
 
 #[derive(Debug, Clone)]
@@ -26,6 +26,7 @@ pub struct WhileStmt {
 #[derive(Debug, Clone)]
 pub struct LetStmt {
     pub name: Ident,
+    pub mutable: Mutable,
     pub ttype: Option<Node<Type>>,
     pub expr: Option<Node<Expr>>,
 }
@@ -33,7 +34,7 @@ pub struct LetStmt {
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
     pub name: Ident,
-    pub args: Vec<(Ident, Node<Type>)>,
+    pub args: Vec<FunctionArg>,
     pub return_type: Node<Type>,
     pub block: Node<BlockExpr>,
 }
@@ -41,6 +42,7 @@ pub struct FunctionDecl {
 #[derive(Debug, Clone)]
 pub struct GlobalStmt {
     pub name: Ident,
+    pub mutable: Mutable,
     pub ttype: Node<Type>,
     pub expr: Node<Expr>,
 }
@@ -76,21 +78,26 @@ pub enum Stmt {
 impl<'parser> Parser<'parser> {
     fn parse_let_stmt(&mut self) -> Result<LetStmt> {
         self.consume::<t!(let)>()?;
+        let mutable = peek_and_consume!(self, mut);
         let name = self.consume()?;
         let mut ttype = None;
         let mut expr = None;
-        if let tt!(:) = self.peek()? {
-            self.consume::<t!(:)>()?;
-            ttype = Some(self.parse_node(Self::parse_type)?);
+        if peek_and_consume!(self, :) {
+            ttype = Some(self.parse_node(Self::parse_type_with_infer)?);
         }
 
-        if let tt!(=) = self.peek()? {
-            self.consume::<t!(=)>()?;
+        if peek_and_consume!(self, =) {
             expr = Some(self.parse_node(Self::parse_expr)?);
         }
+
         self.consume::<t!(;)>()?;
 
-        Ok(LetStmt { name, ttype, expr })
+        Ok(LetStmt {
+            name,
+            ttype,
+            expr,
+            mutable: Mutable(mutable),
+        })
     }
 
     fn parse_while_stmt(&mut self) -> Result<WhileStmt> {
@@ -133,14 +140,20 @@ impl<'parser> Parser<'parser> {
 
     fn parse_global_stmt(&mut self) -> Result<GlobalStmt> {
         self.consume::<t!(global)>()?;
+        let mutable = peek_and_consume!(self, mut);
         let name = self.consume()?;
         self.consume::<t!(:)>()?;
-        let ttype = self.parse_node(Self::parse_type)?;
+        let ttype = self.parse_node(Self::parse_type_with_infer)?;
         self.consume::<t!(=)>()?;
         let expr = self.parse_node(Self::parse_expr)?;
         self.consume::<t!(;)>()?;
 
-        Ok(GlobalStmt { name, ttype, expr })
+        Ok(GlobalStmt {
+            name,
+            ttype,
+            expr,
+            mutable: Mutable(mutable),
+        })
     }
 
     fn parse_struct_field(&mut self) -> Result<StructField> {
@@ -169,8 +182,8 @@ impl<'parser> Parser<'parser> {
                 let expr = self.parse_node(Self::parse_expr)?;
                 if expr.inner.requires_semi() {
                     self.consume::<t!(;)>()?;
-                } else if let tt!(;) = self.peek()? {
-                    self.consume::<t!(;)>()?;
+                } else {
+                    peek_and_consume!(self, ;);
                 }
                 Ok(Stmt::Expr(expr))
             }

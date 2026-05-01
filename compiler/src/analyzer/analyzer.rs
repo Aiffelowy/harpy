@@ -123,10 +123,6 @@ impl Analyzer {
         let ty = match parser_type {
             TypeInner::Base(base_node) => return self.resolve_type_base(module_id, base_node),
             TypeInner::Void => ResolvedType::Void,
-            TypeInner::Ref(inner) => {
-                let resolved = self.resolve_type(module_id, &inner.inner)?;
-                ResolvedType::Ref(resolved)
-            }
             TypeInner::Boxed(inner) => {
                 let resolved = self.resolve_type(module_id, &inner.inner)?;
                 ResolvedType::Boxed(resolved)

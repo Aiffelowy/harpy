@@ -1,11 +1,10 @@
 use crate::lexer::span::Span;
-use crate::lexer::tokens::Ident;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
-use crate::parser::types::type_parsing::Type;
+use crate::parser::types::type_parsing::{Mutable, Type};
 use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
-use crate::{parse_separated, parse_sequence};
+use crate::{parse_separated, parse_sequence, peek_and_consume};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(in crate::parser) enum Precedence {
@@ -63,8 +62,7 @@ impl<'parser> Parser<'parser> {
         let expr = Box::new(self.parse_node(Self::parse_expr)?);
         let block = self.parse_node(Self::parse_block_expr)?;
         let mut else_block = None;
-        if let tt!(else) = self.peek()? {
-            self.consume::<t!(else)>()?;
+        if peek_and_consume!(self, else) {
             else_block = Some(Box::new(self.parse_node(Self::parse_expr)?));
         }
 
@@ -75,12 +73,17 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    pub(in crate::parser) fn parse_function_arg(&mut self) -> Result<(Ident, Node<Type>)> {
+    pub(in crate::parser) fn parse_function_arg(&mut self) -> Result<FunctionArg> {
+        let mutable = peek_and_consume!(self, mut);
         let name = self.consume()?;
         self.consume::<t!(:)>()?;
-        let ttype = self.parse_node(Self::parse_type)?;
+        let ty = self.parse_node(Self::parse_type)?;
 
-        Ok((name, ttype))
+        Ok(FunctionArg {
+            name,
+            ty,
+            mutable: Mutable(mutable),
+        })
     }
 
     pub(in crate::parser) fn parse_function_return_type(&mut self) -> Result<Type> {
@@ -137,13 +140,7 @@ impl<'parser> Parser<'parser> {
             tt!(spawn) => {
                 let spawn = self.consume::<t!(spawn)>()?;
 
-                let is_boxed = if let tt!(boxed) = self.peek()? {
-                    self.consume::<t!(boxed)>()?;
-                    true
-                } else {
-                    false
-                };
-
+                let is_boxed = peek_and_consume!(self, boxed);
                 let name = self.consume()?;
                 let fields = parse_separated!(self, "{", "}",,, {
                     let field_name = self.consume()?;
@@ -228,11 +225,7 @@ impl<'parser> Parser<'parser> {
 
             tt!(ref) => {
                 self.consume::<t!(ref)>()?;
-                let mut is_mut = false;
-                if let tt!(mut) = self.peek()? {
-                    self.consume::<t!(mut)>()?;
-                    is_mut = true;
-                }
+                let is_mut = peek_and_consume!(self, mut);
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
                 Ok(Expr::Borrow(Box::new(right), is_mut))
             }

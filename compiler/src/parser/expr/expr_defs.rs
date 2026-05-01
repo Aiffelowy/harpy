@@ -1,7 +1,19 @@
 use crate::{
     lexer::tokens::{Ident, Literal},
-    parser::{expr::ops::*, stmt::stmts::Stmt, types::type_parsing::Type, Node},
+    parser::{
+        expr::ops::*,
+        stmt::stmts::Stmt,
+        types::type_parsing::{Mutable, Type},
+        Node,
+    },
 };
+
+#[derive(Debug, Clone)]
+pub struct FunctionArg {
+    pub name: Ident,
+    pub ty: Node<Type>,
+    pub mutable: Mutable,
+}
 
 #[derive(Debug, Clone)]
 pub struct CallExpr {
@@ -28,7 +40,7 @@ pub struct IfExpr {
 
 #[derive(Debug, Clone)]
 pub struct ClosureExpr {
-    pub args: Vec<(Ident, Node<Type>)>,
+    pub args: Vec<FunctionArg>,
     pub return_type: Node<Type>,
     pub block: Node<BlockExpr>,
 }
