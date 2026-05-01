@@ -15,13 +15,13 @@ impl Default for TypeTable {
             types: Vec::new(),
         };
 
+        table.register(ResolvedType::Unknown);
         table.register(ResolvedType::Int);
         table.register(ResolvedType::Float);
         table.register(ResolvedType::Bool);
         table.register(ResolvedType::Str);
         table.register(ResolvedType::Void);
         table.register(ResolvedType::Never);
-        table.register(ResolvedType::Unknown);
         table
     }
 }

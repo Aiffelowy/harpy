@@ -36,7 +36,9 @@ fn main() -> Result<()> {
     let db = match analyzer.analyze(&ast) {
         Ok(db) => db,
         Err(e) => {
-            e.print_diagnostic(&source, filename);
+            for error in e {
+                error.print_diagnostic(&source, filename);
+            }
             return Ok(());
         }
     };

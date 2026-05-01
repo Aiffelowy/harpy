@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     aliases::Result,
     analyzer::{
-        err::SymbolDeclError,
+        err::{AnalyzerError, SymbolDeclError},
         modules::{Module, ModuleId},
         tables::{
             const_pool::ConstPool,
@@ -19,6 +19,37 @@ use crate::{
     lexer::tokens::Ident,
     parser::{node::NodeId, stmt::stmts::Program},
 };
+
+#[macro_export]
+macro_rules! report {
+    ($analyzer:expr, $expr:expr) => {
+        match $expr {
+            Ok(val) => Some(val),
+            Err(e) => {
+                $analyzer.errors.push(*e);
+                None
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! attempt {
+    ($analyzer:expr, $expr:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(e) => {
+                use $crate::analyzer::analyzer::Fallback;
+                $analyzer.errors.push(*e);
+                $analyzer.fallback()
+            }
+        }
+    };
+}
+
+pub trait Fallback<T> {
+    fn fallback(&self) -> T;
+}
 
 #[derive(Debug)]
 pub struct SemanticDB {
@@ -57,6 +88,7 @@ impl Default for SemanticDB {
 #[derive(Debug, Default)]
 pub struct Analyzer {
     pub(in crate::analyzer) db: SemanticDB,
+    pub(in crate::analyzer) errors: Vec<HarpyError>,
 }
 
 impl Analyzer {
@@ -196,9 +228,20 @@ impl Analyzer {
         }
     }
 
-    pub fn analyze(mut self, ast: &Program) -> Result<SemanticDB> {
-        self.pass_symbol_declaration(ast, ModuleId(0))?;
+    pub(in crate::analyzer) fn report_error(
+        &mut self,
+        err: AnalyzerError,
+        span: crate::lexer::span::Span,
+    ) {
+        self.errors.push(HarpyError::new_analyzer(err, span))
+    }
 
-        Ok(self.db)
+    pub fn analyze(mut self, ast: &Program) -> std::result::Result<SemanticDB, Vec<HarpyError>> {
+        self.pass_symbol_declaration(ast, ModuleId(0));
+        if !self.errors.is_empty() {
+            return Err(self.errors);
+        }
+
+        return Ok(self.db);
     }
 }

@@ -1,7 +1,10 @@
 use crate::{
     aliases::Result,
     analyzer::{
-        analyzer::Analyzer, err::SymbolDeclError, modules::ModuleId, tables::struct_table::StructId,
+        analyzer::{Analyzer, Fallback},
+        err::SymbolDeclError,
+        modules::ModuleId,
+        tables::struct_table::StructId,
     },
     err::HarpyError,
     lexer::tokens::Lit,
@@ -14,6 +17,17 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeId(pub usize);
+
+impl TypeId {
+    pub fn is_valid(&self) -> bool {
+        self.0 != 0
+    }
+}
+impl Fallback<TypeId> for Analyzer {
+    fn fallback(&self) -> TypeId {
+        TypeId(0)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolvedType {
@@ -50,7 +64,6 @@ impl Analyzer {
                 if let Some(struct_id) = self.db.modules[module_id.0].structs.get(name.value()) {
                     ResolvedType::Struct(*struct_id)
                 } else {
-                    println!("{:?}", base_type.span);
                     return HarpyError::analyzer(
                         SymbolDeclError::UnknownType(name.value().clone()).into(),
                         name.span(),

@@ -1,7 +1,24 @@
-use crate::{analyzer::types::types::TypeId, lexer::span::Span};
+use crate::{
+    analyzer::{
+        analyzer::{Analyzer, Fallback},
+        types::types::TypeId,
+    },
+    lexer::span::Span,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructId(pub usize);
+
+impl StructId {
+    pub fn is_valid(&self) -> bool {
+        self.0 != 0
+    }
+}
+impl Fallback<StructId> for Analyzer {
+    fn fallback(&self) -> StructId {
+        StructId(0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Field {
@@ -32,9 +49,21 @@ impl StructLayout {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StructTable {
     pub layouts: Vec<StructLayout>,
+}
+
+impl Default for StructTable {
+    fn default() -> Self {
+        let mut s = Self {
+            layouts: Vec::new(),
+        };
+
+        let dummy = StructLayout::skeleton("<unknown_struct>".to_owned(), Span::default());
+        s.register(dummy);
+        s
+    }
 }
 
 impl StructTable {

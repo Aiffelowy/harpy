@@ -18,6 +18,17 @@ pub struct HarpyError {
 }
 
 impl HarpyError {
+    pub fn new(error: HarpyErrorKind, span: Span) -> Self {
+        Self { error, span }
+    }
+
+    pub fn new_analyzer(error: AnalyzerError, span: Span) -> Self {
+        Self {
+            error: HarpyErrorKind::Analyzer(error),
+            span,
+        }
+    }
+
     pub fn lexer<T>(error: LexerError, span: Span) -> Result<T> {
         Err(Box::new(Self {
             span,

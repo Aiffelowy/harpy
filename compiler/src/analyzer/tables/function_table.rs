@@ -1,10 +1,26 @@
 use crate::{
-    analyzer::{tables::symbol_table::SymbolId, types::types::TypeId},
+    analyzer::{
+        analyzer::{Analyzer, Fallback},
+        tables::symbol_table::SymbolId,
+        types::types::TypeId,
+    },
     lexer::span::Span,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunctionId(pub usize);
+
+impl FunctionId {
+    pub fn is_valid(&self) -> bool {
+        self.0 != 0
+    }
+}
+
+impl Fallback<FunctionId> for Analyzer {
+    fn fallback(&self) -> FunctionId {
+        FunctionId(0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FunctionDef {
@@ -30,9 +46,20 @@ impl FunctionDef {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct FunctionTable {
     pub functions: Vec<FunctionDef>,
+}
+
+impl Default for FunctionTable {
+    fn default() -> Self {
+        let mut s = Self {
+            functions: Vec::new(),
+        };
+        let dummy = FunctionDef::skeleton("<unknown_fn>".to_owned(), TypeId(0), Span::default());
+        s.register(dummy);
+        s
+    }
 }
 
 impl FunctionTable {

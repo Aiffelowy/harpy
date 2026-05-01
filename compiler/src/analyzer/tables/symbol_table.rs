@@ -1,9 +1,27 @@
 use std::collections::HashMap;
 
-use crate::{analyzer::types::types::TypeId, lexer::span::Span, parser::node::NodeId};
+use crate::{
+    analyzer::{
+        analyzer::{Analyzer, Fallback},
+        types::types::TypeId,
+    },
+    lexer::span::Span,
+    parser::node::NodeId,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SymbolId(pub usize);
+
+impl SymbolId {
+    pub fn is_valid(&self) -> bool {
+        self.0 != 0
+    }
+}
+impl Fallback<SymbolId> for Analyzer {
+    fn fallback(&self) -> SymbolId {
+        SymbolId(0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
@@ -14,10 +32,29 @@ pub struct Symbol {
     pub declared_at: Span,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub resolutions: HashMap<NodeId, SymbolId>,
+}
+
+impl Default for SymbolTable {
+    fn default() -> Self {
+        let mut s = Self {
+            symbols: Vec::new(),
+            resolutions: HashMap::new(),
+        };
+
+        let dummy = Symbol {
+            id: None,
+            name: "<unknown_symbol>".to_owned(),
+            ty: TypeId(0),
+            is_mutable: false,
+            declared_at: Span::default(),
+        };
+        s.register(dummy);
+        s
+    }
 }
 
 impl SymbolTable {

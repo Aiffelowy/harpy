@@ -7,6 +7,7 @@ pub enum SymbolDeclError {
     UnknownFunction(String),
     UnknownSymbol(String),
     ArraySizeInt,
+    MissingMain,
 }
 
 #[derive(Debug)]
