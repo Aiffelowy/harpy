@@ -66,12 +66,12 @@ pub struct Program {
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
-    For(ForStmt),
-    While(WhileStmt),
-    Let(LetStmt),
-    Function(FunctionDecl),
-    Global(GlobalStmt),
-    Struct(StructDecl),
+    For(Node<ForStmt>),
+    While(Node<WhileStmt>),
+    Let(Node<LetStmt>),
+    Function(Node<FunctionDecl>),
+    Global(Node<GlobalStmt>),
+    Struct(Node<StructDecl>),
     Expr(Node<Expr>),
 }
 
@@ -172,12 +172,12 @@ impl<'parser> Parser<'parser> {
 
     pub(in crate::parser) fn parse_stmt(&mut self) -> Result<Stmt> {
         match self.peek()? {
-            tt!(let) => Ok(Stmt::Let(self.parse_let_stmt()?)),
-            tt!(while) => Ok(Stmt::While(self.parse_while_stmt()?)),
-            tt!(for) => Ok(Stmt::For(self.parse_for_stmt()?)),
-            tt!(fn) => Ok(Stmt::Function(self.parse_fn_decl()?)),
-            tt!(struct) => Ok(Stmt::Struct(self.parse_struct_decl()?)),
-            tt!(global) => Ok(Stmt::Global(self.parse_global_stmt()?)),
+            tt!(let) => Ok(Stmt::Let(self.parse_node(Self::parse_let_stmt)?)),
+            tt!(while) => Ok(Stmt::While(self.parse_node(Self::parse_while_stmt)?)),
+            tt!(for) => Ok(Stmt::For(self.parse_node(Self::parse_for_stmt)?)),
+            tt!(fn) => Ok(Stmt::Function(self.parse_node(Self::parse_fn_decl)?)),
+            tt!(struct) => Ok(Stmt::Struct(self.parse_node(Self::parse_struct_decl)?)),
+            tt!(global) => Ok(Stmt::Global(self.parse_node(Self::parse_global_stmt)?)),
             _ => {
                 let expr = self.parse_node(Self::parse_expr)?;
                 if expr.inner.requires_semi() {
@@ -199,15 +199,15 @@ impl<'parser> Parser<'parser> {
 
             let item_result = match self.peek()? {
                 tt!(fn) => {
-                    let decl = self.parse_fn_decl()?;
+                    let decl = self.parse_node(Self::parse_fn_decl)?;
                     Ok(Stmt::Function(decl))
                 }
                 tt!(global) => {
-                    let decl = self.parse_global_stmt()?;
+                    let decl = self.parse_node(Self::parse_global_stmt)?;
                     Ok(Stmt::Global(decl))
                 }
                 tt!(struct) => {
-                    let decl = self.parse_struct_decl()?;
+                    let decl = self.parse_node(Self::parse_struct_decl)?;
                     Ok(Stmt::Struct(decl))
                 }
                 _ => self.unexpected("top-level item (fn, global, struct)"),

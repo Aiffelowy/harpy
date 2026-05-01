@@ -1,11 +1,7 @@
 use std::io::BufReader;
 
 use harpy_compiler::{
-    aliases::Result,
-    analyzer::analyzer::Analyzer,
-    lexer::Lexer,
-    parser::{pretty_print::AstPrettyPrint, Parser},
-    source::SourceFile,
+    aliases::Result, analyzer::analyzer::Analyzer, lexer::Lexer, parser::Parser, source::SourceFile,
 };
 
 fn main() -> Result<()> {
@@ -42,8 +38,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
     };
-
-    println!("{}", AstPrettyPrint::new().print(&ast));
 
     print!("{:?}", db);
 

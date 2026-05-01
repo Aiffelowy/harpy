@@ -6,7 +6,11 @@ use crate::{
         types::types::TypeId,
     },
     lexer::span::Span,
-    parser::node::NodeId,
+    parser::{
+        expr::expr_defs::FunctionArg,
+        node::NodeId,
+        stmt::stmts::{GlobalStmt, LetStmt},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,6 +34,38 @@ pub struct Symbol {
     pub ty: TypeId,
     pub is_mutable: bool,
     pub declared_at: Span,
+}
+
+impl Symbol {
+    pub fn from_let(stmt: &LetStmt, ty: TypeId) -> Self {
+        Self {
+            id: None,
+            name: stmt.name.value().clone(),
+            ty,
+            is_mutable: stmt.mutable.0,
+            declared_at: stmt.name.span(),
+        }
+    }
+
+    pub fn from_global(stmt: &GlobalStmt, ty: TypeId) -> Self {
+        Self {
+            id: None,
+            name: stmt.name.value().clone(),
+            ty,
+            is_mutable: stmt.mutable.0,
+            declared_at: stmt.name.span(),
+        }
+    }
+
+    pub fn from_arg(arg: &FunctionArg, ty: TypeId) -> Self {
+        Self {
+            id: None,
+            name: arg.name.value().clone(),
+            ty,
+            is_mutable: arg.mutable.0,
+            declared_at: arg.name.span(),
+        }
+    }
 }
 
 #[derive(Debug)]

@@ -11,12 +11,24 @@ pub enum SymbolDeclError {
 }
 
 #[derive(Debug)]
+pub enum SymbolResError {
+    GlobalInFn,
+}
+
+#[derive(Debug)]
 pub enum AnalyzerError {
     SymbolDecl(SymbolDeclError),
+    SymbolRes(SymbolResError),
 }
 
 impl From<SymbolDeclError> for AnalyzerError {
     fn from(value: SymbolDeclError) -> Self {
         Self::SymbolDecl(value)
+    }
+}
+
+impl From<SymbolResError> for AnalyzerError {
+    fn from(value: SymbolResError) -> Self {
+        Self::SymbolRes(value)
     }
 }
