@@ -5,7 +5,7 @@ use crate::{
         analyzer::Analyzer,
         err::SymbolResError,
         tables::{
-            struct_table::StructLayout,
+            struct_table::{StructId, StructLayout},
             symbol_table::{Symbol, SymbolId},
         },
         types::types::{ResolvedType, TypeId},
@@ -13,7 +13,6 @@ use crate::{
     attempt, get_ty,
     lexer::tokens::Ident,
     parser::{
-        expr::expr_defs::{BlockExpr, Expr},
         stmt::stmts::{ForStmt, FunctionDecl, LetStmt, Program, Stmt, StructDecl, WhileStmt},
         Node,
     },
@@ -22,7 +21,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct Scope {
     pub locals: HashMap<String, SymbolId>,
-    pub types: HashMap<String, TypeId>,
+    pub structs: HashMap<String, StructId>,
 }
 
 #[derive(Debug)]
@@ -52,7 +51,7 @@ impl Environment {
         current_scope.locals.insert(name, symbol_id);
     }
 
-    pub fn resolve_local(&self, name: &str) -> Option<SymbolId> {
+    fn resolve_local(&self, name: &str) -> Option<SymbolId> {
         for scope in self.scopes.iter().rev() {
             if let Some(id) = scope.locals.get(name) {
                 return Some(*id);
@@ -61,14 +60,14 @@ impl Environment {
         None
     }
 
-    pub fn declare_type(&mut self, name: String, type_id: TypeId) {
+    pub fn declare_struct(&mut self, name: String, struct_id: StructId) {
         let current_scope = self.scopes.last_mut().expect("No root scope");
-        current_scope.types.insert(name, type_id);
+        current_scope.structs.insert(name, struct_id);
     }
 
-    pub fn resolve_local_type(&self, name: &str) -> Option<TypeId> {
+    fn resolve_local_struct(&self, name: &str) -> Option<StructId> {
         for scope in self.scopes.iter().rev() {
-            if let Some(&id) = scope.types.get(name) {
+            if let Some(&id) = scope.structs.get(name) {
                 return Some(id);
             }
         }
@@ -78,13 +77,17 @@ impl Environment {
     pub fn has_type_in_current_scope(&self, name: &str) -> bool {
         self.scopes
             .last()
-            .map(|scope| scope.types.contains_key(name))
+            .map(|scope| scope.structs.contains_key(name))
             .unwrap_or(false)
     }
 }
 
 impl Analyzer {
-    fn resolve_local(&mut self, env: &Environment, name: &Ident) -> Option<SymbolId> {
+    pub(in crate::analyzer) fn resolve_local(
+        &mut self,
+        env: &Environment,
+        name: &Ident,
+    ) -> Option<SymbolId> {
         if let Some(id) = env.resolve_local(name.value()) {
             return Some(id);
         }
@@ -94,8 +97,19 @@ impl Analyzer {
             return None;
         }
 
-        let global = self.db.global_table.get(global_id);
-        Some(global.symbol)
+        Some(global_id.get(self).symbol)
+    }
+
+    pub(in crate::analyzer) fn resolve_local_struct(
+        &mut self,
+        env: Option<&Environment>,
+        name: &Ident,
+    ) -> StructId {
+        if let Some(id) = env.and_then(|e| e.resolve_local_struct(name.value())) {
+            id
+        } else {
+            attempt!(self.resolve_struct_name(name))
+        }
     }
 
     fn analyze_let(&mut self, env: &mut Environment, decl: &Node<LetStmt>) {
@@ -116,6 +130,7 @@ impl Analyzer {
         }
 
         env.declare_local(decl.name.value().clone(), symbol_id);
+        self.track_local_variable(symbol_id);
         self.db.symbol_table.add_resolution(decl.id, symbol_id);
     }
 
@@ -151,9 +166,7 @@ impl Analyzer {
         self.analyze_block_expr(env, &stmt.block);
     }
 
-    fn analyze_expr(&mut self, env: &mut Environment, expr: &Node<Expr>) {}
-
-    fn analyze_stmt(&mut self, env: &mut Environment, stmt: &Stmt) {
+    pub(in crate::analyzer) fn analyze_stmt(&mut self, env: &mut Environment, stmt: &Stmt) {
         match stmt {
             Stmt::Struct(decl) => {
                 self.analyze_struct(env, decl);
@@ -180,33 +193,28 @@ impl Analyzer {
         }
     }
 
-    fn analyze_block_expr(&mut self, env: &mut Environment, block: &Node<BlockExpr>) {
-        env.push_scope();
-        for stmt in &block.stmts {
-            self.analyze_stmt(env, stmt);
-        }
-        env.pop_scope();
-    }
-
     fn analyze_fn(&mut self, decl: &Node<FunctionDecl>) {
         let mut env = Environment::default();
+
         let fn_id = attempt!(self.resolve_function_name(&decl.name));
-        if fn_id.is_valid() {
-            let fn_def = self.db.function_table.get(fn_id);
-            let args =
-                get_ty!(self(fn_def.signature), ResolvedType::Function {args,..} => args.clone());
+        self.with_function(fn_id, |analyzer| {
+            if fn_id.is_valid() {
+                let fn_def = fn_id.get(analyzer);
+                let args =
+                    get_ty!(analyzer(fn_def.signature), ResolvedType::Function {args,..} => args.clone());
 
-            for (param, ty) in decl.args.iter().zip(args.iter()) {
-                let symbol = Symbol::from_arg(param, *ty);
-                let symbol_id = attempt!(self.register_symbol(symbol));
-                if !symbol_id.is_valid() {
-                    continue;
+                for (param, ty) in decl.args.iter().zip(args.iter()) {
+                    let symbol = Symbol::from_arg(param, *ty);
+                    let symbol_id = attempt!(analyzer.register_symbol(symbol));
+                    if !symbol_id.is_valid() {
+                        continue;
+                    }
+                    env.declare_local(param.name.value().clone(), symbol_id);
+                    analyzer.track_param(symbol_id);
                 }
-                env.declare_local(param.name.value().clone(), symbol_id);
             }
-        }
-
-        self.analyze_block_expr(&mut env, &decl.block);
+            analyzer.analyze_block_expr(&mut env, &decl.block);
+        });
     }
 
     pub fn symbol_resolution_pass(&mut self, ast: &Program) {

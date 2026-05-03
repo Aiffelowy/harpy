@@ -2,16 +2,15 @@ use crate::{
     analyzer::{
         analyzer::Analyzer,
         err::SymbolDeclError,
-        symbol_res::Environment,
+        symbol_passes::symbol_res::Environment,
         tables::{
             function_table::FunctionDef,
             global_table::GlobalDef,
             struct_table::{Field, StructLayout},
             symbol_table::Symbol,
         },
-        types::types::ResolvedType,
     },
-    attempt, get_ty,
+    attempt,
     parser::{
         stmt::stmts::{FunctionDecl, GlobalStmt, Program, Stmt, StructDecl},
         types::type_parsing::FunctionType,
@@ -43,15 +42,11 @@ impl Analyzer {
             });
         }
 
-        let struct_id = if let Some(e) = env.and_then(|e| e.resolve_local_type(decl.name.value())) {
-            get_ty!(self(e), ResolvedType::Struct(id) => *id)
-        } else {
-            attempt!(self.resolve_struct_name(&decl.name))
-        };
+        let struct_id = self.resolve_local_struct(env, &decl.name);
         if !struct_id.is_valid() {
             return;
         }
-        self.db.struct_table.get_mut(struct_id).set_fields(fields);
+        struct_id.get_mut(self).set_fields(fields);
     }
 
     pub(in crate::analyzer) fn register_function_decl(

@@ -28,7 +28,7 @@ pub struct BlockExpr {
 
 #[derive(Debug, Clone)]
 pub struct LoopExpr {
-    pub block: BlockExpr,
+    pub block: Node<BlockExpr>,
 }
 
 #[derive(Debug, Clone)]

@@ -175,11 +175,23 @@ impl<'parser> Parser<'parser> {
             tt!(let) => Ok(Stmt::Let(self.parse_node(Self::parse_let_stmt)?)),
             tt!(while) => Ok(Stmt::While(self.parse_node(Self::parse_while_stmt)?)),
             tt!(for) => Ok(Stmt::For(self.parse_node(Self::parse_for_stmt)?)),
-            tt!(fn) => Ok(Stmt::Function(self.parse_node(Self::parse_fn_decl)?)),
-            tt!(struct) => Ok(Stmt::Struct(self.parse_node(Self::parse_struct_decl)?)),
+            tt!(fn) => {
+                let decl = self.parse_node(Self::parse_fn_decl)?;
+                peek_and_consume!(self, ;);
+                Ok(Stmt::Function(decl))
+            }
+            tt!(struct) => {
+                let decl = self.parse_node(Self::parse_struct_decl)?;
+                peek_and_consume!(self, ;);
+                Ok(Stmt::Struct(decl))
+            }
             tt!(global) => Ok(Stmt::Global(self.parse_node(Self::parse_global_stmt)?)),
             _ => {
                 let expr = self.parse_node(Self::parse_expr)?;
+                if let tt!("}") = self.peek()? {
+                    return Ok(Stmt::Expr(expr));
+                }
+
                 if expr.inner.requires_semi() {
                     self.consume::<t!(;)>()?;
                 } else {

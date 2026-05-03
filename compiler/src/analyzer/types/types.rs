@@ -3,7 +3,7 @@ use crate::{
     analyzer::{
         analyzer::{Analyzer, Fallback},
         err::SymbolDeclError,
-        symbol_res::Environment,
+        symbol_passes::symbol_res::Environment,
         tables::struct_table::StructId,
     },
     err::HarpyError,
@@ -61,17 +61,14 @@ impl Analyzer {
             BaseType::Str => ResolvedType::Str,
             BaseType::Float => ResolvedType::Float,
             BaseType::Custom(name) => {
-                if let Some(id) = env.and_then(|e| e.resolve_local_type(name.value())) {
-                    return Ok(id);
-                }
-                if let Some(struct_id) = self.current_module().structs.get(name.value()) {
-                    ResolvedType::Struct(*struct_id)
-                } else {
+                let id = self.resolve_local_struct(env, name);
+                if !id.is_valid() {
                     return HarpyError::analyzer(
                         SymbolDeclError::UnknownType(name.value().clone()).into(),
                         name.span(),
                     );
                 }
+                ResolvedType::Struct(id)
             }
         };
 

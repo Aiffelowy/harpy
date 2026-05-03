@@ -52,7 +52,7 @@ impl<'parser> Parser<'parser> {
 
     fn parse_loop_expr(&mut self) -> Result<LoopExpr> {
         self.consume::<t!(loop)>()?;
-        let block = self.parse_block_expr()?;
+        let block = self.parse_node(Self::parse_block_expr)?;
         Ok(LoopExpr { block })
     }
 

@@ -39,7 +39,7 @@ fn main() -> Result<()> {
         }
     };
 
-    print!("{:?}", db);
+    print!("{}", db);
 
     Ok(())
 }

@@ -13,6 +13,14 @@ impl StructId {
     pub fn is_valid(&self) -> bool {
         self.0 != 0
     }
+
+    pub fn get<'a>(&'a self, analyzer: &'a Analyzer) -> &'a StructLayout {
+        analyzer.db.struct_table.get(*self)
+    }
+
+    pub fn get_mut<'a>(&'a self, analyzer: &'a mut Analyzer) -> &'a mut StructLayout {
+        analyzer.db.struct_table.get_mut(*self)
+    }
 }
 impl Fallback<StructId> for Analyzer {
     fn fallback(&self) -> StructId {
@@ -52,6 +60,44 @@ impl StructLayout {
 #[derive(Debug)]
 pub struct StructTable {
     pub layouts: Vec<StructLayout>,
+}
+
+use std::fmt::Display;
+
+impl Display for StructTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.layouts.is_empty() {
+            return writeln!(f, "  <No structs defined>");
+        }
+
+        writeln!(f, "  ID         | Name            | Fields")?;
+        writeln!(
+            f,
+            "  -----------+-----------------+-----------------------------------------"
+        )?;
+
+        for layout in &self.layouts {
+            let id_str = match &layout.id {
+                Some(id) => format!("{:?}", id),
+                None => "[Unset]".to_string(),
+            };
+
+            let fields_str = if layout.fields.is_empty() {
+                "{}".to_string()
+            } else {
+                let fields_list: Vec<String> = layout
+                    .fields
+                    .iter()
+                    .map(|field| format!("{}: {:?}", field.name, field.ty))
+                    .collect();
+                format!("{{ {} }}", fields_list.join(", "))
+            };
+
+            writeln!(f, "  {:<10} | {:<15} | {}", id_str, layout.name, fields_str)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for StructTable {

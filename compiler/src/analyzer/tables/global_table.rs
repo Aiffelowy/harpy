@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     analyzer::{
         analyzer::{Analyzer, Fallback},
@@ -12,6 +14,10 @@ pub struct GlobalId(pub usize);
 impl GlobalId {
     pub fn is_valid(&self) -> bool {
         self.0 != 0
+    }
+
+    pub fn get<'a>(&'a self, analyzer: &'a Analyzer) -> &'a GlobalDef {
+        analyzer.db.global_table.get(*self)
     }
 }
 impl Fallback<GlobalId> for Analyzer {
@@ -31,6 +37,35 @@ pub struct GlobalDef {
 #[derive(Debug)]
 pub struct GlobalTable {
     pub globals: Vec<GlobalDef>,
+}
+
+impl Display for GlobalTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.globals.is_empty() {
+            return writeln!(f, "  <No globals defined>");
+        }
+
+        writeln!(f, "  ID         | Name            | Symbol")?;
+        writeln!(
+            f,
+            "  -----------+-----------------+--------------+----------------"
+        )?;
+
+        for global in &self.globals {
+            let id_str = match &global.id {
+                Some(id) => format!("{:?}", id),
+                None => "[Unset]".to_string(),
+            };
+
+            writeln!(
+                f,
+                "  {:<10} | {:<15} | {:?}",
+                id_str, global.name, global.symbol
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for GlobalTable {

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
     analyzer::types::types::{ResolvedType, TypeId},
@@ -36,6 +36,37 @@ impl Default for TypeTable {
         table.register(ResolvedType::Void);
         table.register(ResolvedType::Never);
         table
+    }
+}
+
+impl Display for TypeTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.types.is_empty() {
+            return writeln!(f, "  <No types defined>");
+        }
+
+        writeln!(f, "  ID         | Resolved Type")?;
+        writeln!(
+            f,
+            "  -----------+---------------------------------------------------"
+        )?;
+
+        for (i, ty) in self.types.iter().enumerate() {
+            writeln!(f, "  TypeId({}) | {:?}", i, ty)?;
+        }
+
+        writeln!(
+            f,
+            "  -----------+---------------------------------------------------"
+        )?;
+        writeln!(
+            f,
+            "  * Mapping Stats: {} cached lookups, {} AST nodes with types.",
+            self.lookup.len(),
+            self.node_types.len()
+        )?;
+
+        Ok(())
     }
 }
 

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::{
     analyzer::{
         analyzer::{Analyzer, Fallback},
@@ -14,6 +16,13 @@ impl FunctionId {
     pub fn is_valid(&self) -> bool {
         self.0 != 0
     }
+
+    pub fn get<'a>(&'a self, analyzer: &'a Analyzer) -> &'a FunctionDef {
+        analyzer.db.function_table.get(*self)
+    }
+    pub fn get_mut<'a>(&'a self, analyzer: &'a mut Analyzer) -> &'a mut FunctionDef {
+        analyzer.db.function_table.get_mut(*self)
+    }
 }
 
 impl Fallback<FunctionId> for Analyzer {
@@ -28,9 +37,8 @@ pub struct FunctionDef {
     pub id: Option<FunctionId>,
     pub signature: TypeId,
     pub params: Vec<SymbolId>,
-    pub span: Span,
-
     pub locals: Vec<SymbolId>,
+    pub span: Span,
 }
 
 impl FunctionDef {
@@ -49,6 +57,49 @@ impl FunctionDef {
 #[derive(Debug)]
 pub struct FunctionTable {
     pub functions: Vec<FunctionDef>,
+}
+
+impl Display for FunctionTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.functions.is_empty() {
+            return writeln!(f, "  <No functions defined>");
+        }
+
+        writeln!(
+            f,
+            "  ID         | Name                 | Signature  | Params               | Locals"
+        )?;
+        writeln!(f, "  -----------+----------------------+------------+----------------------+----------------------")?;
+
+        for func in &self.functions {
+            let id_str = match &func.id {
+                Some(id) => format!("{:?}", id),
+                None => "[Unset]".to_string(),
+            };
+
+            let sig_str = format!("{:?}", func.signature);
+
+            let params_str = if func.params.is_empty() {
+                "[]".to_string()
+            } else {
+                format!("{:?}", func.params)
+            };
+
+            let locals_str = if func.locals.is_empty() {
+                "[]".to_string()
+            } else {
+                format!("{:?}", func.locals)
+            };
+
+            writeln!(
+                f,
+                "  {:<10} | {:<20} | {:<10} | {:<20} | {}",
+                id_str, func.name, sig_str, params_str, locals_str
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for FunctionTable {
@@ -73,5 +124,9 @@ impl FunctionTable {
 
     pub fn get(&self, id: FunctionId) -> &FunctionDef {
         &self.functions[id.0]
+    }
+
+    pub fn get_mut(&mut self, id: FunctionId) -> &mut FunctionDef {
+        &mut self.functions[id.0]
     }
 }

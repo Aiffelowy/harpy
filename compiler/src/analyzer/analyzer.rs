@@ -1,9 +1,11 @@
+use std::fmt::Display;
+
 use crate::{
     aliases::Result,
     analyzer::{
         err::{AnalyzerError, SymbolDeclError},
         modules::{Module, ModuleId},
-        symbol_res::Environment,
+        symbol_passes::symbol_res::Environment,
         tables::{
             const_pool::ConstPool,
             function_table::{FunctionDef, FunctionId, FunctionTable},
@@ -28,19 +30,6 @@ macro_rules! unwrap_variant {
                 "Expected pattern `{}` but got a different variant!",
                 stringify!($pattern)
             ),
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! report {
-    ($analyzer:expr, $expr:expr) => {
-        match $expr {
-            Ok(val) => Some(val),
-            Err(e) => {
-                $analyzer.errors.push(*e);
-                None
-            }
         }
     };
 }
@@ -94,15 +83,50 @@ impl Default for SemanticDB {
     }
 }
 
+impl Display for SemanticDB {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.entry_point {
+            Some(id) => writeln!(f, "Entry Point: {:?}", id)?,
+            None => writeln!(f, "Entry Point: [None]")?,
+        }
+        writeln!(f, "--------------------------------------------------")?;
+
+        writeln!(f, "\n[ MODULES ]")?;
+        for (i, module) in self.modules.iter().enumerate() {
+            writeln!(f, "Module {}: {:?}", i, module)?;
+        }
+
+        writeln!(f, "\n[ GLOBAL TABLE ]")?;
+        writeln!(f, "{}", self.global_table)?;
+
+        writeln!(f, "\n[ STRUCT TABLE ]")?;
+        writeln!(f, "{}", self.struct_table)?;
+
+        writeln!(f, "\n[ FUNCTION TABLE ]")?;
+        writeln!(f, "{}", self.function_table)?;
+
+        writeln!(f, "\n[ TYPE TABLE ]")?;
+        writeln!(f, "{}", self.type_table)?;
+
+        writeln!(f, "\n[ SYMBOL TABLE ]")?;
+        writeln!(f, "{}", self.symbol_table)?;
+
+        writeln!(f, "\n[ CONSTANT POOL ]")?;
+        writeln!(f, "{:?}", self.const_pool)
+    }
+}
+
 #[derive(Debug)]
 struct AnalyzerContext {
     current_module: ModuleId,
+    current_function: Option<FunctionId>,
 }
 
 impl Default for AnalyzerContext {
     fn default() -> Self {
         Self {
             current_module: ModuleId(0),
+            current_function: None,
         }
     }
 }
@@ -120,6 +144,18 @@ impl Analyzer {
     }
     pub(in crate::analyzer) fn current_module_mut(&mut self) -> &mut Module {
         &mut self.db.modules[self.ctx.current_module.0]
+    }
+
+    pub(in crate::analyzer) fn track_local_variable(&mut self, symbol: SymbolId) {
+        if let Some(fn_id) = self.ctx.current_function {
+            fn_id.get_mut(self).locals.push(symbol);
+        }
+    }
+
+    pub(in crate::analyzer) fn track_param(&mut self, symbol: SymbolId) {
+        if let Some(fn_id) = self.ctx.current_function {
+            fn_id.get_mut(self).params.push(symbol);
+        }
     }
 
     pub(in crate::analyzer) fn register_struct(
@@ -158,10 +194,10 @@ impl Analyzer {
         let struct_id = self.db.struct_table.register(layout);
 
         let resolved_ty = ResolvedType::Struct(struct_id);
-        let type_id = self.db.type_table.register(resolved_ty);
+        self.db.type_table.register(resolved_ty);
 
         if let Some(env) = env {
-            env.declare_type(name, type_id);
+            env.declare_struct(name, struct_id);
         } else {
             self.current_module_mut().structs.insert(name, struct_id);
         }
@@ -267,6 +303,18 @@ impl Analyzer {
         span: crate::lexer::span::Span,
     ) {
         self.errors.push(HarpyError::new_analyzer(err, span))
+    }
+
+    pub(in crate::analyzer) fn with_function<F: FnOnce(&mut Self) -> R, R>(
+        &mut self,
+        fn_id: FunctionId,
+        f: F,
+    ) -> R {
+        let prev = self.ctx.current_function;
+        self.ctx.current_function = Some(fn_id);
+        let result = f(self);
+        self.ctx.current_function = prev;
+        result
     }
 
     pub fn analyze(mut self, ast: &Program) -> std::result::Result<SemanticDB, Vec<HarpyError>> {

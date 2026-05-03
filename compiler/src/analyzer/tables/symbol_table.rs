@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
     analyzer::{
@@ -72,6 +72,52 @@ impl Symbol {
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub resolutions: HashMap<NodeId, SymbolId>,
+}
+
+impl Display for SymbolTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.symbols.is_empty() {
+            return writeln!(f, "  <No symbols defined>");
+        }
+
+        writeln!(
+            f,
+            "  ID         | Name                 | Type       | Mutable"
+        )?;
+        writeln!(
+            f,
+            "  -----------+----------------------+------------+---------"
+        )?;
+
+        for sym in &self.symbols {
+            let id_str = match &sym.id {
+                Some(id) => format!("{:?}", id),
+                None => "[Unset]".to_string(),
+            };
+
+            let ty_str = format!("{:?}", sym.ty);
+
+            let mut_str = if sym.is_mutable { "Yes" } else { "No " };
+
+            writeln!(
+                f,
+                "  {:<10} | {:<20} | {:<10} | {}",
+                id_str, sym.name, ty_str, mut_str
+            )?;
+        }
+
+        writeln!(
+            f,
+            "  -----------+----------------------+------------+---------"
+        )?;
+        writeln!(
+            f,
+            "  * Resolution Stats: {} AST nodes successfully bound to symbols.",
+            self.resolutions.len()
+        )?;
+
+        Ok(())
+    }
 }
 
 impl Default for SymbolTable {
