@@ -190,6 +190,9 @@ impl Analyzer {
             Stmt::Global(g) => {
                 self.report_error(SymbolResError::GlobalInFn.into(), g.name.span());
             }
+            Stmt::Semi(expr) => {
+                self.analyze_expr(env, expr);
+            }
         }
     }
 

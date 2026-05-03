@@ -23,6 +23,11 @@ impl Analyzer {
         for stmt in &block.stmts {
             self.analyze_stmt(env, stmt);
         }
+
+        if let Some(tail) = &block.tail {
+            self.analyze_expr(env, tail);
+        }
+
         env.pop_scope();
     }
 

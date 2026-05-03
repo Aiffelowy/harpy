@@ -1,6 +1,7 @@
 use crate::lexer::span::Span;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
+use crate::parser::stmt::stmts::Stmt;
 use crate::parser::types::type_parsing::{Mutable, Type};
 use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
@@ -47,7 +48,21 @@ impl<'parser> Parser<'parser> {
 
     pub(in crate::parser) fn parse_block_expr(&mut self) -> Result<BlockExpr> {
         let stmts = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_stmt), &[]);
-        Ok(BlockExpr { stmts })
+        let mut block = BlockExpr { stmts, tail: None };
+        let Some(last_stmt) = block.stmts.last() else {
+            return Ok(block);
+        };
+
+        if let Stmt::Expr(_) = &last_stmt.inner {
+            if let Some(Node {
+                inner: Stmt::Expr(expr),
+                ..
+            }) = block.stmts.pop()
+            {
+                block.tail = Some(Box::new(expr));
+            }
+        }
+        Ok(block)
     }
 
     fn parse_loop_expr(&mut self) -> Result<LoopExpr> {

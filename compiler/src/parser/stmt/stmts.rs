@@ -72,6 +72,7 @@ pub enum Stmt {
     Function(Node<FunctionDecl>),
     Global(Node<GlobalStmt>),
     Struct(Node<StructDecl>),
+    Semi(Node<Expr>),
     Expr(Node<Expr>),
 }
 
@@ -186,6 +187,7 @@ impl<'parser> Parser<'parser> {
                 Ok(Stmt::Struct(decl))
             }
             tt!(global) => Ok(Stmt::Global(self.parse_node(Self::parse_global_stmt)?)),
+
             _ => {
                 let expr = self.parse_node(Self::parse_expr)?;
                 if let tt!("}") = self.peek()? {
@@ -197,7 +199,7 @@ impl<'parser> Parser<'parser> {
                 } else {
                     peek_and_consume!(self, ;);
                 }
-                Ok(Stmt::Expr(expr))
+                Ok(Stmt::Semi(expr))
             }
         }
     }

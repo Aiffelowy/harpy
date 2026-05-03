@@ -24,6 +24,7 @@ pub struct CallExpr {
 #[derive(Debug, Clone)]
 pub struct BlockExpr {
     pub stmts: Vec<Node<Stmt>>,
+    pub tail: Option<Box<Node<Expr>>>,
 }
 
 #[derive(Debug, Clone)]
