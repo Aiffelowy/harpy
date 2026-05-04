@@ -144,9 +144,9 @@ impl Analyzer {
         let args = fn_ty
             .args
             .iter()
-            .map(|arg| attempt!(self.resolve_inner_type(&arg.inner.inner, env)))
+            .map(|arg| attempt!(self.resolve_type_with_env(arg, env)))
             .collect::<Vec<_>>();
-        let return_type = attempt!(self.resolve_inner_type(&fn_ty.return_type.inner.inner, env));
+        let return_type = attempt!(self.resolve_type_with_env(&fn_ty.return_type, env));
         let ty = ResolvedType::Function { args, return_type };
         Ok(self.db.type_table.register(ty))
     }
