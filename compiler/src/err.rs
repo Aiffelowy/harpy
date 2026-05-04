@@ -9,6 +9,7 @@ pub enum HarpyErrorKind {
     Lexer(LexerError),
     IO(std::io::Error),
     Analyzer(AnalyzerError),
+    Custom(&'static str),
 }
 
 #[derive(Debug)]
@@ -27,6 +28,13 @@ impl HarpyError {
             error: HarpyErrorKind::Analyzer(error),
             span,
         }
+    }
+
+    pub fn custom<T>(msg: &'static str, span: Span) -> Result<T> {
+        Err(Box::new(Self {
+            error: HarpyErrorKind::Custom(msg),
+            span,
+        }))
     }
 
     pub fn lexer<T>(error: LexerError, span: Span) -> Result<T> {
@@ -62,6 +70,7 @@ impl HarpyError {
             HarpyErrorKind::Lexer(e) => format!("{}", e),
             HarpyErrorKind::IO(e) => format!("{}", e),
             HarpyErrorKind::Analyzer(e) => format!("{:?}", e),
+            HarpyErrorKind::Custom(msg) => format!("{msg}"),
         };
 
         let line_text = source

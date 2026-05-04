@@ -4,6 +4,7 @@ use crate::{
         types::types::TypeId,
     },
     lexer::span::Span,
+    parser::node::NodeId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -60,9 +61,10 @@ impl StructLayout {
 #[derive(Debug)]
 pub struct StructTable {
     pub layouts: Vec<StructLayout>,
+    resolutions: HashMap<NodeId, StructId>,
 }
 
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 impl Display for StructTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -104,6 +106,7 @@ impl Default for StructTable {
     fn default() -> Self {
         let mut s = Self {
             layouts: Vec::new(),
+            resolutions: HashMap::new(),
         };
 
         let dummy = StructLayout::skeleton("<unknown_struct>".to_owned(), Span::default());
@@ -127,5 +130,16 @@ impl StructTable {
 
     pub fn get_mut(&mut self, id: StructId) -> &mut StructLayout {
         &mut self.layouts[id.0]
+    }
+
+    pub fn add_resolution(&mut self, node_id: NodeId, struct_id: StructId) {
+        self.resolutions.insert(node_id, struct_id);
+    }
+
+    pub fn get_resolution(&mut self, node_id: NodeId) -> StructId {
+        self.resolutions
+            .get(&node_id)
+            .copied()
+            .unwrap_or(StructId(0))
     }
 }

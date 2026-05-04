@@ -151,9 +151,16 @@ impl SymbolTable {
         &self.symbols[id.0]
     }
 
-    pub fn get_symbol(&self, id: NodeId) -> Option<&Symbol> {
+    pub fn get_symbol(&self, id: NodeId) -> &Symbol {
+        let Some(id) = self.resolutions.get(&id) else {
+            return &self.symbols[0];
+        };
+        &self.symbols[id.0]
+    }
+
+    pub fn get_symbol_mut(&mut self, id: NodeId) -> Option<&mut Symbol> {
         let id = self.resolutions.get(&id)?;
-        Some(&self.symbols[id.0])
+        Some(&mut self.symbols[id.0])
     }
 
     pub fn add_resolution(&mut self, node_id: NodeId, symbol_id: SymbolId) {

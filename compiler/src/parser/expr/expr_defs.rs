@@ -47,15 +47,10 @@ pub struct ClosureExpr {
 }
 
 #[derive(Debug, Clone)]
-pub struct CaseExpr {
-    pub expr: Node<Expr>,
-    pub block: Node<BlockExpr>,
-}
-
-#[derive(Debug, Clone)]
 pub struct SwitchExpr {
     pub expr: Box<Node<Expr>>,
-    pub cases: Vec<Node<CaseExpr>>,
+    pub cases: Vec<(Node<Expr>, Node<BlockExpr>)>,
+    pub default: Option<Node<BlockExpr>>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,7 +92,14 @@ impl Expr {
     pub fn requires_semi(&self) -> bool {
         !matches!(
             self,
-            Expr::If(_) | Expr::Loop(_) | Expr::Switch(_) | Expr::Block(_) | Expr::Closure(_)
+            Expr::If(_)
+                | Expr::Loop(_)
+                | Expr::Switch(_)
+                | Expr::Block(_)
+                | Expr::Closure(_)
+                | Expr::Return(_)
+                | Expr::Break(_)
+                | Expr::Continue
         )
     }
 }

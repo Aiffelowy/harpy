@@ -1,3 +1,4 @@
+use crate::err::HarpyError;
 use crate::lexer::span::Span;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
@@ -124,19 +125,40 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    fn parse_case_expr(&mut self) -> Result<CaseExpr> {
-        let expr = self.parse_node(Self::parse_expr)?;
-        self.consume::<t!(=>)>()?;
-        let block = self.parse_node(Self::parse_block_expr)?;
-
-        Ok(CaseExpr { expr, block })
-    }
-
     fn parse_switch_expr(&mut self) -> Result<SwitchExpr> {
         self.consume::<t!(switch)>()?;
         let expr = Box::new(self.parse_node(Self::parse_expr)?);
-        let cases = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_case_expr), &[]);
-        Ok(SwitchExpr { expr, cases })
+        self.consume::<t!("{")>()?;
+
+        let mut cases = Vec::new();
+        let mut default = None;
+
+        loop {
+            if let tt!("}") | tt!(eof) = self.peek()? {
+                break;
+            }
+
+            if let tt!(.) = self.peek()? {
+                let dot = self.consume::<t!(.)>()?;
+                self.consume::<t!(=>)>()?;
+                let block = self.parse_node(Self::parse_block_expr)?;
+                if default.is_some() {
+                    return HarpyError::custom("Multiple default cases in switch", dot.span());
+                }
+                default = Some(block)
+            } else {
+                let expr = self.parse_node(Self::parse_expr)?;
+                self.consume::<t!(=>)>()?;
+                let block = self.parse_node(Self::parse_block_expr)?;
+                cases.push((expr, block));
+            }
+        }
+
+        Ok(SwitchExpr {
+            expr,
+            cases,
+            default,
+        })
     }
 
     fn parse_prefix(&mut self) -> Result<Expr> {
@@ -157,7 +179,7 @@ impl<'parser> Parser<'parser> {
 
                 let is_boxed = peek_and_consume!(self, boxed);
                 let name = self.consume()?;
-                let fields = parse_separated!(self, "{", "}",,, {
+                let fields = parse_separated!(self, "{", "}",;, {
                     let field_name = self.consume()?;
                     self.consume::<t!(=)>()?;
                     let field_value = self.parse_node(Self::parse_expr)?;

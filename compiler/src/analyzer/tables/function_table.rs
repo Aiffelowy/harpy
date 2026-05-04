@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
     analyzer::{
@@ -7,6 +7,7 @@ use crate::{
         types::types::TypeId,
     },
     lexer::span::Span,
+    parser::node::NodeId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -57,6 +58,7 @@ impl FunctionDef {
 #[derive(Debug)]
 pub struct FunctionTable {
     pub functions: Vec<FunctionDef>,
+    pub resolutions: HashMap<NodeId, FunctionId>,
 }
 
 impl Display for FunctionTable {
@@ -106,6 +108,7 @@ impl Default for FunctionTable {
     fn default() -> Self {
         let mut s = Self {
             functions: Vec::new(),
+            resolutions: HashMap::new(),
         };
         let dummy = FunctionDef::skeleton("<unknown_fn>".to_owned(), TypeId(0), Span::default());
         s.register(dummy);
@@ -120,6 +123,14 @@ impl FunctionTable {
         self.functions.push(def);
 
         id
+    }
+
+    pub fn add_resolution(&mut self, node_id: NodeId, fn_id: FunctionId) {
+        self.resolutions.insert(node_id, fn_id);
+    }
+
+    pub fn get_resolution(&mut self, node_id: NodeId) -> FunctionId {
+        *self.resolutions.get(&node_id).unwrap_or(&FunctionId(0))
     }
 
     pub fn get(&self, id: FunctionId) -> &FunctionDef {

@@ -14,7 +14,7 @@ use crate::{
             symbol_table::{Symbol, SymbolId, SymbolTable},
             type_table::TypeTable,
         },
-        types::types::ResolvedType,
+        types::types::{ResolvedType, TypeId},
     },
     err::HarpyError,
     lexer::tokens::Ident,
@@ -116,10 +116,16 @@ impl Display for SemanticDB {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct LoopContext {
+    pub expected_break_ty: Option<TypeId>,
+}
+
 #[derive(Debug)]
 struct AnalyzerContext {
     current_module: ModuleId,
     current_function: Option<FunctionId>,
+    loop_contexts: Vec<LoopContext>,
 }
 
 impl Default for AnalyzerContext {
@@ -127,6 +133,7 @@ impl Default for AnalyzerContext {
         Self {
             current_module: ModuleId(0),
             current_function: None,
+            loop_contexts: Vec::new(),
         }
     }
 }
@@ -317,9 +324,33 @@ impl Analyzer {
         result
     }
 
+    pub(in crate::analyzer) fn with_loop<F: FnOnce(&mut Self)>(&mut self, f: F) -> TypeId {
+        self.ctx.loop_contexts.push(LoopContext::default());
+        f(self);
+        let context = self
+            .ctx
+            .loop_contexts
+            .pop()
+            .expect("unbalanced loop contexts");
+        if let Some(break_ty) = context.expected_break_ty {
+            break_ty
+        } else {
+            TypeId::never()
+        }
+    }
+
+    pub(in crate::analyzer) fn loop_context(&mut self) -> Option<&mut LoopContext> {
+        self.ctx.loop_contexts.last_mut()
+    }
+
+    pub(in crate::analyzer) fn current_function(&self) -> FunctionId {
+        self.ctx.current_function.unwrap_or(FunctionId(0))
+    }
+
     pub fn analyze(mut self, ast: &Program) -> std::result::Result<SemanticDB, Vec<HarpyError>> {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
+        self.check_types(ast);
 
         if !self.errors.is_empty() {
             return Err(self.errors);

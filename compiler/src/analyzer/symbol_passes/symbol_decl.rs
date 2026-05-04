@@ -51,7 +51,7 @@ impl Analyzer {
 
     pub(in crate::analyzer) fn register_function_decl(
         &mut self,
-        decl: &FunctionDecl,
+        decl: &Node<FunctionDecl>,
         mut env: Option<&mut Environment>,
     ) {
         let args = decl.args.iter().map(|arg| arg.ty.clone()).collect();
@@ -87,6 +87,8 @@ impl Analyzer {
                 };
                 attempt!(self.register_global(global_def));
             }
+            self.db.symbol_table.add_resolution(decl.id, symbol_id);
+            self.db.function_table.add_resolution(decl.id, func_id);
         }
 
         if env.is_none() && decl.name.value() == "main" {

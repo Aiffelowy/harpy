@@ -6,6 +6,7 @@ use crate::{
         symbol_passes::symbol_res::Environment,
         tables::struct_table::StructId,
     },
+    attempt,
     err::HarpyError,
     lexer::tokens::Lit,
     parser::{
@@ -21,6 +22,38 @@ pub struct TypeId(pub usize);
 impl TypeId {
     pub fn is_valid(&self) -> bool {
         self.0 != 0
+    }
+
+    pub fn get<'a>(&'a self, analyzer: &'a Analyzer) -> &'a ResolvedType {
+        analyzer.db.type_table.get(*self)
+    }
+
+    pub fn void() -> Self {
+        TypeId(5)
+    }
+
+    pub fn bool() -> Self {
+        TypeId(3)
+    }
+
+    pub fn never() -> Self {
+        TypeId(6)
+    }
+
+    pub fn unknown() -> Self {
+        TypeId(0)
+    }
+
+    pub fn int() -> Self {
+        TypeId(1)
+    }
+
+    pub fn str() -> Self {
+        TypeId(4)
+    }
+
+    pub fn float() -> Self {
+        TypeId(2)
     }
 }
 impl Fallback<TypeId> for Analyzer {
@@ -42,6 +75,7 @@ pub enum ResolvedType {
     Ref(TypeId, Mutable),
     Boxed(TypeId),
     Array(TypeId, Option<u64>),
+    Iter(TypeId),
     Struct(StructId),
     Function {
         args: Vec<TypeId>,
@@ -110,9 +144,9 @@ impl Analyzer {
         let args = fn_ty
             .args
             .iter()
-            .map(|arg| self.resolve_inner_type(&arg.inner.inner, env))
-            .collect::<Result<Vec<_>>>()?;
-        let return_type = self.resolve_inner_type(&fn_ty.return_type.inner.inner, env)?;
+            .map(|arg| attempt!(self.resolve_inner_type(&arg.inner.inner, env)))
+            .collect::<Vec<_>>();
+        let return_type = attempt!(self.resolve_inner_type(&fn_ty.return_type.inner.inner, env));
         let ty = ResolvedType::Function { args, return_type };
         Ok(self.db.type_table.register(ty))
     }

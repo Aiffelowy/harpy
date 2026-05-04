@@ -2,7 +2,7 @@ use crate::{
     analyzer::{
         analyzer::Analyzer,
         symbol_passes::symbol_res::Environment,
-        tables::{function_table::FunctionDef, symbol_table::Symbol},
+        tables::{function_table::FunctionDef, struct_table::StructId, symbol_table::Symbol},
     },
     attempt,
     lexer::tokens::Ident,
@@ -42,7 +42,7 @@ impl Analyzer {
         }
         let def = FunctionDef::skeleton(format!("closure:<{}>", ty_id.0), ty_id, closure.span);
         let fn_id = attempt!(self.register_function(def));
-
+        self.db.function_table.add_resolution(closure.id, fn_id);
         env.push_scope();
 
         self.with_function(fn_id, |analyzer| {
@@ -69,15 +69,14 @@ impl Analyzer {
         env: &mut Environment,
         struct_name: &Ident,
         fields: &[(Ident, Node<Expr>)],
-    ) {
+    ) -> StructId {
         let id = self.resolve_local_struct(Some(env), struct_name);
-        if !id.is_valid() {
-            return;
-        }
 
         for (_, expr) in fields {
             self.analyze_expr(env, expr);
         }
+
+        id
     }
 
     pub(in crate::analyzer) fn analyze_expr(&mut self, env: &mut Environment, expr: &Node<Expr>) {
@@ -130,8 +129,11 @@ impl Analyzer {
             Expr::Switch(s) => {
                 self.analyze_expr(env, &s.expr);
                 for case in &s.cases {
-                    self.analyze_expr(env, &case.expr);
-                    self.analyze_block_expr(env, &case.block);
+                    self.analyze_expr(env, &case.0);
+                    self.analyze_block_expr(env, &case.1);
+                }
+                if let Some(default) = &s.default {
+                    self.analyze_block_expr(env, default);
                 }
             }
             Expr::Block(b) => {
@@ -152,7 +154,8 @@ impl Analyzer {
                 self.analyze_expr(env, expr);
             }
             Expr::StructInit(struct_name, fields) => {
-                self.analyze_struct_init(env, struct_name, fields);
+                let id = self.analyze_struct_init(env, struct_name, fields);
+                self.db.struct_table.add_resolution(expr.id, id);
             }
             Expr::ArrayInit(exprs) => {
                 for expr in exprs {

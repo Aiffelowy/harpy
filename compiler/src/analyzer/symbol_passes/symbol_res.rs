@@ -155,6 +155,7 @@ impl Analyzer {
         let symbol_id = attempt!(self.register_symbol(symbol));
         if symbol_id.is_valid() {
             env.declare_local(stmt.temp_var.value().clone(), symbol_id);
+            self.db.symbol_table.add_resolution(stmt.id, symbol_id);
         }
 
         self.analyze_block_expr(env, &stmt.block);
@@ -214,6 +215,7 @@ impl Analyzer {
                     }
                     env.declare_local(param.name.value().clone(), symbol_id);
                     analyzer.track_param(symbol_id);
+                    analyzer.db.symbol_table.add_resolution(param.id, symbol_id);
                 }
             }
             analyzer.analyze_block_expr(&mut env, &decl.block);

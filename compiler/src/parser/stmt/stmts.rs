@@ -34,7 +34,7 @@ pub struct LetStmt {
 #[derive(Debug, Clone)]
 pub struct FunctionDecl {
     pub name: Ident,
-    pub args: Vec<FunctionArg>,
+    pub args: Vec<Node<FunctionArg>>,
     pub return_type: Node<Type>,
     pub block: Node<BlockExpr>,
 }
@@ -127,7 +127,7 @@ impl<'parser> Parser<'parser> {
     fn parse_fn_decl(&mut self) -> Result<FunctionDecl> {
         self.consume::<t!(fn)>()?;
         let name = self.consume()?;
-        let args = parse_separated!(self, "(", ")",,, self.parse_function_arg()?);
+        let args = parse_separated!(self, "(", ")",,, self.parse_node(Self::parse_function_arg)?);
         let return_type = self.parse_node(Self::parse_function_return_type)?;
         let block = self.parse_node(Self::parse_block_expr)?;
 

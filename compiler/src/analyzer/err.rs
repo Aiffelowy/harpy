@@ -1,4 +1,7 @@
-use crate::lexer::span::Span;
+use crate::{
+    analyzer::{tables::struct_table::StructId, types::types::TypeId},
+    lexer::span::Span,
+};
 
 #[derive(Debug)]
 pub enum SymbolDeclError {
@@ -14,11 +17,31 @@ pub enum SymbolDeclError {
 pub enum SymbolResError {
     GlobalInFn,
 }
+#[derive(Debug)]
+pub enum TypeCheckError {
+    ExprNotIter,
+    NotCompatible(TypeId, TypeId),
+    InvalidLValue,
+    InvalidArithmetic(TypeId, TypeId),
+    InvalidRelational(TypeId, TypeId),
+    InvalidPrefix(TypeId),
+    UnknownField(StructId, String),
+    NotAStruct(TypeId),
+    NotAnArray(TypeId),
+    MissingField(StructId, String),
+    ArgumentCountMismatch(usize, usize),
+    NotCallable(TypeId),
+    ReturnOutsideFn,
+    ContinueOutsideLoop,
+    BreakOutsideLoop,
+    MissingDefaultBranch,
+}
 
 #[derive(Debug)]
 pub enum AnalyzerError {
     SymbolDecl(SymbolDeclError),
     SymbolRes(SymbolResError),
+    TypeCheck(TypeCheckError),
 }
 
 impl From<SymbolDeclError> for AnalyzerError {
@@ -30,5 +53,11 @@ impl From<SymbolDeclError> for AnalyzerError {
 impl From<SymbolResError> for AnalyzerError {
     fn from(value: SymbolResError) -> Self {
         Self::SymbolRes(value)
+    }
+}
+
+impl From<TypeCheckError> for AnalyzerError {
+    fn from(value: TypeCheckError) -> Self {
+        Self::TypeCheck(value)
     }
 }
