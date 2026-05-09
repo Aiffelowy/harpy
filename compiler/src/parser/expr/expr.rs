@@ -202,7 +202,7 @@ impl<'parser> Parser<'parser> {
                 }
             }
 
-            tt!(-) | tt!(+) | tt!(!) | tt!(*) => {
+            tt!(-) | tt!(+) | tt!(!) => {
                 let op = match self.peek()? {
                     tt!(-) => {
                         self.consume::<t!(-)>()?;
@@ -215,10 +215,6 @@ impl<'parser> Parser<'parser> {
                     tt!(!) => {
                         self.consume::<t!(!)>()?;
                         PrefixOp::Neg
-                    }
-                    tt!(*) => {
-                        self.consume::<t!(*)>()?;
-                        PrefixOp::Star
                     }
                     _ => unreachable!(),
                 };
@@ -352,12 +348,12 @@ impl<'parser> Parser<'parser> {
 
                 let start = match &left.inner {
                     Expr::Implicit => None,
-                    _ => Some(Box::new(left))
+                    _ => Some(Box::new(left)),
                 };
 
                 let end = match &right.inner {
                     Expr::Implicit => None,
-                    _ => Some(Box::new(right))
+                    _ => Some(Box::new(right)),
                 };
                 Expr::Range(start, end)
             }

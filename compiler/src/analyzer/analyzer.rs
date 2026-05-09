@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
 
 use crate::{
     aliases::Result,
@@ -18,7 +18,7 @@ use crate::{
     },
     err::HarpyError,
     lexer::tokens::Ident,
-    parser::stmt::stmts::Program,
+    parser::{node::NodeId, stmt::stmts::Program},
 };
 
 #[macro_export]
@@ -59,10 +59,11 @@ pub struct SemanticDB {
     pub symbol_table: SymbolTable,
     pub type_table: TypeTable,
     pub struct_table: StructTable,
-
     pub const_pool: ConstPool,
     pub function_table: FunctionTable,
     pub global_table: GlobalTable,
+
+    pub auto_derefs: HashMap<NodeId, u8>,
 
     pub entry_point: Option<FunctionId>,
 }
@@ -77,6 +78,7 @@ impl Default for SemanticDB {
             const_pool: ConstPool::default(),
             function_table: FunctionTable::default(),
             global_table: GlobalTable::default(),
+            auto_derefs: HashMap::new(),
 
             entry_point: None,
         }

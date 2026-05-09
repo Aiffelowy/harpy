@@ -7,6 +7,7 @@ use crate::{
     },
     err::HarpyError,
     lexer::span::Span,
+    parser::node::NodeId,
 };
 
 impl Analyzer {
@@ -45,8 +46,12 @@ impl Analyzer {
 
                 let unified_size = match (e_size, a_size) {
                     (Some(s1), Some(s2)) => {
-                        if s1 == s2 {Some(s1)} else {return None}
-                    },
+                        if s1 == s2 {
+                            Some(s1)
+                        } else {
+                            return None;
+                        }
+                    }
                     (None, None) => None,
                     (None, Some(_)) | (Some(_), None) => None,
                 };
@@ -113,14 +118,31 @@ impl Analyzer {
         &mut self,
         expected: TypeId,
         actual: TypeId,
+        actual_expr_id: Option<NodeId>,
         span: Span,
     ) -> bool {
         if self.is_compatible(expected, actual) {
-            true
-        } else {
-            self.report_error(TypeCheckError::NotCompatible(expected, actual).into(), span);
-            false
+            return true;
         }
+        if let Some(expr_id) = actual_expr_id {
+            let mut current_ty = actual;
+            let mut deref_count = 0;
+
+            while let ResolvedType::Boxed(inner) | ResolvedType::Ref(inner, _) =
+                current_ty.get(self)
+            {
+                current_ty = *inner;
+                deref_count += 1;
+
+                if self.is_compatible(expected, current_ty) {
+                    self.db.auto_derefs.insert(expr_id, deref_count);
+                    return true;
+                }
+            }
+        }
+
+        self.report_error(TypeCheckError::NotCompatible(expected, actual).into(), span);
+        false
     }
 
     pub(in crate::analyzer::types) fn get_iterable_yield_type(

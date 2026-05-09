@@ -36,7 +36,16 @@ impl Analyzer {
             self.report_error(TypeCheckError::InvalidLValue.into(), target.span);
         }
 
-        let unified_target = self.check_binding(target_ty, value_ty, Some(value.id), value.span);
+        let mut final_target = target_ty;
+
+        if !self.is_compatible(target_ty, value_ty) {
+            let derefed_target = self.auto_deref(target.id, target_ty);
+            if self.is_compatible(derefed_target, value_ty) {
+                final_target = derefed_target;
+            }
+        }
+
+        let unified_target = self.check_binding(final_target, value_ty, Some(value.id), value.span);
 
         if target_ty == TypeId::unknown() {
             if let Expr::Ident(_) = &target.inner {
@@ -47,9 +56,10 @@ impl Analyzer {
         match op {
             AssignOp::Eq => (),
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Mod => {
-                if unified_target != TypeId::int() && unified_target != TypeId::float() {
+                let target_base = self.auto_deref(target.id, unified_target);
+                if target_base != TypeId::int() && target_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidArithmetic(unified_target, value_ty).into(),
+                        TypeCheckError::InvalidArithmetic(target_base, value_ty).into(),
                         value.span,
                     );
                 }
@@ -67,23 +77,24 @@ impl Analyzer {
             return TypeId::unknown();
         }
 
-        self.ensure_compatible(left_ty, right_ty, right.span);
+        let left_base = self.auto_deref(left.id, left_ty);
+        self.ensure_compatible(left_base, right_ty, Some(right.id), right.span);
 
         match op {
             InfixOp::Add | InfixOp::Sub | InfixOp::Mul | InfixOp::Div | InfixOp::Mod => {
-                if left_ty != TypeId::int() && left_ty != TypeId::float() {
+                if left_base != TypeId::int() && left_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidArithmetic(left_ty, right_ty).into(),
+                        TypeCheckError::InvalidArithmetic(left_base, right_ty).into(),
                         right.span,
                     );
                     return TypeId::unknown();
                 }
-                left_ty
+                left_base
             }
             InfixOp::Gt | InfixOp::GtEq | InfixOp::Lt | InfixOp::LtEq => {
-                if left_ty != TypeId::int() && left_ty != TypeId::float() {
+                if left_base != TypeId::int() && left_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidRelational(left_ty, right_ty).into(),
+                        TypeCheckError::InvalidRelational(left_base, right_ty).into(),
                         right.span,
                     );
                     return TypeId::unknown();
@@ -92,7 +103,7 @@ impl Analyzer {
             }
 
             InfixOp::And | InfixOp::Or => {
-                self.ensure_compatible(TypeId::bool(), left_ty, right.span);
+                self.ensure_compatible(TypeId::bool(), left_ty, Some(right.id), right.span);
                 TypeId::bool()
             }
 
@@ -106,26 +117,27 @@ impl Analyzer {
             return TypeId::unknown();
         }
 
+        let right_base = self.auto_deref(right.id, right_ty);
+
         match op {
             PrefixOp::Minus | PrefixOp::Plus => {
-                if right_ty == TypeId::int() || right_ty == TypeId::float() {
-                    right_ty
+                if right_base == TypeId::int() || right_base == TypeId::float() {
+                    right_base
                 } else {
-                    self.report_error(TypeCheckError::InvalidPrefix(right_ty).into(), right.span);
+                    self.report_error(TypeCheckError::InvalidPrefix(right_base).into(), right.span);
                     TypeId::unknown()
                 }
             }
             PrefixOp::Neg => {
-                self.ensure_compatible(TypeId::bool(), right_ty, right.span);
+                self.ensure_compatible(TypeId::bool(), right_ty, Some(right.id), right.span);
                 TypeId::bool()
             }
-            PrefixOp::Star => self.auto_deref(right_ty),
         }
     }
 
     fn check_member_access(&mut self, obj: &Node<Expr>, field: &Ident) -> TypeId {
         let obj_ty = self.check_expr(obj);
-        let base_ty = self.auto_deref(obj_ty);
+        let base_ty = self.auto_deref(obj.id, obj_ty);
 
         if base_ty == TypeId::unknown() {
             return TypeId::unknown();
@@ -153,7 +165,7 @@ impl Analyzer {
         let arr_ty = self.check_expr(array);
         let idx_ty = self.check_expr(index);
 
-        let base_ty = self.auto_deref(arr_ty);
+        let base_ty = self.auto_deref(array.id, arr_ty);
         if base_ty == TypeId::unknown() {
             return TypeId::unknown();
         }
@@ -171,11 +183,11 @@ impl Analyzer {
         match resolved_idx {
             ResolvedType::Range(inner) => {
                 let slice_ty = ResolvedType::Array(inner_ty, None);
-                self.ensure_compatible(TypeId::int(), *inner, index.span);
+                self.ensure_compatible(TypeId::int(), *inner, Some(index.id), index.span);
                 self.db.type_table.register(slice_ty)
             }
             _ => {
-                self.ensure_compatible(TypeId::int(), idx_ty, index.span);
+                self.ensure_compatible(TypeId::int(), idx_ty, Some(index.id), index.span);
                 inner_ty
             }
         }
@@ -211,7 +223,7 @@ impl Analyzer {
             if let Some(unified) = self.unify(base_ty, el_ty) {
                 base_ty = unified;
             }
-            self.ensure_compatible(base_ty, el_ty, el.span);
+            self.ensure_compatible(base_ty, el_ty, Some(el.id), el.span);
         }
 
         let ty = ResolvedType::Array(base_ty, Some(size as u64));
@@ -232,7 +244,7 @@ impl Analyzer {
             initialized_fields.insert(name.value());
 
             if let Some(exp_field) = layout.fields.iter().find(|f| f.name == *name.value()) {
-                self.ensure_compatible(exp_field.ty, expr_ty, expr.span);
+                self.ensure_compatible(exp_field.ty, expr_ty, Some(expr.id), expr.span);
             } else {
                 self.report_error(
                     TypeCheckError::UnknownField(struct_id, name.value().clone()).into(),
@@ -256,12 +268,12 @@ impl Analyzer {
     fn check_range(&mut self, start: &Option<Box<Node<Expr>>>, end: &Option<Box<Node<Expr>>>) -> TypeId {
         if let Some(s) = start {
             let s_ty = self.check_expr(s);
-            self.ensure_compatible(TypeId::int(), s_ty, s.span);
+            self.ensure_compatible(TypeId::int(), s_ty, Some(s.id), s.span);
         }
         
         if let Some(e) = end {
             let e_ty = self.check_expr(e);
-            self.ensure_compatible(TypeId::int(), e_ty, e.span);
+            self.ensure_compatible(TypeId::int(), e_ty, Some(e.id), e.span);
         }
 
         let ty = ResolvedType::Range(TypeId::int());
@@ -294,7 +306,7 @@ impl Analyzer {
                 let arg_ty = self.check_expr(arg);
 
                 if let Some(expected_param_ty) = t_args.get(i) {
-                    self.ensure_compatible(*expected_param_ty, arg_ty, arg.span);
+                    self.ensure_compatible(*expected_param_ty, arg_ty, Some(arg.id), arg.span);
                 }
             }
 
@@ -313,7 +325,7 @@ impl Analyzer {
             
             let expected_return_ty = get_ty!(analyzer(fn_id.get(analyzer).signature), ResolvedType::Function { return_type, .. } => return_type);
 
-            analyzer.ensure_compatible(*expected_return_ty, body_ty, closure.block.span);
+            analyzer.ensure_compatible(*expected_return_ty, body_ty, Some(closure.block.id), closure.block.span);
         });
 
         fn_id.get(self).signature
@@ -333,7 +345,7 @@ impl Analyzer {
 
         let fn_def = fn_id.get(self);
         let expected_return_ty = get_ty!(self(fn_def.signature), ResolvedType::Function { return_type, .. } => return_type);
-        self.ensure_compatible(*expected_return_ty, ret_ty, span);
+        self.ensure_compatible(*expected_return_ty, ret_ty, expr.as_ref().map(|e| e.id), span);
 
         TypeId::never()
     }
@@ -372,7 +384,7 @@ impl Analyzer {
 
     fn check_if(&mut self, if_expr: &Node<IfExpr>) -> TypeId {
         let cond_ty = self.check_expr(&if_expr.expr);
-        self.ensure_compatible(TypeId::bool(), cond_ty, if_expr.expr.span);
+        self.ensure_compatible(TypeId::bool(), cond_ty, Some(if_expr.expr.id), if_expr.span);
 
         let then_ty = self.check_block_expr(&if_expr.block);
 
@@ -389,7 +401,7 @@ impl Analyzer {
                 return TypeId::unknown();
             }
         } else {
-            self.ensure_compatible(TypeId::void(), then_ty, if_expr.block.span);
+            self.ensure_compatible(TypeId::void(), then_ty, Some(if_expr.block.id), if_expr.span);
             return TypeId::void();
         }
     }
@@ -408,7 +420,7 @@ impl Analyzer {
 
         for case in &switch.cases {
             let pattern_ty = self.check_expr(&case.0);
-            self.ensure_compatible(target_ty, pattern_ty, case.0.span);
+            self.ensure_compatible(target_ty, pattern_ty, Some(case.0.id), case.0.span);
 
             let branch_ty = self.check_block_expr(&case.1);
 

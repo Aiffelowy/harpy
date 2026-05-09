@@ -21,7 +21,6 @@ pub enum PrefixOp {
     Minus,
     Plus,
     Neg,
-    Star,
 }
 
 #[derive(Debug, Clone, Copy)]

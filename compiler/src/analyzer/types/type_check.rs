@@ -1,6 +1,8 @@
 use crate::{
     analyzer::{
-        analyzer::Analyzer, err::TypeCheckError, types::types::{ResolvedType, TypeId}
+        analyzer::Analyzer,
+        err::TypeCheckError,
+        types::types::{ResolvedType, TypeId},
     },
     attempt, get_ty,
     parser::{
@@ -43,8 +45,8 @@ impl Analyzer {
                 self.report_error(TypeCheckError::MissingLoopStart.into(), stmt.iter_expr.span);
             }
         }
-
-        let yield_ty = attempt!(self.get_iterable_yield_type(iter_ty, stmt.iter_expr.span));
+        let base_iter_ty = self.auto_deref(stmt.iter_expr.id, iter_ty);
+        let yield_ty = attempt!(self.get_iterable_yield_type(base_iter_ty, stmt.iter_expr.span));
         self.infer_type(stmt.id, yield_ty);
         self.with_loop(|analyzer| {
             analyzer.check_block_expr(&stmt.block);
@@ -53,10 +55,16 @@ impl Analyzer {
     }
 
     fn check_let_stmt(&mut self, stmt: &Node<LetStmt>) -> TypeId {
-        let expr_ty = stmt.expr.as_ref().map_or(TypeId::unknown(), |e| self.check_expr(e));
+        let expr_ty = stmt
+            .expr
+            .as_ref()
+            .map_or(TypeId::unknown(), |e| self.check_expr(e));
         let var_ty = self.get_symbol_type(stmt.id);
 
-        let span = stmt.expr.as_ref().map_or_else(|| stmt.name.span(), |e| e.span);
+        let span = stmt
+            .expr
+            .as_ref()
+            .map_or_else(|| stmt.name.span(), |e| e.span);
         let value_id = stmt.expr.as_ref().map(|e| e.id);
 
         let unified = self.check_binding(var_ty, expr_ty, value_id, span);
@@ -82,7 +90,7 @@ impl Analyzer {
 
     fn check_while_stmt(&mut self, stmt: &Node<WhileStmt>) -> TypeId {
         let cond_ty = self.check_expr(&stmt.expr);
-        self.ensure_compatible(TypeId::bool(), cond_ty, stmt.expr.span);
+        self.ensure_compatible(TypeId::bool(), cond_ty, Some(stmt.expr.id), stmt.expr.span);
         self.with_loop(|analyzer| {
             analyzer.check_block_expr(&stmt.block);
         });
@@ -96,7 +104,7 @@ impl Analyzer {
             let body_ty = analyzer.check_block_expr(&decl.block);
             let exp_return_ty = get_ty!(analyzer(fn_id.get(analyzer).signature), ResolvedType::Function { return_type, .. } => return_type);
 
-            analyzer.ensure_compatible(*exp_return_ty, body_ty, decl.block.span);
+            analyzer.ensure_compatible(*exp_return_ty, body_ty, Some(decl.block.id), decl.block.span);
         });
 
         TypeId::void()
