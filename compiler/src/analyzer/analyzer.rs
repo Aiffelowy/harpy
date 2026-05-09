@@ -351,7 +351,7 @@ impl Analyzer {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
         self.check_types(ast);
-
+        println!("{}", self.db);
         if !self.errors.is_empty() {
             return Err(self.errors);
         }

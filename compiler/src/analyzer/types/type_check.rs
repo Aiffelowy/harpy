@@ -6,25 +6,12 @@ use crate::{
     attempt, get_ty,
     parser::{
         expr::expr_defs::BlockExpr,
-        node::NodeId,
         stmt::stmts::{ForStmt, FunctionDecl, GlobalStmt, LetStmt, Program, Stmt, WhileStmt},
         Node,
     },
 };
 
 impl Analyzer {
-    fn infer_type(&mut self, node: NodeId, ty_id: TypeId) {
-        let Some(symbol) = self.db.symbol_table.get_symbol_mut(node) else {
-            return;
-        };
-
-        symbol.ty = ty_id;
-    }
-
-    pub(in crate::analyzer::types) fn get_symbol_type(&mut self, node: NodeId) -> TypeId {
-        self.db.symbol_table.get_symbol(node).ty
-    }
-
     pub(in crate::analyzer::types) fn check_block_expr(
         &mut self,
         block: &Node<BlockExpr>,
@@ -60,44 +47,30 @@ impl Analyzer {
     }
 
     fn check_let_stmt(&mut self, stmt: &Node<LetStmt>) -> TypeId {
-        let expr_ty = if let Some(expr) = &stmt.expr {
-            self.check_expr(expr)
-        } else {
-            TypeId::unknown()
-        };
+        let expr_ty = stmt.expr.as_ref().map_or(TypeId::unknown(), |e| self.check_expr(e));
+        let var_ty = self.get_symbol_type(stmt.id);
 
-        let mut var_ty = self.get_symbol_type(stmt.id);
+        let span = stmt.expr.as_ref().map_or_else(|| stmt.name.span(), |e| e.span);
+        let value_id = stmt.expr.as_ref().map(|e| e.id);
 
-        if let Some(unified) = self.unify(var_ty, expr_ty) {
-            if var_ty != unified {
-                self.infer_type(stmt.id, unified);
-                var_ty = unified;
-            }
+        let unified = self.check_binding(var_ty, expr_ty, value_id, span);
+
+        if var_ty != unified {
+            self.infer_type(stmt.id, unified);
         }
-
-        let span = if let Some(expr) = &stmt.expr {
-            expr.span
-        } else {
-            stmt.name.span()
-        };
-
-        self.ensure_compatible(var_ty, expr_ty, span);
 
         TypeId::void()
     }
 
     fn check_global_stmt(&mut self, stmt: &Node<GlobalStmt>) -> TypeId {
         let expr_ty = self.check_expr(&stmt.expr);
-        let mut var_ty = self.get_symbol_type(stmt.id);
+        let var_ty = self.get_symbol_type(stmt.id);
 
-        if let Some(unified) = self.unify(var_ty, expr_ty) {
-            if var_ty != unified {
-                self.infer_type(stmt.id, unified);
-                var_ty = unified;
-            }
+        let unified = self.check_binding(var_ty, expr_ty, Some(stmt.expr.id), stmt.expr.span);
+        if var_ty != unified {
+            self.infer_type(stmt.id, unified);
         }
 
-        self.ensure_compatible(var_ty, expr_ty, stmt.expr.span);
         TypeId::void()
     }
 

@@ -44,10 +44,11 @@ impl Analyzer {
                 let unified = self.unify(e_in, a_in)?;
 
                 let unified_size = match (e_size, a_size) {
-                    (Some(s1), Some(s2)) if s1 == s2 => Some(s1),
+                    (Some(s1), Some(s2)) => {
+                        if s1 == s2 {Some(s1)} else {return None}
+                    },
                     (None, None) => None,
                     (None, Some(_)) | (Some(_), None) => None,
-                    _ => None,
                 };
 
                 let ty = ResolvedType::Array(unified, unified_size);
@@ -66,6 +67,10 @@ impl Analyzer {
             return true;
         }
         if actual == TypeId::never() {
+            return true;
+        }
+
+        if expected == TypeId::unknown() || actual == TypeId::unknown() {
             return true;
         }
 
@@ -110,10 +115,6 @@ impl Analyzer {
         actual: TypeId,
         span: Span,
     ) -> bool {
-        if expected == TypeId::unknown() || actual == TypeId::unknown() {
-            return false;
-        }
-
         if self.is_compatible(expected, actual) {
             true
         } else {
@@ -128,6 +129,7 @@ impl Analyzer {
         span: Span,
     ) -> Result<TypeId> {
         let ty = iter_type.get(self);
+        println!("{:?}", ty);
         match ty {
             ResolvedType::Array(inner, _) => Ok(*inner),
             ResolvedType::Iter(inner) => Ok(*inner),

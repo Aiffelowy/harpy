@@ -17,45 +17,6 @@ use crate::{
 };
 
 impl Analyzer {
-    fn get_cached_type(&self, node: NodeId) -> TypeId {
-        self.db
-            .type_table
-            .is_cached(node)
-            .unwrap_or(TypeId::unknown())
-    }
-
-    fn auto_deref(&self, mut ty: TypeId) -> TypeId {
-        loop {
-            match ty.get(self) {
-                ResolvedType::Boxed(inner) => ty = *inner,
-                ResolvedType::Ref(inner, _) => ty = *inner,
-                _ => return ty,
-            }
-        }
-    }
-
-    fn is_pointer(&self, ty: TypeId) -> bool {
-        matches!(
-            ty.get(self),
-            ResolvedType::Boxed(_) | ResolvedType::Ref(_, _)
-        )
-    }
-
-    fn is_lvalue(&self, expr: &Node<Expr>) -> bool {
-        match &expr.inner {
-            Expr::Ident(_) => true,
-            Expr::MemberAccess(obj, _) => {
-                let obj_ty = self.get_cached_type(obj.id);
-                self.is_pointer(obj_ty) || self.is_lvalue(obj)
-            }
-            Expr::Index(array, _) => {
-                let arr_ty = self.get_cached_type(array.id);
-                self.is_pointer(arr_ty) || self.is_lvalue(array)
-            }
-            _ => false,
-        }
-    }
-
     fn check_literal(&mut self, lit: &Literal) -> TypeId {
         let lit = lit.value();
         match lit {
@@ -75,14 +36,20 @@ impl Analyzer {
             self.report_error(TypeCheckError::InvalidLValue.into(), target.span);
         }
 
-        self.ensure_compatible(target_ty, value_ty, value.span);
+        let unified_target = self.check_binding(target_ty, value_ty, Some(value.id), value.span);
+
+        if target_ty == TypeId::unknown() {
+            if let Expr::Ident(_) = &target.inner {
+                self.infer_type(target.id, unified_target);
+            }
+        }
 
         match op {
             AssignOp::Eq => (),
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Mod => {
-                if target_ty != TypeId::int() && target_ty != TypeId::float() {
+                if unified_target != TypeId::int() && unified_target != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidArithmetic(target_ty, value_ty).into(),
+                        TypeCheckError::InvalidArithmetic(unified_target, value_ty).into(),
                         value.span,
                     );
                 }

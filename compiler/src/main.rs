@@ -29,7 +29,7 @@ fn main() -> Result<()> {
     };
 
     let analyzer = Analyzer::default();
-    let db = match analyzer.analyze(&ast) {
+    let _db = match analyzer.analyze(&ast) {
         Ok(db) => db,
         Err(e) => {
             for error in e {
@@ -38,8 +38,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
     };
-
-    print!("{}", db);
 
     Ok(())
 }
