@@ -75,7 +75,7 @@ pub enum ResolvedType {
     Ref(TypeId, Mutable),
     Boxed(TypeId),
     Array(TypeId, Option<u64>),
-    Iter(TypeId),
+    Range(TypeId),
     Struct(StructId),
     Function {
         args: Vec<TypeId>,

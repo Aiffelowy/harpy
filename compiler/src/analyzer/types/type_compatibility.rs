@@ -132,7 +132,7 @@ impl Analyzer {
         println!("{:?}", ty);
         match ty {
             ResolvedType::Array(inner, _) => Ok(*inner),
-            ResolvedType::Iter(inner) => Ok(*inner),
+            ResolvedType::Range(inner) => Ok(*inner),
             _ => HarpyError::analyzer(TypeCheckError::ExprNotIter.into(), span),
         }
     }

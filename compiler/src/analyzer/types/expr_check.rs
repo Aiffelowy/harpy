@@ -153,21 +153,33 @@ impl Analyzer {
         let arr_ty = self.check_expr(array);
         let idx_ty = self.check_expr(index);
 
-        self.ensure_compatible(TypeId::int(), idx_ty, index.span);
-
         let base_ty = self.auto_deref(arr_ty);
         if base_ty == TypeId::unknown() {
             return TypeId::unknown();
         }
 
-        let resolved = base_ty.get(self);
+        let inner_ty = match base_ty.get(self) {
+            ResolvedType::Array(inner, _) => *inner,
+            _ => {
+                self.report_error(TypeCheckError::NotAnArray(base_ty).into(), array.span);
+                return TypeId::unknown()
+            }
+        };
+    
+        let resolved_idx = idx_ty.get(self);
 
-        if let ResolvedType::Array(inner_ty, _) = resolved {
-            return *inner_ty;
+        match resolved_idx {
+            ResolvedType::Range(inner) => {
+                let slice_ty = ResolvedType::Array(inner_ty, None);
+                self.ensure_compatible(TypeId::int(), *inner, index.span);
+                self.db.type_table.register(slice_ty)
+            }
+            _ => {
+                self.ensure_compatible(TypeId::int(), idx_ty, index.span);
+                inner_ty
+            }
         }
 
-        self.report_error(TypeCheckError::NotAnArray(base_ty).into(), array.span);
-        TypeId::unknown()
     }
 
     fn check_box(&mut self, inner: &Node<Expr>) -> TypeId {
@@ -241,13 +253,18 @@ impl Analyzer {
         self.db.type_table.register(ResolvedType::Struct(struct_id))
     }
 
-    fn check_iter(&mut self, start: &Node<Expr>, end: &Node<Expr>) -> TypeId {
-        let start_ty = self.check_expr(start);
-        let end_ty = self.check_expr(end);
-        self.ensure_compatible(TypeId::int(), start_ty, start.span);
-        self.ensure_compatible(TypeId::int(), end_ty, end.span);
+    fn check_range(&mut self, start: &Option<Box<Node<Expr>>>, end: &Option<Box<Node<Expr>>>) -> TypeId {
+        if let Some(s) = start {
+            let s_ty = self.check_expr(s);
+            self.ensure_compatible(TypeId::int(), s_ty, s.span);
+        }
+        
+        if let Some(e) = end {
+            let e_ty = self.check_expr(e);
+            self.ensure_compatible(TypeId::int(), e_ty, e.span);
+        }
 
-        let ty = ResolvedType::Iter(TypeId::int());
+        let ty = ResolvedType::Range(TypeId::int());
         self.db.type_table.register(ty)
     }
 
@@ -461,7 +478,8 @@ impl Analyzer {
             Expr::Loop(l) => self.check_loop(l),
             Expr::If(if_expr) => self.check_if(if_expr),
             Expr::Block(b) => self.check_block_expr(b),
-            Expr::Iter(from, to) => self.check_iter(from, to),
+            Expr::Implicit => { self.report_error(TypeCheckError::UnexpectedDot.into(), expr.span); TypeId::unknown() },
+            Expr::Range(start, end) => self.check_range(start, end),
             Expr::Switch(switch) => self.check_switch(switch, expr.span)
         }
     }

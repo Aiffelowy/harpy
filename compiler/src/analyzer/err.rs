@@ -35,7 +35,9 @@ pub enum TypeCheckError {
     ContinueOutsideLoop,
     BreakOutsideLoop,
     MissingDefaultBranch,
-    TypeAnnotationsNeeded
+    TypeAnnotationsNeeded,
+    UnexpectedDot,
+    MissingLoopStart
 }
 
 #[derive(Debug)]

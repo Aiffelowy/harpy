@@ -172,6 +172,10 @@ impl<'parser> Parser<'parser> {
 
                 Ok(Expr::Ident(name))
             }
+            tt!(.) => {
+                self.consume::<t!(.)>()?;
+                Ok(Expr::Implicit)
+            }
 
             // hacky special syntax for spawn caged Object (sounds really cool ok?)
             tt!(spawn) => {
@@ -345,7 +349,17 @@ impl<'parser> Parser<'parser> {
             tt!(=>) => {
                 self.consume::<t!(=>)>()?;
                 let right = self.parse_node(|p| p.pratt_parser(prec))?;
-                Expr::Iter(Box::new(left), Box::new(right))
+
+                let start = match &left.inner {
+                    Expr::Implicit => None,
+                    _ => Some(Box::new(left))
+                };
+
+                let end = match &right.inner {
+                    Expr::Implicit => None,
+                    _ => Some(Box::new(right))
+                };
+                Expr::Range(start, end)
             }
 
             tt!(.) => {

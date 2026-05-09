@@ -146,9 +146,13 @@ impl Analyzer {
                 self.analyze_expr(env, expr);
             }
             Expr::Box(expr) => self.analyze_expr(env, expr),
-            Expr::Iter(from, to) => {
-                self.analyze_expr(env, from);
-                self.analyze_expr(env, to);
+            Expr::Range(start, end) => {
+                if let Some(s) = start {
+                    self.analyze_expr(env, s);
+                }
+                if let Some(e) = end {
+                    self.analyze_expr(env, e);
+                }
             }
             Expr::MemberAccess(expr, _) => {
                 self.analyze_expr(env, expr);
@@ -166,6 +170,7 @@ impl Analyzer {
                 self.analyze_expr(env, left);
                 self.analyze_expr(env, right);
             }
+            Expr::Implicit => {}
         }
     }
 }

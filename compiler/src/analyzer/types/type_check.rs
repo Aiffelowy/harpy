@@ -1,11 +1,10 @@
 use crate::{
     analyzer::{
-        analyzer::Analyzer,
-        types::types::{ResolvedType, TypeId},
+        analyzer::Analyzer, err::TypeCheckError, types::types::{ResolvedType, TypeId}
     },
     attempt, get_ty,
     parser::{
-        expr::expr_defs::BlockExpr,
+        expr::expr_defs::{BlockExpr, Expr},
         stmt::stmts::{ForStmt, FunctionDecl, GlobalStmt, LetStmt, Program, Stmt, WhileStmt},
         Node,
     },
@@ -38,6 +37,13 @@ impl Analyzer {
 
     fn check_for_stmt(&mut self, stmt: &Node<ForStmt>) -> TypeId {
         let iter_ty = self.check_expr(&stmt.iter_expr);
+
+        if let Expr::Range(start, _) = &stmt.iter_expr.inner {
+            if start.is_none() {
+                self.report_error(TypeCheckError::MissingLoopStart.into(), stmt.iter_expr.span);
+            }
+        }
+
         let yield_ty = attempt!(self.get_iterable_yield_type(iter_ty, stmt.iter_expr.span));
         self.infer_type(stmt.id, yield_ty);
         self.with_loop(|analyzer| {
