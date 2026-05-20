@@ -42,7 +42,7 @@ impl Symbol {
             id: None,
             name: stmt.name.value().clone(),
             ty,
-            is_mutable: stmt.mutable.0,
+            is_mutable: stmt.mutable,
             declared_at: stmt.name.span(),
         }
     }
@@ -52,7 +52,7 @@ impl Symbol {
             id: None,
             name: stmt.name.value().clone(),
             ty,
-            is_mutable: stmt.mutable.0,
+            is_mutable: stmt.mutable,
             declared_at: stmt.name.span(),
         }
     }
@@ -62,7 +62,7 @@ impl Symbol {
             id: None,
             name: arg.name.value().clone(),
             ty,
-            is_mutable: arg.mutable.0,
+            is_mutable: arg.mutable,
             declared_at: arg.name.span(),
         }
     }

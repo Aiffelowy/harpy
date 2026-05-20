@@ -1,18 +1,13 @@
 use crate::{
     lexer::tokens::{Ident, Literal},
-    parser::{
-        expr::ops::*,
-        stmt::stmts::Stmt,
-        types::type_parsing::{Mutable, Type},
-        Node,
-    },
+    parser::{expr::ops::*, stmt::stmts::Stmt, types::type_parsing::Type, Node},
 };
 
 #[derive(Debug, Clone)]
 pub struct FunctionArg {
     pub name: Ident,
     pub ty: Node<Type>,
-    pub mutable: Mutable,
+    pub mutable: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +75,7 @@ pub enum Expr {
     Block(Node<BlockExpr>),
     Closure(Node<ClosureExpr>),
     Borrow(Box<Node<Expr>>, bool),
-    Box(Box<Node<Expr>>),
+    Box(Box<Node<Expr>>, bool),
     Implicit,
     Range(Option<Box<Node<Expr>>>, Option<Box<Node<Expr>>>),
     MemberAccess(Box<Node<Expr>>, Ident),

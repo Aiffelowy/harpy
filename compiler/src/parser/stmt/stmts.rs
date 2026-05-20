@@ -4,7 +4,7 @@ use crate::{
     parse_separated,
     parser::{
         expr::expr_defs::{BlockExpr, Expr, FunctionArg},
-        types::type_parsing::{Mutable, Type},
+        types::type_parsing::Type,
         Node, Parser,
     },
     peek_and_consume, t, tt,
@@ -26,7 +26,7 @@ pub struct WhileStmt {
 #[derive(Debug, Clone)]
 pub struct LetStmt {
     pub name: Ident,
-    pub mutable: Mutable,
+    pub mutable: bool,
     pub ttype: Option<Node<Type>>,
     pub expr: Option<Node<Expr>>,
 }
@@ -42,7 +42,7 @@ pub struct FunctionDecl {
 #[derive(Debug, Clone)]
 pub struct GlobalStmt {
     pub name: Ident,
-    pub mutable: Mutable,
+    pub mutable: bool,
     pub ttype: Node<Type>,
     pub expr: Node<Expr>,
 }
@@ -97,7 +97,7 @@ impl<'parser> Parser<'parser> {
             name,
             ttype,
             expr,
-            mutable: Mutable(mutable),
+            mutable,
         })
     }
 
@@ -153,14 +153,14 @@ impl<'parser> Parser<'parser> {
             name,
             ttype,
             expr,
-            mutable: Mutable(mutable),
+            mutable,
         })
     }
 
     fn parse_struct_field(&mut self) -> Result<StructField> {
         let name = self.consume()?;
         self.consume::<t!(:)>()?;
-        let ttype = self.parse_node(Self::parse_type_no_ref)?;
+        let ttype = self.parse_node(Self::parse_type)?;
         Ok(StructField { name, ttype })
     }
 

@@ -36,6 +36,7 @@ impl Analyzer {
         let mut fields = vec![];
         for field in &decl.fields {
             let ty_id = attempt!(self.resolve_type_with_env(&field.ttype, env));
+            self.db.type_table.cache(field.id, ty_id);
             fields.push(Field {
                 name: field.name.value().clone(),
                 ty: ty_id,

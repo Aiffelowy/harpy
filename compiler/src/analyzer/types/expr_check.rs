@@ -12,7 +12,7 @@ use crate::{
         Node, expr::{
             expr_defs::{CallExpr, ClosureExpr, Expr, IfExpr, LoopExpr, SwitchExpr},
             ops::{AssignOp, InfixOp, PrefixOp},
-        }, node::NodeId, types::type_parsing::Mutable
+        }, node::NodeId
     }
 };
 
@@ -194,9 +194,18 @@ impl Analyzer {
 
     }
 
-    fn check_box(&mut self, inner: &Node<Expr>) -> TypeId {
+    fn check_box(&mut self, inner: &Node<Expr>, is_mut: bool) -> TypeId {
         let inner_ty = self.check_expr(inner);
-        let boxed_ty = ResolvedType::Boxed(inner_ty);
+        let ty = inner_ty.get(self);
+
+        match ty {
+            ResolvedType::Boxed(_, _) | ResolvedType::Ref(_, _) => {
+                self.report_error(TypeCheckError::RecursiveBox.into(), inner.span);
+            }
+            _ => ()
+        }
+
+        let boxed_ty = ResolvedType::Boxed(inner_ty, is_mut);
         self.db.type_table.register(boxed_ty)
     }
 
@@ -206,7 +215,7 @@ impl Analyzer {
             self.report_error(TypeCheckError::InvalidLValue.into(), inner.span);
         }
 
-        let ref_ty = ResolvedType::Ref(inner_ty, Mutable(is_mut));
+        let ref_ty = ResolvedType::Ref(inner_ty, is_mut);
         self.db.type_table.register(ref_ty)
     }
 
@@ -478,7 +487,7 @@ impl Analyzer {
             Expr::Prefix(op, right) => self.check_prefix(op, right),
             Expr::MemberAccess(obj, field) => self.check_member_access(obj, field),
             Expr::Index(array, index) => self.check_index(array, index),
-            Expr::Box(expr) => self.check_box(expr),
+            Expr::Box(expr, m) => self.check_box(expr, *m),
             Expr::Borrow(expr, m) => self.check_ref(expr, *m),
             Expr::ArrayInit(el) => self.check_array_init(el),
             Expr::StructInit(_, fields) => self.check_struct_init(fields, expr.id, expr.span),

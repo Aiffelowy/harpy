@@ -3,7 +3,7 @@ use crate::lexer::span::Span;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
 use crate::parser::stmt::stmts::Stmt;
-use crate::parser::types::type_parsing::{Mutable, Type};
+use crate::parser::types::type_parsing::Type;
 use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
 use crate::{parse_separated, parse_sequence, peek_and_consume};
@@ -95,11 +95,7 @@ impl<'parser> Parser<'parser> {
         self.consume::<t!(:)>()?;
         let ty = self.parse_node(Self::parse_type)?;
 
-        Ok(FunctionArg {
-            name,
-            ty,
-            mutable: Mutable(mutable),
-        })
+        Ok(FunctionArg { name, ty, mutable })
     }
 
     pub(in crate::parser) fn parse_function_return_type(&mut self) -> Result<Type> {
@@ -182,6 +178,7 @@ impl<'parser> Parser<'parser> {
                 let spawn = self.consume::<t!(spawn)>()?;
 
                 let is_boxed = peek_and_consume!(self, boxed);
+                let is_mut = is_boxed && peek_and_consume!(self, mut);
                 let name = self.consume()?;
                 let fields = parse_separated!(self, "{", "}",;, {
                     let field_name = self.consume()?;
@@ -196,7 +193,7 @@ impl<'parser> Parser<'parser> {
                         span: Span::new(spawn.span().start, self.previous_end),
                         inner: Expr::StructInit(name, fields),
                     };
-                    Ok(Expr::Box(Box::new(node)))
+                    Ok(Expr::Box(Box::new(node), is_mut))
                 } else {
                     Ok(Expr::StructInit(name, fields))
                 }
@@ -269,8 +266,9 @@ impl<'parser> Parser<'parser> {
 
             tt!(box) => {
                 self.consume::<t!(box)>()?;
+                let is_mut = peek_and_consume!(self, mut);
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
-                Ok(Expr::Box(Box::new(right)))
+                Ok(Expr::Box(Box::new(right), is_mut))
             }
 
             _ => self.unexpected("prefix token in expression"),

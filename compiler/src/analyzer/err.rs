@@ -37,7 +37,11 @@ pub enum TypeCheckError {
     MissingDefaultBranch,
     TypeAnnotationsNeeded,
     UnexpectedDot,
-    MissingLoopStart
+    MissingLoopStart,
+    RecursiveBox,
+    RecursiveRef,
+    BoxedRef,
+    RefInStruct,
 }
 
 #[derive(Debug)]

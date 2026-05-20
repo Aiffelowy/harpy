@@ -13,7 +13,7 @@ impl Analyzer {
         }
 
         match ty.get(self) {
-            ResolvedType::Boxed(inner) => self.is_fully_resolved(*inner),
+            ResolvedType::Boxed(inner, _) => self.is_fully_resolved(*inner),
             ResolvedType::Ref(inner, _) => self.is_fully_resolved(*inner),
             ResolvedType::Array(inner, _) => self.is_fully_resolved(*inner),
             _ => true,
@@ -42,7 +42,7 @@ impl Analyzer {
     pub fn auto_deref(&mut self, expr_id: NodeId, mut ty: TypeId) -> TypeId {
         let mut deref_count = 0;
 
-        while let ResolvedType::Boxed(inner) | ResolvedType::Ref(inner, _) = ty.get(self) {
+        while let ResolvedType::Boxed(inner, _) | ResolvedType::Ref(inner, _) = ty.get(self) {
             ty = *inner;
             deref_count += 1;
         }
@@ -57,7 +57,7 @@ impl Analyzer {
     pub fn is_pointer(&self, ty: TypeId) -> bool {
         matches!(
             ty.get(self),
-            ResolvedType::Boxed(_) | ResolvedType::Ref(_, _)
+            ResolvedType::Boxed(_, _) | ResolvedType::Ref(_, _)
         )
     }
 

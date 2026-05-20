@@ -2,7 +2,7 @@ use crate::{
     aliases::Result,
     analyzer::{
         analyzer::{Analyzer, Fallback},
-        err::SymbolDeclError,
+        err::{SymbolDeclError, TypeCheckError},
         symbol_passes::symbol_res::Environment,
         tables::struct_table::StructId,
     },
@@ -11,7 +11,7 @@ use crate::{
     lexer::tokens::Lit,
     parser::{
         expr::expr_defs::Expr,
-        types::type_parsing::{BaseType, FunctionType, Mutable, Type, TypeInner},
+        types::type_parsing::{FunctionType, Type},
         Node,
     },
 };
@@ -72,8 +72,8 @@ pub enum ResolvedType {
     Never,
     Unknown,
 
-    Ref(TypeId, Mutable),
-    Boxed(TypeId),
+    Ref(TypeId, bool),
+    Boxed(TypeId, bool),
     Array(TypeId, Option<u64>),
     Range(TypeId),
     Struct(StructId),
@@ -84,34 +84,9 @@ pub enum ResolvedType {
 }
 
 impl Analyzer {
-    fn resolve_type_base(
-        &mut self,
-        base_type: &Node<BaseType>,
-        env: Option<&Environment>,
-    ) -> Result<TypeId> {
-        let bt = match &base_type.inner {
-            BaseType::Int => ResolvedType::Int,
-            BaseType::Bool => ResolvedType::Bool,
-            BaseType::Str => ResolvedType::Str,
-            BaseType::Float => ResolvedType::Float,
-            BaseType::Custom(name) => {
-                let id = self.resolve_local_struct(env, name);
-                if !id.is_valid() {
-                    return HarpyError::analyzer(
-                        SymbolDeclError::UnknownType(name.value().clone()).into(),
-                        name.span(),
-                    );
-                }
-                ResolvedType::Struct(id)
-            }
-        };
-
-        Ok(self.db.type_table.register(bt))
-    }
-
     fn resolve_array_type(
         &mut self,
-        ty: &TypeInner,
+        ty: &Type,
         expr: &Option<Box<Node<Expr>>>,
         env: Option<&Environment>,
     ) -> Result<TypeId> {
@@ -153,23 +128,68 @@ impl Analyzer {
 
     fn resolve_inner_type(
         &mut self,
-        parser_type: &TypeInner,
+        parser_type: &Type,
         env: Option<&Environment>,
     ) -> Result<TypeId> {
         let ty = match parser_type {
-            TypeInner::Base(base_node) => return self.resolve_type_base(base_node, env),
-            TypeInner::Void => ResolvedType::Void,
-            TypeInner::Boxed(inner) => {
+            Type::Void => ResolvedType::Void,
+            Type::Boxed(inner, mutable) => {
                 let resolved = self.resolve_inner_type(inner, env)?;
-                ResolvedType::Boxed(resolved)
+                ResolvedType::Boxed(resolved, *mutable)
             }
-
-            TypeInner::FunctionType(f) => return self.resolve_fn_type(f, env),
-            TypeInner::Array(ty, s) => return self.resolve_array_type(ty, s, env),
-            TypeInner::Unknown => ResolvedType::Unknown,
+            Type::Ref(inner, mutable) => {
+                let resolved = self.resolve_inner_type(inner, env)?;
+                ResolvedType::Ref(resolved, *mutable)
+            }
+            Type::FunctionType(f) => return self.resolve_fn_type(f, env),
+            Type::Array(ty, s) => return self.resolve_array_type(ty, s, env),
+            Type::Int => ResolvedType::Int,
+            Type::Bool => ResolvedType::Bool,
+            Type::Str => ResolvedType::Str,
+            Type::Float => ResolvedType::Float,
+            Type::Custom(name) => {
+                let id = self.resolve_local_struct(env, name);
+                if !id.is_valid() {
+                    return HarpyError::analyzer(
+                        SymbolDeclError::UnknownType(name.value().clone()).into(),
+                        name.span(),
+                    );
+                }
+                ResolvedType::Struct(id)
+            }
+            Type::Unknown => ResolvedType::Unknown,
         };
 
         Ok(self.db.type_table.register(ty))
+    }
+
+    fn validate_type_structure(&mut self, ty: &Node<Type>) -> Result<()> {
+        match &ty.inner {
+            Type::Ref(inner_node, _) => {
+                if let Type::Ref(_, _) = &inner_node.inner {
+                    return HarpyError::analyzer(TypeCheckError::RecursiveRef.into(), ty.span);
+                }
+            }
+            Type::Boxed(inner_node, _) => {
+                if let Type::Boxed(_, _) = &inner_node.inner {
+                    return HarpyError::analyzer(TypeCheckError::RecursiveBox.into(), ty.span);
+                }
+                if let Type::Ref(_, _) = &inner_node.inner {
+                    return HarpyError::analyzer(TypeCheckError::BoxedRef.into(), ty.span);
+                }
+            }
+            Type::Array(inner_node, _) => {
+                self.validate_type_structure(inner_node)?;
+            }
+            Type::FunctionType(f) => {
+                for arg in &f.args {
+                    self.validate_type_structure(arg)?;
+                }
+                self.validate_type_structure(&f.return_type)?;
+            }
+            _ => {}
+        }
+        Ok(())
     }
 
     pub(in crate::analyzer) fn resolve_type_with_env(
@@ -180,16 +200,8 @@ impl Analyzer {
         if let Some(id) = self.db.type_table.is_cached(ty.id) {
             return Ok(id);
         }
-
-        let ty_inner = &ty.inner.inner;
-        let resolved = self.resolve_inner_type(ty_inner, env)?;
-        if ty.is_ref.0 {
-            let resolved = ResolvedType::Ref(resolved, ty.is_ref.1);
-            let ty_id = self.db.type_table.register(resolved);
-            self.db.type_table.cache(ty.id, ty_id);
-            return Ok(ty_id);
-        }
-
+        self.validate_type_structure(ty)?;
+        let resolved = self.resolve_inner_type(ty, env)?;
         self.db.type_table.cache(ty.id, resolved);
         Ok(resolved)
     }

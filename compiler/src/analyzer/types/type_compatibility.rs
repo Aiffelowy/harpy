@@ -27,15 +27,18 @@ impl Analyzer {
         let act_ty = actual.get(self).clone();
 
         match (exp_ty, act_ty) {
-            (ResolvedType::Boxed(e_in), ResolvedType::Boxed(a_in)) => {
+            (ResolvedType::Boxed(e_in, e_mut), ResolvedType::Boxed(a_in, a_mut)) => {
                 let unified = self.unify(e_in, a_in)?;
-                let ty = ResolvedType::Boxed(unified);
+                if e_mut && !a_mut {
+                    return None;
+                }
+                let ty = ResolvedType::Boxed(unified, a_mut);
                 Some(self.db.type_table.register(ty))
             }
 
             (ResolvedType::Ref(e_in, e_mut), ResolvedType::Ref(a_in, a_mut)) => {
                 let unified = self.unify(e_in, a_in)?;
-                if e_mut.0 && !a_mut.0 {
+                if e_mut && !a_mut {
                     return None;
                 }
                 let ty = ResolvedType::Ref(unified, a_mut);
@@ -83,16 +86,22 @@ impl Analyzer {
         let actual = actual.get(self);
 
         match (expected, actual) {
-            (ResolvedType::Boxed(e_in), ResolvedType::Boxed(a_in)) => {
+            (ResolvedType::Boxed(e_in, e_mut), ResolvedType::Boxed(a_in, a_mut)) => {
+                if *e_mut && !a_mut {
+                    return false;
+                }
                 self.is_compatible(*e_in, *a_in)
             }
 
-            (ResolvedType::Ref(exp_inner, _), ResolvedType::Boxed(act_inner)) => {
+            (ResolvedType::Ref(exp_inner, e_mut), ResolvedType::Boxed(act_inner, a_mut)) => {
+                if *e_mut && !a_mut {
+                    return false;
+                }
                 self.is_compatible(*exp_inner, *act_inner)
             }
 
             (ResolvedType::Ref(e_in, e_mut), ResolvedType::Ref(a_in, a_mut)) => {
-                if e_mut.0 && !a_mut.0 {
+                if *e_mut && !a_mut {
                     return false;
                 }
                 self.is_compatible(*e_in, *a_in)
@@ -128,7 +137,7 @@ impl Analyzer {
             let mut current_ty = actual;
             let mut deref_count = 0;
 
-            while let ResolvedType::Boxed(inner) | ResolvedType::Ref(inner, _) =
+            while let ResolvedType::Boxed(inner, _) | ResolvedType::Ref(inner, _) =
                 current_ty.get(self)
             {
                 current_ty = *inner;

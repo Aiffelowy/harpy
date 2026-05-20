@@ -145,7 +145,7 @@ impl Analyzer {
             Expr::Borrow(expr, _) => {
                 self.analyze_expr(env, expr);
             }
-            Expr::Box(expr) => self.analyze_expr(env, expr),
+            Expr::Box(expr, _) => self.analyze_expr(env, expr),
             Expr::Range(start, end) => {
                 if let Some(s) = start {
                     self.analyze_expr(env, s);

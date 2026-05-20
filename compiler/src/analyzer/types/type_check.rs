@@ -7,7 +7,9 @@ use crate::{
     attempt, get_ty,
     parser::{
         expr::expr_defs::{BlockExpr, Expr},
-        stmt::stmts::{ForStmt, FunctionDecl, GlobalStmt, LetStmt, Program, Stmt, WhileStmt},
+        stmt::stmts::{
+            ForStmt, FunctionDecl, GlobalStmt, LetStmt, Program, Stmt, StructDecl, WhileStmt,
+        },
         Node,
     },
 };
@@ -110,6 +112,26 @@ impl Analyzer {
         TypeId::void()
     }
 
+    fn check_struct(&mut self, decl: &Node<StructDecl>) -> TypeId {
+        fn has_ref(analyzer: &Analyzer, ty_id: &TypeId) -> bool {
+            let ty = ty_id.get(analyzer);
+            match ty {
+                ResolvedType::Ref(_, _) => true,
+                ResolvedType::Array(id, _) => has_ref(analyzer, id),
+                ResolvedType::Boxed(id, _) => has_ref(analyzer, id),
+                _ => false,
+            }
+        }
+
+        for field in &decl.fields {
+            let id = self.get_cached_type(field.id);
+            if has_ref(self, &id) {
+                self.report_error(TypeCheckError::RefInStruct.into(), field.ttype.span);
+            }
+        }
+        TypeId::void()
+    }
+
     fn check_stmt(&mut self, stmt: &Stmt) -> TypeId {
         match stmt {
             Stmt::Semi(expr) => {
@@ -121,7 +143,7 @@ impl Analyzer {
                 }
             }
             Stmt::Expr(expr) => self.check_expr(expr),
-            Stmt::Struct(_) => TypeId::void(),
+            Stmt::Struct(decl) => self.check_struct(decl),
             Stmt::Function(decl) => self.check_fn(decl),
             Stmt::For(for_stmt) => self.check_for_stmt(for_stmt),
             Stmt::Let(let_stmt) => self.check_let_stmt(let_stmt),
