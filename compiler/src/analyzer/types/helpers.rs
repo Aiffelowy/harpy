@@ -1,5 +1,6 @@
 use crate::{
-    analyzer::{analyzer::Analyzer, err::TypeCheckError},
+    analyzer::analyzer::Analyzer,
+    err::Kind,
     lexer::span::Span,
     parser::{expr::expr_defs::Expr, node::NodeId, Node},
 };
@@ -91,7 +92,7 @@ impl Analyzer {
         self.ensure_compatible(unified_ty, actual, value_node_id, span);
 
         if !self.is_fully_resolved(unified_ty) {
-            self.report_error(TypeCheckError::TypeAnnotationsNeeded.into(), span);
+            self.report_error(span, Kind::TypeAnnotationsNeeded);
         }
 
         unified_ty

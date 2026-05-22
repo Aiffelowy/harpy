@@ -1,6 +1,5 @@
 use crate::aliases::Result;
-use crate::err::HarpyError;
-use crate::lexer::err::LexerError;
+use crate::err::{HarpyError, Kind};
 use crate::lexer::span::Span;
 use crate::lexer::Lexer;
 use std::fmt::Display;
@@ -98,7 +97,7 @@ macro_rules! define_token_struct {
                     return Ok(Self { span: token.span, $($value)? });
                 }
                 let span = token.span.clone();
-                return HarpyError::lexer(LexerError::UnexpectedToken(stringify!($name), token), span);
+                return HarpyError::err(span, Kind::UnexpectedToken{ expected: stringify!($name), got: token});
             }
 
             fn span(&self) -> Span {
@@ -189,14 +188,14 @@ macro_rules! define_tokens {
                 if is_float {
                     let value: f64 = match result.parse() {
                         Ok(f) => f,
-                        Err(e) => return HarpyError::lexer(LexerError::InvalidFloat(e), span),
+                        Err(e) => return HarpyError::err(span, Kind::InvalidFloat(e)),
                     };
                     return Ok(TokenType::Literal(Lit::LitFloat(value.to_bits())))
                 }
 
                 let value: u64 = match result.parse() {
                     Ok(i) => i,
-                    Err(e) => return HarpyError::lexer(LexerError::InvalidInt(e), span)
+                    Err(e) => return HarpyError::err(span, Kind::InvalidInt(e))
                 };
                 Ok(TokenType::Literal(Lit::LitInt(value)))
             }
@@ -225,7 +224,7 @@ macro_rules! define_tokens {
                 let mut result = String::with_capacity(10);
                 loop {
                     let Some(c) = l.next_char() else {
-                        return HarpyError::lexer(LexerError::UnclosedStr, Span::new(l.position(), l.position()));
+                        return HarpyError::err(Span::new(l.position(), l.position()), Kind::UnclosedStr );
                     };
                     if c == '"' { break; }
                     result.push(c);
@@ -260,7 +259,7 @@ macro_rules! define_tokens {
                         },
                     )+
                     '"' => Self::parse_str(l)?,
-                    _ => return HarpyError::lexer(LexerError::UnknownToken, Span::new(position_start, l.position())),
+                    _ => return HarpyError::err(Span::new(position_start, l.position()),Kind::UnknownToken),
                 }};
                 Ok(Self { t: token_type, span: Span::new(position_start, l.position()) })
 

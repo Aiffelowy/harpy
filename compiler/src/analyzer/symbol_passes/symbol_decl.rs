@@ -1,7 +1,6 @@
 use crate::{
     analyzer::{
         analyzer::Analyzer,
-        err::SymbolDeclError,
         symbol_passes::symbol_res::Environment,
         tables::{
             function_table::FunctionDef,
@@ -11,6 +10,7 @@ use crate::{
         },
     },
     attempt,
+    err::Kind,
     parser::{
         stmt::stmts::{FunctionDecl, GlobalStmt, Program, Stmt, StructDecl},
         types::type_parsing::FunctionType,
@@ -132,10 +132,7 @@ impl Analyzer {
         self.pass_signatures(ast);
 
         if self.db.entry_point.is_none() {
-            self.report_error(
-                SymbolDeclError::MissingMain.into(),
-                crate::lexer::span::Span::default(),
-            );
+            self.report_error(crate::lexer::span::Span::default(), Kind::MissingMain);
         }
     }
 }

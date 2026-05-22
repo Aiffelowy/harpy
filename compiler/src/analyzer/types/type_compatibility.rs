@@ -2,10 +2,9 @@ use crate::{
     aliases::Result,
     analyzer::{
         analyzer::Analyzer,
-        err::TypeCheckError,
         types::types::{ResolvedType, TypeId},
     },
-    err::HarpyError,
+    err::{HarpyError, Kind},
     lexer::span::Span,
     parser::node::NodeId,
 };
@@ -150,7 +149,13 @@ impl Analyzer {
             }
         }
 
-        self.report_error(TypeCheckError::NotCompatible(expected, actual).into(), span);
+        self.report_error(
+            span,
+            Kind::NotCompatible {
+                expected,
+                got: actual,
+            },
+        );
         false
     }
 
@@ -164,7 +169,7 @@ impl Analyzer {
         match ty {
             ResolvedType::Array(inner, _) => Ok(*inner),
             ResolvedType::Range(inner) => Ok(*inner),
-            _ => HarpyError::analyzer(TypeCheckError::ExprNotIter.into(), span),
+            _ => HarpyError::err(span, Kind::ExprNotIter),
         }
     }
 }

@@ -1,10 +1,11 @@
 use crate::{
     analyzer::{
         analyzer::Analyzer,
-        err::TypeCheckError,
         types::types::{ResolvedType, TypeId},
     },
-    attempt, get_ty,
+    attempt,
+    err::Kind,
+    get_ty,
     parser::{
         expr::expr_defs::{BlockExpr, Expr},
         stmt::stmts::{
@@ -44,7 +45,7 @@ impl Analyzer {
 
         if let Expr::Range(start, _) = &stmt.iter_expr.inner {
             if start.is_none() {
-                self.report_error(TypeCheckError::MissingLoopStart.into(), stmt.iter_expr.span);
+                self.report_error(stmt.iter_expr.span, Kind::MissingLoopStart);
             }
         }
         let base_iter_ty = self.auto_deref(stmt.iter_expr.id, iter_ty);
@@ -126,7 +127,7 @@ impl Analyzer {
         for field in &decl.fields {
             let id = self.get_cached_type(field.id);
             if has_ref(self, &id) {
-                self.report_error(TypeCheckError::RefInStruct.into(), field.ttype.span);
+                self.report_error(field.ttype.span, Kind::RefInStruct);
             }
         }
         TypeId::void()

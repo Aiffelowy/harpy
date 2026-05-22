@@ -2,12 +2,11 @@ use crate::{
     aliases::Result,
     analyzer::{
         analyzer::{Analyzer, Fallback},
-        err::{SymbolDeclError, TypeCheckError},
         symbol_passes::symbol_res::Environment,
         tables::struct_table::StructId,
     },
     attempt,
-    err::HarpyError,
+    err::{HarpyError, Kind},
     lexer::tokens::Lit,
     parser::{
         expr::expr_defs::Expr,
@@ -98,13 +97,10 @@ impl Analyzer {
                     if let Lit::LitInt(i) = lit.value() {
                         size = Some(*i);
                     } else {
-                        return HarpyError::analyzer(
-                            SymbolDeclError::ArraySizeInt.into(),
-                            lit.span(),
-                        );
+                        return HarpyError::err(lit.span(), Kind::ArraySizeInt);
                     }
                 }
-                _ => return HarpyError::analyzer(SymbolDeclError::ArraySizeInt.into(), expr.span),
+                _ => return HarpyError::err(expr.span, Kind::ArraySizeInt.into()),
             }
         }
         let ty = ResolvedType::Array(resolved, size);
@@ -150,10 +146,7 @@ impl Analyzer {
             Type::Custom(name) => {
                 let id = self.resolve_local_struct(env, name);
                 if !id.is_valid() {
-                    return HarpyError::analyzer(
-                        SymbolDeclError::UnknownType(name.value().clone()).into(),
-                        name.span(),
-                    );
+                    return HarpyError::err(name.span(), Kind::UnknownType(name.value().clone()));
                 }
                 ResolvedType::Struct(id)
             }
@@ -167,15 +160,15 @@ impl Analyzer {
         match &ty.inner {
             Type::Ref(inner_node, _) => {
                 if let Type::Ref(_, _) = &inner_node.inner {
-                    return HarpyError::analyzer(TypeCheckError::RecursiveRef.into(), ty.span);
+                    return HarpyError::err(ty.span, Kind::RecursiveRef);
                 }
             }
             Type::Boxed(inner_node, _) => {
                 if let Type::Boxed(_, _) = &inner_node.inner {
-                    return HarpyError::analyzer(TypeCheckError::RecursiveBox.into(), ty.span);
+                    return HarpyError::err(ty.span, Kind::RecursiveBox);
                 }
                 if let Type::Ref(_, _) = &inner_node.inner {
-                    return HarpyError::analyzer(TypeCheckError::BoxedRef.into(), ty.span);
+                    return HarpyError::err(ty.span, Kind::BoxedRef);
                 }
             }
             Type::Array(inner_node, _) => {

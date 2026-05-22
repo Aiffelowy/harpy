@@ -3,7 +3,6 @@ use std::{collections::HashMap, fmt::Display};
 use crate::{
     aliases::Result,
     analyzer::{
-        err::{AnalyzerError, SymbolDeclError},
         modules::{Module, ModuleId},
         symbol_passes::symbol_res::Environment,
         tables::{
@@ -16,8 +15,8 @@ use crate::{
         },
         types::types::{ResolvedType, TypeId},
     },
-    err::HarpyError,
-    lexer::tokens::Ident,
+    err::{HarpyError, Kind},
+    lexer::{span::Span, tokens::Ident},
     parser::{node::NodeId, stmt::stmts::Program},
 };
 
@@ -41,7 +40,7 @@ macro_rules! attempt {
             Ok(val) => val,
             Err(e) => {
                 use $crate::analyzer::analyzer::Fallback;
-                $analyzer.errors.push(*e);
+                $analyzer.errors.push(e);
                 $analyzer.fallback()
             }
         }
@@ -177,25 +176,23 @@ impl Analyzer {
 
         if let Some(ref env) = env {
             if env.has_type_in_current_scope(&name) {
-                return HarpyError::analyzer(
-                    SymbolDeclError::AlreadyExists {
+                return HarpyError::err(
+                    span,
+                    Kind::AlreadyExists {
                         name,
                         original_def: span,
-                    }
-                    .into(),
-                    span,
+                    },
                 );
             }
         } else {
             if let Some(&existing_id) = self.current_module().structs.get(&name) {
                 let original_span = self.db.struct_table.get(existing_id).span;
-                return HarpyError::analyzer(
-                    SymbolDeclError::AlreadyExists {
+                return HarpyError::err(
+                    span,
+                    Kind::AlreadyExists {
                         name,
                         original_def: original_span,
-                    }
-                    .into(),
-                    span,
+                    },
                 );
             }
         }
@@ -224,13 +221,12 @@ impl Analyzer {
         if let Some(&existing_id) = self.current_module().functions.get(&name) {
             let original_span = self.db.function_table.get(existing_id).span;
 
-            return HarpyError::analyzer(
-                SymbolDeclError::AlreadyExists {
+            return HarpyError::err(
+                span,
+                Kind::AlreadyExists {
                     name,
                     original_def: original_span,
-                }
-                .into(),
-                span,
+                },
             );
         }
 
@@ -252,13 +248,12 @@ impl Analyzer {
         if let Some(&existing_id) = self.current_module().globals.get(&name) {
             let orig_span = self.db.global_table.get(existing_id).span;
 
-            return HarpyError::analyzer(
-                SymbolDeclError::AlreadyExists {
+            return HarpyError::err(
+                span,
+                Kind::AlreadyExists {
                     name,
                     original_def: orig_span,
-                }
-                .into(),
-                span,
+                },
             );
         }
 
@@ -273,10 +268,7 @@ impl Analyzer {
         if let Some(&id) = module.globals.get(ident.value()) {
             Ok(id)
         } else {
-            HarpyError::analyzer(
-                SymbolDeclError::UnknownSymbol(ident.value().to_owned()).into(),
-                ident.span(),
-            )
+            HarpyError::err(ident.span(), Kind::UnknownSymbol(ident.value().to_owned()))
         }
     }
 
@@ -286,10 +278,7 @@ impl Analyzer {
         if let Some(&id) = module.structs.get(ident.value()) {
             Ok(id)
         } else {
-            HarpyError::analyzer(
-                SymbolDeclError::UnknownType(ident.value().to_owned()).into(),
-                ident.span(),
-            )
+            HarpyError::err(ident.span(), Kind::UnknownType(ident.value().to_owned()))
         }
     }
 
@@ -299,19 +288,15 @@ impl Analyzer {
         if let Some(&id) = module.functions.get(ident.value()) {
             Ok(id)
         } else {
-            HarpyError::analyzer(
-                SymbolDeclError::UnknownFunction(ident.value().to_owned()).into(),
+            HarpyError::err(
                 ident.span(),
+                Kind::UnknownFunction(ident.value().to_owned()),
             )
         }
     }
 
-    pub(in crate::analyzer) fn report_error(
-        &mut self,
-        err: AnalyzerError,
-        span: crate::lexer::span::Span,
-    ) {
-        self.errors.push(HarpyError::new_analyzer(err, span))
+    pub(in crate::analyzer) fn report_error(&mut self, span: Span, err: Kind) {
+        self.errors.push(HarpyError::new(span, err))
     }
 
     pub(in crate::analyzer) fn with_function<F: FnOnce(&mut Self) -> R, R>(
@@ -349,15 +334,11 @@ impl Analyzer {
         self.ctx.current_function.unwrap_or(FunctionId(0))
     }
 
-    pub fn analyze(mut self, ast: &Program) -> std::result::Result<SemanticDB, Vec<HarpyError>> {
+    pub fn analyze(mut self, ast: &Program) -> (SemanticDB, Vec<HarpyError>) {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
         self.check_types(ast);
-        println!("{}", self.db);
-        if !self.errors.is_empty() {
-            return Err(self.errors);
-        }
 
-        Ok(self.db)
+        (self.db, self.errors)
     }
 }

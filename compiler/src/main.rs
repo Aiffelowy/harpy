@@ -29,15 +29,10 @@ fn main() -> Result<()> {
     };
 
     let analyzer = Analyzer::default();
-    let _db = match analyzer.analyze(&ast) {
-        Ok(db) => db,
-        Err(e) => {
-            for error in e {
-                error.print_diagnostic(&source, filename);
-            }
-            return Ok(());
-        }
-    };
-
+    let (db, errors) = analyzer.analyze(&ast);
+    println!("{db}");
+    for error in errors {
+        error.print_diagnostic(&source, filename);
+    }
     Ok(())
 }

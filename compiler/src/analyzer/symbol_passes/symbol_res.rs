@@ -3,14 +3,15 @@ use std::collections::HashMap;
 use crate::{
     analyzer::{
         analyzer::Analyzer,
-        err::SymbolResError,
         tables::{
             struct_table::{StructId, StructLayout},
             symbol_table::{Symbol, SymbolId},
         },
         types::types::{ResolvedType, TypeId},
     },
-    attempt, get_ty,
+    attempt,
+    err::Kind,
+    get_ty,
     lexer::tokens::Ident,
     parser::{
         stmt::stmts::{ForStmt, FunctionDecl, LetStmt, Program, Stmt, StructDecl, WhileStmt},
@@ -189,7 +190,7 @@ impl Analyzer {
                 self.analyze_expr(env, expr);
             }
             Stmt::Global(g) => {
-                self.report_error(SymbolResError::GlobalInFn.into(), g.name.span());
+                self.report_error(g.name.span(), Kind::GlobalInFn);
             }
             Stmt::Semi(expr) => {
                 self.analyze_expr(env, expr);

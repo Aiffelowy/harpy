@@ -3,9 +3,8 @@ use std::collections::HashSet;
 use crate::{
     analyzer::{
         analyzer::Analyzer,
-        err::TypeCheckError,
         types::types::{ResolvedType, TypeId},
-    }, get_ty, lexer::{
+    }, err::Kind, get_ty, lexer::{
         span::Span,
         tokens::{Ident, Lit, Literal},
     }, parser::{
@@ -33,7 +32,7 @@ impl Analyzer {
         let value_ty = self.check_expr(value);
 
         if !self.is_lvalue(target) {
-            self.report_error(TypeCheckError::InvalidLValue.into(), target.span);
+            self.report_error(target.span, Kind::InvalidLValue);
         }
 
         let mut final_target = target_ty;
@@ -59,8 +58,8 @@ impl Analyzer {
                 let target_base = self.auto_deref(target.id, unified_target);
                 if target_base != TypeId::int() && target_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidArithmetic(target_base, value_ty).into(),
                         value.span,
+                        Kind::InvalidArithmetic(target_base, value_ty),
                     );
                 }
             }
@@ -84,8 +83,8 @@ impl Analyzer {
             InfixOp::Add | InfixOp::Sub | InfixOp::Mul | InfixOp::Div | InfixOp::Mod => {
                 if left_base != TypeId::int() && left_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidArithmetic(left_base, right_ty).into(),
                         right.span,
+                        Kind::InvalidArithmetic(left_base, right_ty),
                     );
                     return TypeId::unknown();
                 }
@@ -94,8 +93,8 @@ impl Analyzer {
             InfixOp::Gt | InfixOp::GtEq | InfixOp::Lt | InfixOp::LtEq => {
                 if left_base != TypeId::int() && left_base != TypeId::float() {
                     self.report_error(
-                        TypeCheckError::InvalidRelational(left_base, right_ty).into(),
                         right.span,
+                        Kind::InvalidRelational(left_base, right_ty),
                     );
                     return TypeId::unknown();
                 }
@@ -124,7 +123,7 @@ impl Analyzer {
                 if right_base == TypeId::int() || right_base == TypeId::float() {
                     right_base
                 } else {
-                    self.report_error(TypeCheckError::InvalidPrefix(right_base).into(), right.span);
+                    self.report_error(right.span,Kind::InvalidPrefix(right_base));
                     TypeId::unknown()
                 }
             }
@@ -150,12 +149,12 @@ impl Analyzer {
                 return f.ty;
             } else {
                 self.report_error(
-                    TypeCheckError::UnknownField(*struct_id, field.value().clone()).into(),
                     field.span(),
+                    Kind::UnknownField(*struct_id, field.value().clone()),
                 );
             }
         } else {
-            self.report_error(TypeCheckError::NotAStruct(base_ty).into(), obj.span);
+            self.report_error(obj.span, Kind::NotAStruct(base_ty));
         }
 
         TypeId::unknown()
@@ -173,7 +172,7 @@ impl Analyzer {
         let inner_ty = match base_ty.get(self) {
             ResolvedType::Array(inner, _) => *inner,
             _ => {
-                self.report_error(TypeCheckError::NotAnArray(base_ty).into(), array.span);
+                self.report_error(array.span, Kind::NotAnArray(base_ty));
                 return TypeId::unknown()
             }
         };
@@ -200,7 +199,7 @@ impl Analyzer {
 
         match ty {
             ResolvedType::Boxed(_, _) | ResolvedType::Ref(_, _) => {
-                self.report_error(TypeCheckError::RecursiveBox.into(), inner.span);
+                self.report_error(inner.span, Kind::RecursiveBox);
             }
             _ => ()
         }
@@ -212,7 +211,7 @@ impl Analyzer {
     fn check_ref(&mut self, inner: &Node<Expr>, is_mut: bool) -> TypeId {
         let inner_ty = self.check_expr(inner);
         if !self.is_lvalue(inner) {
-            self.report_error(TypeCheckError::InvalidLValue.into(), inner.span);
+            self.report_error(inner.span, Kind::InvalidLValue);
         }
 
         let ref_ty = ResolvedType::Ref(inner_ty, is_mut);
@@ -256,8 +255,8 @@ impl Analyzer {
                 self.ensure_compatible(exp_field.ty, expr_ty, Some(expr.id), expr.span);
             } else {
                 self.report_error(
-                    TypeCheckError::UnknownField(struct_id, name.value().clone()).into(),
                     name.span(),
+                    Kind::UnknownField(struct_id, name.value().clone())
                 );
             }
         }
@@ -265,8 +264,8 @@ impl Analyzer {
         for exp_field in &layout.fields {
             if !initialized_fields.contains(&exp_field.name) {
                 self.report_error(
-                    TypeCheckError::MissingField(struct_id, exp_field.name.clone()).into(),
                     span,
+                    Kind::MissingField(struct_id, exp_field.name.clone())
                 );
             }
         }
@@ -306,8 +305,8 @@ impl Analyzer {
         {
             if t_args.len() != args.len() {
                 self.report_error(
-                    TypeCheckError::ArgumentCountMismatch(t_args.len(), args.len()).into(),
                     call.span,
+                    Kind::ArgumentCountMismatch(t_args.len(), args.len())
                 );
             }
 
@@ -322,7 +321,7 @@ impl Analyzer {
             return return_type;
         }
 
-        self.report_error(TypeCheckError::NotCallable(callee_ty).into(), call.callee.span);
+        self.report_error(call.callee.span, Kind::NotCallable(callee_ty).into());
         TypeId::unknown()
     }
 
@@ -349,7 +348,7 @@ impl Analyzer {
 
         let fn_id = self.current_function();
         if !fn_id.is_valid() {
-            self.report_error(TypeCheckError::ReturnOutsideFn.into(), span);
+            self.report_error(span, Kind::ReturnOutsideFn);
         }
 
         let fn_def = fn_id.get(self);
@@ -363,7 +362,7 @@ impl Analyzer {
         let ty = expr.as_ref().map_or(TypeId::void(), |e| self.check_expr(e));
 
         if self.loop_context().is_none() {
-            self.report_error(TypeCheckError::BreakOutsideLoop.into(), span);
+            self.report_error(span, Kind::BreakOutsideLoop);
             return TypeId::never();
         }
 
@@ -372,7 +371,7 @@ impl Analyzer {
         let updated_ty = match expected_opt {
             Some(exp) => {
                 self.unify(exp, ty).unwrap_or_else(|| {
-                    self.report_error(TypeCheckError::NotCompatible(exp, ty).into(), span);
+                    self.report_error(span, Kind::NotCompatible{expected: exp, got: ty});
                     exp 
                 })
             }
@@ -386,7 +385,7 @@ impl Analyzer {
 
     fn check_continue(&mut self, span: Span) -> TypeId {
         if self.loop_context().is_none() {
-            self.report_error(TypeCheckError::ContinueOutsideLoop.into(), span);
+            self.report_error(span, Kind::ContinueOutsideLoop);
         }
         TypeId::never()
     }
@@ -404,8 +403,8 @@ impl Analyzer {
                 return unified;
             } else {
                 self.report_error(
-                    TypeCheckError::NotCompatible(then_ty, else_ty).into(), 
-                    else_branch.span
+                    else_branch.span,
+                    Kind::IfNotCompatible{expected: then_ty, got: else_ty}, 
                 );
                 return TypeId::unknown();
             }
@@ -443,8 +442,8 @@ impl Analyzer {
                 final_return_ty = unified;
             } else {
                 self.report_error(
-                    TypeCheckError::NotCompatible(final_return_ty, branch_ty).into(), 
-                    case.1.span
+                    case.1.span,
+                    Kind::NotCompatible{expected: final_return_ty, got: branch_ty} 
                 );
             }
         }
@@ -462,12 +461,12 @@ impl Analyzer {
                 final_return_ty = unified;
             } else {
                 self.report_error(
-                    TypeCheckError::NotCompatible(final_return_ty, def_ty).into(), 
-                    default_branch.span
+                    default_branch.span,
+                    Kind::NotCompatible{expected: final_return_ty, got: def_ty}, 
                 );
             }
         } else if final_return_ty != TypeId::void() && final_return_ty != TypeId::unknown() {
-            self.report_error(TypeCheckError::MissingDefaultBranch.into(), span);
+            self.report_error(span, Kind::MissingDefaultBranch);
         }
 
         if all_branches_never {
@@ -499,7 +498,7 @@ impl Analyzer {
             Expr::Loop(l) => self.check_loop(l),
             Expr::If(if_expr) => self.check_if(if_expr),
             Expr::Block(b) => self.check_block_expr(b),
-            Expr::Implicit => { self.report_error(TypeCheckError::UnexpectedDot.into(), expr.span); TypeId::unknown() },
+            Expr::Implicit => { self.report_error(expr.span, Kind::UnexpectedDot); TypeId::unknown() },
             Expr::Range(start, end) => self.check_range(start, end),
             Expr::Switch(switch) => self.check_switch(switch, expr.span)
         }

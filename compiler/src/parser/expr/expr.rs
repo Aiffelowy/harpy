@@ -1,4 +1,4 @@
-use crate::err::HarpyError;
+use crate::err::{HarpyError, Kind};
 use crate::lexer::span::Span;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
@@ -139,7 +139,7 @@ impl<'parser> Parser<'parser> {
                 self.consume::<t!(=>)>()?;
                 let block = self.parse_node(Self::parse_block_expr)?;
                 if default.is_some() {
-                    return HarpyError::custom("Multiple default cases in switch", dot.span());
+                    return HarpyError::err(dot.span(), Kind::MultipleDefaultInSwitch);
                 }
                 default = Some(block)
             } else {

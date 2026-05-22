@@ -1,6 +1,6 @@
 use crate::{
     aliases::Result,
-    err::HarpyError,
+    err::{HarpyError, Kind},
     lexer::{
         span::{Position, Span},
         tokens::{Token, TokenType, Tokenize},
@@ -77,7 +77,7 @@ pub struct Parser<'parser> {
 
     pub(super) previous_end: Position,
 
-    errors: Vec<Box<HarpyError>>,
+    errors: Vec<HarpyError>,
 }
 
 impl<'parser> Parser<'parser> {
@@ -128,7 +128,7 @@ impl<'parser> Parser<'parser> {
 
     pub(super) fn report_error(
         &mut self,
-        error: Box<HarpyError>,
+        error: HarpyError,
         recovery_points: &[TokenType],
     ) -> Result<()> {
         self.errors.push(error);
@@ -157,10 +157,16 @@ impl<'parser> Parser<'parser> {
         let t = self.lexer.next_token()?;
         let span = t.span();
 
-        HarpyError::lexer(crate::lexer::err::LexerError::UnexpectedToken(msg, t), span)
+        Err(HarpyError::new(
+            span,
+            Kind::UnexpectedToken {
+                expected: msg,
+                got: t,
+            },
+        ))
     }
 
-    pub fn build_ast(mut self) -> std::result::Result<Program, Vec<Box<HarpyError>>> {
+    pub fn build_ast(mut self) -> std::result::Result<Program, Vec<HarpyError>> {
         let p = match self.parse_program() {
             Ok(p) => p,
             Err(e) => {

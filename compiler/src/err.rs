@@ -1,84 +1,117 @@
+use std::fmt::Display;
+use std::num::{ParseFloatError, ParseIntError};
+
 use crate::aliases::Result;
-use crate::analyzer::err::AnalyzerError;
+use crate::analyzer::tables::struct_table::StructId;
+use crate::analyzer::types::types::TypeId;
 use crate::color::Color;
-use crate::lexer::{err::LexerError, span::Span};
+use crate::lexer::span::Span;
+use crate::lexer::tokens::Token;
 use crate::source::SourceFile;
 
 #[derive(Debug)]
-pub enum HarpyErrorKind {
-    Lexer(LexerError),
+pub enum Kind {
+    // LEXER ERRORS
+    UnknownToken,
+    InvalidInt(ParseIntError),
+    InvalidFloat(ParseFloatError),
+    UnclosedStr,
+    UnexpectedToken { expected: &'static str, got: Token },
+    UnexpectedEof,
+    //PARSER ERRORS
+    MultipleDefaultInSwitch,
+    //SYMBOL DECL ERRORS
+    AlreadyExists { name: String, original_def: Span },
+    UnknownType(String),
+    UnknownFunction(String),
+    UnknownSymbol(String),
+    ArraySizeInt,
+    MissingMain,
+    GlobalInFn,
+    //TYPE ERRORS
+    ExprNotIter,
+    NotCompatible { expected: TypeId, got: TypeId },
+    IfNotCompatible { expected: TypeId, got: TypeId },
+    InvalidLValue,
+    InvalidArithmetic(TypeId, TypeId),
+    InvalidRelational(TypeId, TypeId),
+    InvalidPrefix(TypeId),
+    UnknownField(StructId, String),
+    NotAStruct(TypeId),
+    NotAnArray(TypeId),
+    MissingField(StructId, String),
+    ArgumentCountMismatch(usize, usize),
+    NotCallable(TypeId),
+    ReturnOutsideFn,
+    ContinueOutsideLoop,
+    BreakOutsideLoop,
+    MissingDefaultBranch,
+    TypeAnnotationsNeeded,
+    UnexpectedDot,
+    MissingLoopStart,
+    RecursiveBox,
+    RecursiveRef,
+    BoxedRef,
+    RefInStruct,
+
     IO(std::io::Error),
-    Analyzer(AnalyzerError),
     Custom(&'static str),
+}
+
+impl Display for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug)]
 pub struct HarpyError {
-    span: Span,
-    error: HarpyErrorKind,
+    span: Option<Span>,
+    error: Box<Kind>,
 }
 
 impl HarpyError {
-    pub fn new(error: HarpyErrorKind, span: Span) -> Self {
-        Self { error, span }
-    }
-
-    pub fn new_analyzer(error: AnalyzerError, span: Span) -> Self {
+    pub fn new(span: Span, error: Kind) -> Self {
         Self {
-            error: HarpyErrorKind::Analyzer(error),
-            span,
+            error: Box::new(error),
+            span: Some(span),
         }
     }
 
-    pub fn custom<T>(msg: &'static str, span: Span) -> Result<T> {
-        Err(Box::new(Self {
-            error: HarpyErrorKind::Custom(msg),
-            span,
-        }))
-    }
-
-    pub fn lexer<T>(error: LexerError, span: Span) -> Result<T> {
-        Err(Box::new(Self {
-            span,
-            error: HarpyErrorKind::Lexer(error),
-        }))
-    }
-
-    pub fn analyzer<T>(error: AnalyzerError, span: Span) -> Result<T> {
-        Err(Box::new(Self {
-            span,
-            error: HarpyErrorKind::Analyzer(error),
-        }))
+    pub fn err<T>(span: Span, error: Kind) -> Result<T> {
+        Err(Self {
+            error: Box::new(error),
+            span: Some(span),
+        })
     }
 }
 
-impl From<std::io::Error> for Box<HarpyError> {
+impl From<std::io::Error> for HarpyError {
     fn from(value: std::io::Error) -> Self {
-        Box::new(HarpyError {
-            span: Span::default(),
-            error: HarpyErrorKind::IO(value),
-        })
+        HarpyError {
+            span: None,
+            error: Box::new(Kind::IO(value)),
+        }
     }
 }
 
 impl HarpyError {
     pub fn print_diagnostic(&self, source: &SourceFile, file_name: &str) {
-        let line_num = self.span.start.line;
-        let col_num = self.span.start.column;
-
-        let msg = match &self.error {
-            HarpyErrorKind::Lexer(e) => format!("{}", e),
-            HarpyErrorKind::IO(e) => format!("{}", e),
-            HarpyErrorKind::Analyzer(e) => format!("{:?}", e),
-            HarpyErrorKind::Custom(msg) => format!("{msg}"),
-        };
+        let line_num = self.span.unwrap_or_default().start.line;
+        let col_num = self.span.unwrap_or_default().start.column;
+        let msg = self.error.to_string();
 
         let line_text = source
             .get_line(line_num.saturating_sub(1))
             .unwrap_or("")
             .trim_end();
 
-        let span_len = self.span.end.byte.saturating_sub(self.span.start.byte);
+        let span_len = self
+            .span
+            .unwrap_or_default()
+            .end
+            .byte
+            .saturating_sub(self.span.unwrap_or_default().start.byte);
         let squiggle_len = std::cmp::max(1, span_len);
 
         let safe_squiggle_len = std::cmp::min(
