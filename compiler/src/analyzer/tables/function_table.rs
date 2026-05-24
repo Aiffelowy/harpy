@@ -110,7 +110,7 @@ impl Default for FunctionTable {
             functions: Vec::new(),
             resolutions: HashMap::new(),
         };
-        let dummy = FunctionDef::skeleton("<unknown_fn>".to_owned(), TypeId(0), Span::default());
+        let dummy = FunctionDef::skeleton("<unknown_fn>".to_owned(), TypeId(0), Span::dummy());
         s.register(dummy);
         s
     }

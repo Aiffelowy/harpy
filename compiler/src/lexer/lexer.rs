@@ -1,6 +1,11 @@
 use std::{iter::Peekable, str::Chars};
 
-use crate::{aliases::Result, lexer::tokens::TokenType, source::SourceFile, tt};
+use crate::{
+    aliases::Result,
+    lexer::tokens::TokenType,
+    source::{source_map::FileId, SourceFile},
+    tt,
+};
 
 use super::{span::Position, tokens::Token};
 
@@ -9,15 +14,21 @@ pub struct Lexer<'lexer> {
     chars: Peekable<Chars<'lexer>>,
     position: Position,
     peeked: Option<Token>,
+    file_id: FileId,
 }
 
 impl<'lexer> Lexer<'lexer> {
-    pub fn new(buffer: &'lexer SourceFile) -> Self {
+    pub fn new(source: &'lexer SourceFile) -> Self {
         Self {
-            chars: buffer.text.chars().peekable(),
+            chars: source.text.chars().peekable(),
             position: Position::default(),
             peeked: None,
+            file_id: source.id,
         }
+    }
+
+    pub fn file_id(&self) -> FileId {
+        self.file_id
     }
 
     pub(in crate::lexer) fn next_char(&mut self) -> Option<char> {

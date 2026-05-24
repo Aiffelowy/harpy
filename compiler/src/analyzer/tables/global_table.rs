@@ -77,7 +77,7 @@ impl Default for GlobalTable {
             id: None,
             name: "<unknown_global>".to_owned(),
             symbol: SymbolId(0),
-            span: Span::default(),
+            span: Span::dummy(),
         };
 
         s.register(dummy);

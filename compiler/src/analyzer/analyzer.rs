@@ -334,11 +334,17 @@ impl Analyzer {
         self.ctx.current_function.unwrap_or(FunctionId(0))
     }
 
-    pub fn analyze(mut self, ast: &Program) -> (SemanticDB, Vec<HarpyError>) {
+    pub fn analyze(
+        mut self,
+        ast: &Program,
+    ) -> std::result::Result<SemanticDB, (SemanticDB, Vec<HarpyError>)> {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
         self.check_types(ast);
+        if !self.errors.is_empty() {
+            return Err((self.db, self.errors));
+        }
 
-        (self.db, self.errors)
+        Ok(self.db)
     }
 }

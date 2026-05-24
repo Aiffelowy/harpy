@@ -1,7 +1,6 @@
-use std::io::BufReader;
-
 use harpy_compiler::{
-    aliases::Result, analyzer::analyzer::Analyzer, lexer::Lexer, parser::Parser, source::SourceFile,
+    aliases::Result, analyzer::analyzer::Analyzer, err::ErrorPrinter, lexer::Lexer, parser::Parser,
+    source::source_map::SourceMap,
 };
 
 fn main() -> Result<()> {
@@ -11,28 +10,28 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let filename = &args[1];
-    let reader = BufReader::new(std::fs::File::open(filename)?);
-    let source = SourceFile::new(reader)?;
+    let mut source_map = SourceMap::default();
 
-    let lexer = Lexer::new(&source);
+    let file_id = source_map.load_source(args[1].clone())?;
+    let lexer = Lexer::new(source_map.get_source(file_id));
     let parser = Parser::new(lexer);
 
     let ast = match parser.build_ast() {
         Ok(a) => a,
         Err(errors) => {
-            for error in errors {
-                error.print_diagnostic(&source, filename);
-            }
+            ErrorPrinter::print_all(&source_map, None, &errors);
             return Ok(());
         }
     };
 
     let analyzer = Analyzer::default();
-    let (db, errors) = analyzer.analyze(&ast);
+    let db = match analyzer.analyze(&ast) {
+        Ok(db) => db,
+        Err((db, errors)) => {
+            ErrorPrinter::print_all(&source_map, Some(&db), &errors);
+            return Ok(());
+        }
+    };
     println!("{db}");
-    for error in errors {
-        error.print_diagnostic(&source, filename);
-    }
     Ok(())
 }

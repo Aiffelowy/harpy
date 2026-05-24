@@ -132,7 +132,7 @@ impl Default for SymbolTable {
             name: "<unknown_symbol>".to_owned(),
             ty: TypeId(0),
             is_mutable: false,
-            declared_at: Span::default(),
+            declared_at: Span::dummy(),
         };
         s.register(dummy);
         s

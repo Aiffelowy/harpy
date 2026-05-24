@@ -109,7 +109,7 @@ impl Default for StructTable {
             resolutions: HashMap::new(),
         };
 
-        let dummy = StructLayout::skeleton("<unknown_struct>".to_owned(), Span::default());
+        let dummy = StructLayout::skeleton("<unknown_struct>".to_owned(), Span::dummy());
         s.register(dummy);
         s
     }

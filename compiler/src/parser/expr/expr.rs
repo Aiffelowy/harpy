@@ -190,7 +190,7 @@ impl<'parser> Parser<'parser> {
                 if is_boxed {
                     let node = Node {
                         id: self.next_id(),
-                        span: Span::new(spawn.span().start, self.previous_end),
+                        span: Span::new(spawn.span().start, self.previous_end, self.file_id()),
                         inner: Expr::StructInit(name, fields),
                     };
                     Ok(Expr::Box(Box::new(node), is_mut))
@@ -386,7 +386,7 @@ impl<'parser> Parser<'parser> {
         let end = self.previous_end;
         Ok(Node {
             id: self.next_id(),
-            span: Span::new(start, end),
+            span: Span::new(start, end, self.file_id()),
             inner: expr,
         })
     }

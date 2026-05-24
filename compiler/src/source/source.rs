@@ -1,19 +1,21 @@
 use std::{
-    io::BufRead,
-    ops::Index,
-    ops::{Range, RangeFrom, RangeTo},
+    io::{BufReader, Read},
+    ops::{Index, Range, RangeFrom, RangeTo},
 };
 
-use crate::aliases::Result;
+use crate::{aliases::Result, source::source_map::FileId};
 
 #[derive(Debug)]
 pub struct SourceFile {
+    pub filename: String,
     pub text: String,
     pub line_starts: Vec<usize>, // byte offsets
+    pub id: FileId,
 }
 
 impl SourceFile {
-    pub fn new<Reader: BufRead>(mut reader: Reader) -> Result<Self> {
+    pub fn new(filename: String, id: FileId) -> Result<Self> {
+        let mut reader = BufReader::new(std::fs::File::open(&filename)?);
         let mut text = String::new();
         reader.read_to_string(&mut text)?;
         let mut line_starts = vec![0];
@@ -22,7 +24,12 @@ impl SourceFile {
                 line_starts.push(i + 1);
             }
         }
-        Ok(Self { text, line_starts })
+        Ok(Self {
+            text,
+            filename,
+            line_starts,
+            id,
+        })
     }
 
     pub fn line_count(&self) -> usize {

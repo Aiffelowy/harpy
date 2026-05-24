@@ -7,6 +7,7 @@ use crate::{
         Lexer,
     },
     parser::{node::NodeId, stmt::stmts::Program, Node},
+    source::source_map::FileId,
     tt,
 };
 
@@ -97,6 +98,10 @@ impl<'parser> Parser<'parser> {
         id
     }
 
+    pub(super) fn file_id(&self) -> FileId {
+        self.lexer.file_id()
+    }
+
     pub(super) fn peek(&mut self) -> Result<&TokenType> {
         self.lexer.peek()
     }
@@ -117,7 +122,7 @@ impl<'parser> Parser<'parser> {
 
         Ok(Node {
             id: self.next_id(),
-            span: Span::new(start, end),
+            span: Span::new(start, end, self.lexer.file_id()),
             inner,
         })
     }

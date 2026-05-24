@@ -183,7 +183,7 @@ macro_rules! define_tokens {
                     }
                 }
 
-                let span = Span::new(start, l.position());
+                let span = Span::new(start, l.position(), l.file_id());
 
                 if is_float {
                     let value: f64 = match result.parse() {
@@ -224,7 +224,7 @@ macro_rules! define_tokens {
                 let mut result = String::with_capacity(10);
                 loop {
                     let Some(c) = l.next_char() else {
-                        return HarpyError::err(Span::new(l.position(), l.position()), Kind::UnclosedStr );
+                        return HarpyError::err(Span::new(l.position(), l.position(), l.file_id()), Kind::UnclosedStr );
                     };
                     if c == '"' { break; }
                     result.push(c);
@@ -236,7 +236,7 @@ macro_rules! define_tokens {
 
             pub(super) fn parse(l: &mut Lexer) -> Result<Self> {
                 let position_start = l.position();
-                let Some(c) = l.peek_char() else { return Ok(Self { t: TokenType::Eof, span: Span::new(position_start, position_start) }) };
+                let Some(c) = l.peek_char() else { return Ok(Self { t: TokenType::Eof, span: Span::new(position_start, position_start, l.file_id()) }) };
 
                 let token_type =
 
@@ -259,9 +259,9 @@ macro_rules! define_tokens {
                         },
                     )+
                     '"' => Self::parse_str(l)?,
-                    _ => return HarpyError::err(Span::new(position_start, l.position()),Kind::UnknownToken),
+                    _ => return HarpyError::err(Span::new(position_start, l.position(), l.file_id()),Kind::UnknownToken),
                 }};
-                Ok(Self { t: token_type, span: Span::new(position_start, l.position()) })
+                Ok(Self { t: token_type, span: Span::new(position_start, l.position(), l.file_id()) })
 
             }
         }

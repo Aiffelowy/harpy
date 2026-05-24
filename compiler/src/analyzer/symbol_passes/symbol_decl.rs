@@ -10,7 +10,7 @@ use crate::{
         },
     },
     attempt,
-    err::Kind,
+    err::{HarpyError, Kind},
     parser::{
         stmt::stmts::{FunctionDecl, GlobalStmt, Program, Stmt, StructDecl},
         types::type_parsing::FunctionType,
@@ -132,7 +132,7 @@ impl Analyzer {
         self.pass_signatures(ast);
 
         if self.db.entry_point.is_none() {
-            self.report_error(crate::lexer::span::Span::default(), Kind::MissingMain);
+            self.errors.push(HarpyError::no_span(Kind::MissingMain));
         }
     }
 }
