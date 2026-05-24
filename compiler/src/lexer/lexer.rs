@@ -1,12 +1,11 @@
 use std::{iter::Peekable, str::Chars};
 
+use super::{span::Position, tokens::Token};
 use crate::{
     aliases::Result,
     source::{source_map::FileId, SourceFile},
     tt,
 };
-
-use super::{span::Position, tokens::Token};
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'lexer> {
