@@ -2,7 +2,6 @@ use std::{iter::Peekable, str::Chars};
 
 use crate::{
     aliases::Result,
-    lexer::tokens::TokenType,
     source::{source_map::FileId, SourceFile},
     tt,
 };
@@ -13,7 +12,6 @@ use super::{span::Position, tokens::Token};
 pub struct Lexer<'lexer> {
     chars: Peekable<Chars<'lexer>>,
     position: Position,
-    peeked: Option<Token>,
     file_id: FileId,
 }
 
@@ -22,7 +20,6 @@ impl<'lexer> Lexer<'lexer> {
         Self {
             chars: source.text.chars().peekable(),
             position: Position::default(),
-            peeked: None,
             file_id: source.id,
         }
     }
@@ -50,9 +47,6 @@ impl<'lexer> Lexer<'lexer> {
     }
 
     pub fn position(&self) -> Position {
-        if let Some(token) = &self.peeked {
-            return token.span.start;
-        }
         self.position
     }
 
@@ -86,7 +80,7 @@ impl<'lexer> Lexer<'lexer> {
         }
     }
 
-    fn get_next(&mut self) -> Result<Token> {
+    pub fn next_token(&mut self) -> Result<Token> {
         self.skip_whitespace();
 
         let next = Token::parse(self)?;
@@ -94,29 +88,13 @@ impl<'lexer> Lexer<'lexer> {
         match next.t {
             tt!("//") => {
                 self.skip_line_comments();
-                self.get_next()
+                self.next_token()
             }
             tt!("/*") => {
                 self.skip_multi_comments();
-                self.get_next()
+                self.next_token()
             }
             _ => Ok(next),
         }
-    }
-
-    pub fn next_token(&mut self) -> Result<Token> {
-        if let Some(token) = self.peeked.take() {
-            return Ok(token);
-        }
-
-        self.get_next()
-    }
-
-    pub fn peek(&mut self) -> Result<&TokenType> {
-        if self.peeked.is_none() {
-            self.peeked = Some(self.get_next()?);
-        }
-
-        Ok(&self.peeked.as_ref().unwrap().t)
     }
 }

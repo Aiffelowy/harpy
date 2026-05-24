@@ -8,7 +8,7 @@ pub trait Tokenize
 where
     Self: Sized,
 {
-    fn tokenize(token_stream: &mut Lexer) -> Result<Self>;
+    fn tokenize(token: Token) -> Result<Self>;
     fn span(&self) -> Span;
 }
 
@@ -91,13 +91,12 @@ macro_rules! define_token_struct {
         }
 
         impl Tokenize for $name {
-            fn tokenize(token_stream: &mut Lexer) -> Result<Self> {
-                let token = token_stream.next_token()?;
+            fn tokenize(token: Token) -> Result<Self> {
                 if let TokenType::$($token_type)+ = token.t {
                     return Ok(Self { span: token.span, $($value)? });
                 }
                 let span = token.span.clone();
-                return HarpyError::err(span, Kind::UnexpectedToken{ expected: stringify!($name), got: token});
+                return HarpyError::err(span, Kind::UnexpectedToken{ expected: stringify!($name), got: token.clone()});
             }
 
             fn span(&self) -> Span {

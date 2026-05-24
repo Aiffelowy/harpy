@@ -76,16 +76,20 @@ pub struct Parser<'parser> {
     lexer: Lexer<'parser>,
     next_id: u32,
 
+    pub(super) current: Token,
     pub(super) previous_end: Position,
 
     errors: Vec<HarpyError>,
 }
 
 impl<'parser> Parser<'parser> {
-    pub fn new(lexer: Lexer<'parser>) -> Self {
+    pub fn new(mut lexer: Lexer<'parser>) -> Self {
+        let first_token = lexer.next_token().expect("Failed to fetch initial token");
+
         Self {
             lexer,
             next_id: 0,
+            current: first_token,
             previous_end: Position::default(),
             errors: vec![],
         }
@@ -103,12 +107,16 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(super) fn peek(&mut self) -> Result<&TokenType> {
-        self.lexer.peek()
+        Ok(self.current.kind())
     }
 
     pub(super) fn consume<T: Tokenize>(&mut self) -> Result<T> {
-        let token = T::tokenize(&mut self.lexer)?;
-        self.previous_end = token.span().end;
+        let next_token = self.lexer.next_token()?;
+        let old_token = std::mem::replace(&mut self.current, next_token);
+
+        self.previous_end = old_token.span().end;
+        let token = T::tokenize(old_token)?;
+
         Ok(token)
     }
 
@@ -116,7 +124,7 @@ impl<'parser> Parser<'parser> {
     where
         F: FnOnce(&mut Self) -> Result<T>,
     {
-        let start = self.lexer.position();
+        let start = self.current.span().start;
         let inner = parsable(self)?;
         let end = self.previous_end;
 
@@ -128,7 +136,11 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(super) fn discard_next(&mut self) -> Result<Token> {
-        self.lexer.next_token()
+        let next_token = self.lexer.next_token()?;
+        let discarded = std::mem::replace(&mut self.current, next_token);
+        self.previous_end = discarded.span().end;
+
+        Ok(discarded)
     }
 
     pub(super) fn report_error(
@@ -159,15 +171,12 @@ impl<'parser> Parser<'parser> {
     }
 
     pub(super) fn unexpected<T>(&mut self, msg: &'static str) -> Result<T> {
-        let t = self.lexer.next_token()?;
-        let span = t.span();
+        let got = self.current.clone();
+        let span = got.span();
 
         Err(HarpyError::new(
             span,
-            Kind::UnexpectedToken {
-                expected: msg,
-                got: t,
-            },
+            Kind::UnexpectedToken { expected: msg, got },
         ))
     }
 
