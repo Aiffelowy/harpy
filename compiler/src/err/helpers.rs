@@ -1,11 +1,18 @@
 use crate::analyzer::{
     analyzer::SemanticDB,
+    tables::struct_table::StructId,
     types::types::{ResolvedType, TypeId},
 };
 
 impl TypeId {
     pub(super) fn format(&self, db: &SemanticDB) -> String {
         db.type_table.get(*self).to_string(db)
+    }
+}
+
+impl StructId {
+    pub(super) fn name<'a>(&'a self, db: &'a SemanticDB) -> &'a str {
+        &db.struct_table.get(*self).name
     }
 }
 

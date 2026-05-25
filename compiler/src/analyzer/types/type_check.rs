@@ -64,10 +64,8 @@ impl Analyzer {
             .map_or(TypeId::unknown(), |e| self.check_expr(e));
         let var_ty = self.get_symbol_type(stmt.id);
 
-        let span = stmt
-            .expr
-            .as_ref()
-            .map_or_else(|| stmt.name.span(), |e| e.span);
+        let span = stmt.span.merge(stmt.name.span());
+
         let value_id = stmt.expr.as_ref().map(|e| e.id);
 
         let unified = self.check_binding(var_ty, expr_ty, value_id, span);
