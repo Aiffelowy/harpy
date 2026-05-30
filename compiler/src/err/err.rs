@@ -50,6 +50,13 @@ pub enum Kind {
     RecursiveRef,
     BoxedRef,
     RefInStruct,
+    //DATAFLOW ERRORS
+    UseOfMoved,
+    UseOfUninit,
+    CannotAssignImmutable,
+    CannotMutBorrowImmutable,
+    NotAllPathsReturn,
+    ReturnRefToLocal,
 
     IO(std::io::Error),
     Custom(&'static str),

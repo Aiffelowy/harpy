@@ -129,7 +129,7 @@ impl FunctionTable {
         self.resolutions.insert(node_id, fn_id);
     }
 
-    pub fn get_resolution(&mut self, node_id: NodeId) -> FunctionId {
+    pub fn get_resolution(&self, node_id: NodeId) -> FunctionId {
         *self.resolutions.get(&node_id).unwrap_or(&FunctionId(0))
     }
 

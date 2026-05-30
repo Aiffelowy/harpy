@@ -82,6 +82,7 @@ pub enum Expr {
     StructInit(Ident, Vec<(Ident, Node<Expr>)>),
     ArrayInit(Vec<Node<Expr>>),
     Index(Box<Node<Expr>>, Box<Node<Expr>>),
+    Clone(Box<Node<Expr>>),
 }
 
 impl Expr {

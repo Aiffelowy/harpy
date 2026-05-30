@@ -322,6 +322,8 @@ define_tokens!(
 
         "vessel" => Struct,
         "spawn" => Spawn,
+
+        "clone" => Clone,
     }
 
     [symbols] => {
@@ -469,6 +471,9 @@ macro_rules! t {
     };
     (ref) => {
         $crate::lexer::tokens::Ref
+    };
+    (clone) => {
+        $crate::lexer::tokens::Clone
     };
     (ident) => {
         $crate::lexer::tokens::Ident
@@ -672,6 +677,9 @@ macro_rules! tt {
     };
     (ref) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Ref)
+    };
+    (clone) => {
+        $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Clone)
     };
     (struct) => {
         $crate::lexer::tokens::TokenType::Keyword($crate::lexer::tokens::Key::Struct)

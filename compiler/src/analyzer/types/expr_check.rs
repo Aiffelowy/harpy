@@ -37,10 +37,12 @@ impl Analyzer {
 
         let mut final_target = target_ty;
 
-        if !self.is_compatible(target_ty, value_ty) {
+        if !matches!(op, AssignOp::Eq) && !self.is_compatible(target_ty, value_ty) {
             let derefed_target = self.auto_deref(target.id, target_ty);
+            
             if self.is_compatible(derefed_target, value_ty) {
                 final_target = derefed_target;
+                
             }
         }
 
@@ -500,7 +502,8 @@ impl Analyzer {
             Expr::Block(b) => self.check_block_expr(b),
             Expr::Implicit => { self.report_error(expr.span, Kind::UnexpectedDot); TypeId::unknown() },
             Expr::Range(start, end) => self.check_range(start, end),
-            Expr::Switch(switch) => self.check_switch(switch, expr.span)
+            Expr::Switch(switch) => self.check_switch(switch, expr.span),
+            Expr::Clone(expr) => self.check_expr(expr)
         }
     }
 

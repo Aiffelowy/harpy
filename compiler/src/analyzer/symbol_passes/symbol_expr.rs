@@ -171,6 +171,9 @@ impl Analyzer {
                 self.analyze_expr(env, right);
             }
             Expr::Implicit => {}
+            Expr::Clone(e) => {
+                self.analyze_expr(env, e);
+            }
         }
     }
 }

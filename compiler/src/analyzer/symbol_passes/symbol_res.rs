@@ -5,7 +5,7 @@ use crate::{
         analyzer::Analyzer,
         tables::{
             struct_table::{StructId, StructLayout},
-            symbol_table::{Symbol, SymbolId},
+            symbol_table::{Symbol, SymbolId, SymbolKind},
         },
         types::types::{ResolvedType, TypeId},
     },
@@ -146,11 +146,11 @@ impl Analyzer {
         env.push_scope();
 
         let symbol = Symbol {
-            id: None,
             name: stmt.temp_var.value().clone(),
             ty: TypeId(0),
             is_mutable: false,
             declared_at: stmt.temp_var.span(),
+            kind: SymbolKind::Local,
         };
 
         let symbol_id = attempt!(self.register_symbol(symbol));

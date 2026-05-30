@@ -270,6 +270,11 @@ impl<'parser> Parser<'parser> {
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
                 Ok(Expr::Box(Box::new(right), is_mut))
             }
+            tt!(clone) => {
+                self.consume::<t!(clone)>()?;
+                let expr = self.parse_node(Self::parse_expr)?;
+                Ok(Expr::Clone(Box::new(expr)))
+            }
 
             _ => self.unexpected("prefix token in expression"),
         }

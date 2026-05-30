@@ -6,7 +6,7 @@ use crate::{
             function_table::FunctionDef,
             global_table::GlobalDef,
             struct_table::{Field, StructLayout},
-            symbol_table::Symbol,
+            symbol_table::{Symbol, SymbolKind},
         },
     },
     attempt,
@@ -68,11 +68,11 @@ impl Analyzer {
         let func_id = attempt!(self.register_function(def));
 
         let symbol = Symbol {
-            id: None,
             name: decl.name.value().clone(),
             ty: signature,
             is_mutable: false,
             declared_at: decl.name.span(),
+            kind: SymbolKind::Function,
         };
         let symbol_id = attempt!(self.register_symbol(symbol));
 

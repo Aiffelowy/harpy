@@ -27,43 +27,53 @@ impl Fallback<SymbolId> for Analyzer {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SymbolKind {
+    Local,
+    Parameter,
+    Global,
+    Function,
+    Struct,
+    Dummy,
+}
+
 #[derive(Debug, Clone)]
 pub struct Symbol {
-    pub id: Option<SymbolId>,
     pub name: String,
     pub ty: TypeId,
     pub is_mutable: bool,
+    pub kind: SymbolKind,
     pub declared_at: Span,
 }
 
 impl Symbol {
     pub fn from_let(stmt: &LetStmt, ty: TypeId) -> Self {
         Self {
-            id: None,
             name: stmt.name.value().clone(),
             ty,
             is_mutable: stmt.mutable,
             declared_at: stmt.name.span(),
+            kind: SymbolKind::Local,
         }
     }
 
     pub fn from_global(stmt: &GlobalStmt, ty: TypeId) -> Self {
         Self {
-            id: None,
             name: stmt.name.value().clone(),
             ty,
             is_mutable: stmt.mutable,
             declared_at: stmt.name.span(),
+            kind: SymbolKind::Global,
         }
     }
 
     pub fn from_arg(arg: &FunctionArg, ty: TypeId) -> Self {
         Self {
-            id: None,
             name: arg.name.value().clone(),
             ty,
             is_mutable: arg.mutable,
             declared_at: arg.name.span(),
+            kind: SymbolKind::Parameter,
         }
     }
 }
@@ -90,20 +100,11 @@ impl Display for SymbolTable {
         )?;
 
         for sym in &self.symbols {
-            let id_str = match &sym.id {
-                Some(id) => format!("{:?}", id),
-                None => "[Unset]".to_string(),
-            };
-
             let ty_str = format!("{:?}", sym.ty);
 
             let mut_str = if sym.is_mutable { "Yes" } else { "No " };
 
-            writeln!(
-                f,
-                "  {:<10} | {:<20} | {:<10} | {}",
-                id_str, sym.name, ty_str, mut_str
-            )?;
+            writeln!(f, "{:<20} | {:<10} | {}", sym.name, ty_str, mut_str)?;
         }
 
         writeln!(
@@ -128,11 +129,11 @@ impl Default for SymbolTable {
         };
 
         let dummy = Symbol {
-            id: None,
             name: "<unknown_symbol>".to_owned(),
             ty: TypeId(0),
             is_mutable: false,
             declared_at: Span::dummy(),
+            kind: SymbolKind::Dummy,
         };
         s.register(dummy);
         s
@@ -140,9 +141,8 @@ impl Default for SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn register(&mut self, mut def: Symbol) -> SymbolId {
+    pub fn register(&mut self, def: Symbol) -> SymbolId {
         let id = SymbolId(self.symbols.len());
-        def.id = Some(id);
         self.symbols.push(def);
         id
     }

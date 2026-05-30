@@ -341,6 +341,7 @@ impl Analyzer {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
         self.check_types(ast);
+        self.dataflow_analysis(ast);
         if !self.errors.is_empty() {
             return Err((self.db, self.errors));
         }
