@@ -107,6 +107,9 @@ macro_rules! define_token_struct {
         impl $name {
             $(pub fn value(&self) -> &$($type)+ { &self.$value })?
             pub fn span(&self) -> Span { self.span }
+            pub fn new(span: Span $(, $value: $($type)+)?) -> Self {
+                Self { span, $($value)? }
+            }
         }
     };
 }

@@ -28,7 +28,6 @@ impl Kind {
             UnknownSymbol(name) => format!("cannot find value `{}` in this scope.", name),
             ArraySizeInt => "array size must be a constant integer".to_string(),
             MissingMain => "no `main(str) -> void` function found.".to_string(),
-            GlobalInFn => "cannot declare a global variable inside a function.".to_string(),
 
             //late
             ExprNotIter => "expression cannot be iterated through.".to_string(),

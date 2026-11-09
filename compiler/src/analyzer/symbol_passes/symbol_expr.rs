@@ -7,7 +7,7 @@ use crate::{
     attempt,
     lexer::tokens::Ident,
     parser::{
-        expr::expr_defs::{BlockExpr, ClosureExpr, Expr},
+        expr::simple_expr_defs::{BlockExpr, ClosureExpr, Expr},
         types::type_parsing::FunctionType,
         Node,
     },
@@ -40,9 +40,9 @@ impl Analyzer {
         if !ty_id.is_valid() {
             return;
         }
-        let def = FunctionDef::skeleton(format!("closure:<{}>", ty_id.0), ty_id, closure.span);
+        let def = FunctionDef::skeleton(format!("closure:<{}>", ty_id.0), ty_id, closure.span());
         let fn_id = attempt!(self.register_function(def));
-        self.db.function_table.add_resolution(closure.id, fn_id);
+        self.db.function_table.add_resolution(closure.id(), fn_id);
         env.push_scope();
 
         self.with_function(fn_id, |analyzer| {
@@ -80,7 +80,7 @@ impl Analyzer {
     }
 
     pub(in crate::analyzer) fn analyze_expr(&mut self, env: &mut Environment, expr: &Node<Expr>) {
-        match &expr.inner {
+        match expr.inner() {
             Expr::Infix(left, _, right) => {
                 self.analyze_expr(env, left);
                 self.analyze_expr(env, right);
@@ -88,7 +88,7 @@ impl Analyzer {
             Expr::Prefix(_, right) => {
                 self.analyze_expr(env, right);
             }
-            Expr::Assign(left, _, right) => {
+            Expr::Assign(left, right) => {
                 self.analyze_expr(env, left);
                 self.analyze_expr(env, right);
             }
@@ -97,7 +97,7 @@ impl Analyzer {
                 let Some(symbol_id) = self.resolve_local(env, name) else {
                     return;
                 };
-                self.db.symbol_table.add_resolution(expr.id, symbol_id);
+                self.db.symbol_table.add_resolution(expr.id(), symbol_id);
             }
             Expr::Call(c) => {
                 self.analyze_expr(env, &c.callee);
@@ -126,16 +126,6 @@ impl Analyzer {
                     self.analyze_expr(env, expr);
                 }
             }
-            Expr::Switch(s) => {
-                self.analyze_expr(env, &s.expr);
-                for case in &s.cases {
-                    self.analyze_expr(env, &case.0);
-                    self.analyze_block_expr(env, &case.1);
-                }
-                if let Some(default) = &s.default {
-                    self.analyze_block_expr(env, default);
-                }
-            }
             Expr::Block(b) => {
                 self.analyze_block_expr(env, b);
             }
@@ -159,7 +149,7 @@ impl Analyzer {
             }
             Expr::StructInit(struct_name, fields) => {
                 let id = self.analyze_struct_init(env, struct_name, fields);
-                self.db.struct_table.add_resolution(expr.id, id);
+                self.db.struct_table.add_resolution(expr.id(), id);
             }
             Expr::ArrayInit(exprs) => {
                 for expr in exprs {

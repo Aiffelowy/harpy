@@ -2,7 +2,7 @@ use crate::{
     analyzer::analyzer::Analyzer,
     err::Kind,
     lexer::span::Span,
-    parser::{expr::expr_defs::Expr, node::NodeId, Node},
+    parser::{expr::simple_expr_defs::Expr, node::NodeId, Node},
 };
 
 use super::types::{ResolvedType, TypeId};
@@ -63,14 +63,14 @@ impl Analyzer {
     }
 
     pub fn is_lvalue(&self, expr: &Node<Expr>) -> bool {
-        match &expr.inner {
+        match expr.inner() {
             Expr::Ident(_) => true,
             Expr::MemberAccess(obj, _) => {
-                let obj_ty = self.get_cached_type(obj.id);
+                let obj_ty = self.get_cached_type(obj.id());
                 self.is_pointer(obj_ty) || self.is_lvalue(obj)
             }
             Expr::Index(array, _) => {
-                let arr_ty = self.get_cached_type(array.id);
+                let arr_ty = self.get_cached_type(array.id());
                 self.is_pointer(arr_ty) || self.is_lvalue(array)
             }
             _ => false,

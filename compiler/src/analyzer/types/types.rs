@@ -7,9 +7,8 @@ use crate::{
     },
     attempt,
     err::{HarpyError, Kind},
-    lexer::tokens::Lit,
+    lexer::tokens::{Lit, Literal},
     parser::{
-        expr::expr_defs::Expr,
         types::type_parsing::{FunctionType, Type},
         Node,
     },
@@ -86,21 +85,16 @@ impl Analyzer {
     fn resolve_array_type(
         &mut self,
         ty: &Type,
-        expr: &Option<Box<Node<Expr>>>,
+        expr: &Option<Node<Literal>>,
         env: Option<&Environment>,
     ) -> Result<TypeId> {
         let resolved = self.resolve_inner_type(ty, env)?;
         let mut size = None;
-        if let Some(expr) = expr {
-            match &expr.inner {
-                Expr::Literal(lit) => {
-                    if let Lit::LitInt(i) = lit.value() {
-                        size = Some(*i);
-                    } else {
-                        return HarpyError::err(lit.span(), Kind::ArraySizeInt);
-                    }
-                }
-                _ => return HarpyError::err(expr.span, Kind::ArraySizeInt.into()),
+        if let Some(lit) = expr {
+            if let Lit::LitInt(i) = lit.value() {
+                size = Some(*i);
+            } else {
+                return HarpyError::err(lit.span(), Kind::ArraySizeInt);
             }
         }
         let ty = ResolvedType::Array(resolved, size);
@@ -157,18 +151,18 @@ impl Analyzer {
     }
 
     fn validate_type_structure(&mut self, ty: &Node<Type>) -> Result<()> {
-        match &ty.inner {
+        match ty.inner() {
             Type::Ref(inner_node, _) => {
-                if let Type::Ref(_, _) = &inner_node.inner {
-                    return HarpyError::err(ty.span, Kind::RecursiveRef);
+                if let Type::Ref(_, _) = inner_node.inner() {
+                    return HarpyError::err(ty.span(), Kind::RecursiveRef);
                 }
             }
             Type::Boxed(inner_node, _) => {
-                if let Type::Boxed(_, _) = &inner_node.inner {
-                    return HarpyError::err(ty.span, Kind::RecursiveBox);
+                if let Type::Boxed(_, _) = inner_node.inner() {
+                    return HarpyError::err(ty.span(), Kind::RecursiveBox);
                 }
-                if let Type::Ref(_, _) = &inner_node.inner {
-                    return HarpyError::err(ty.span, Kind::BoxedRef);
+                if let Type::Ref(_, _) = inner_node.inner() {
+                    return HarpyError::err(ty.span(), Kind::BoxedRef);
                 }
             }
             Type::Array(inner_node, _) => {
@@ -190,12 +184,12 @@ impl Analyzer {
         ty: &Node<Type>,
         env: Option<&Environment>,
     ) -> Result<TypeId> {
-        if let Some(id) = self.db.type_table.is_cached(ty.id) {
+        if let Some(id) = self.db.type_table.is_cached(ty.id()) {
             return Ok(id);
         }
         self.validate_type_structure(ty)?;
         let resolved = self.resolve_inner_type(ty, env)?;
-        self.db.type_table.cache(ty.id, resolved);
+        self.db.type_table.cache(ty.id(), resolved);
         Ok(resolved)
     }
 

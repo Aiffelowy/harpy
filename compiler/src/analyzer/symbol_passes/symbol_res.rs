@@ -4,17 +4,18 @@ use crate::{
     analyzer::{
         analyzer::Analyzer,
         tables::{
-            struct_table::{StructId, StructLayout},
-            symbol_table::{Symbol, SymbolId, SymbolKind},
+            struct_table::StructId,
+            symbol_table::{Symbol, SymbolId},
         },
         types::types::{ResolvedType, TypeId},
     },
-    attempt,
-    err::Kind,
-    get_ty,
+    attempt, get_ty,
     lexer::tokens::Ident,
     parser::{
-        stmt::stmts::{ForStmt, FunctionDecl, LetStmt, Program, Stmt, StructDecl, WhileStmt},
+        stmt::{
+            stmt_structs::{FunctionDecl, LetStmt, Program},
+            stmts::Stmt,
+        },
         Node,
     },
 };
@@ -132,65 +133,16 @@ impl Analyzer {
 
         env.declare_local(decl.name.value().clone(), symbol_id);
         self.track_local_variable(symbol_id);
-        self.db.symbol_table.add_resolution(decl.id, symbol_id);
-    }
-
-    fn analyze_struct(&mut self, env: &mut Environment, decl: &Node<StructDecl>) {
-        let layout = StructLayout::skeleton(decl.name.value().clone(), decl.name.span());
-        attempt!(self.register_struct(layout, Some(env)));
-        self.register_struct_fields(decl, Some(env));
-    }
-
-    fn analyze_for(&mut self, env: &mut Environment, stmt: &Node<ForStmt>) {
-        self.analyze_expr(env, &stmt.iter_expr);
-        env.push_scope();
-
-        let symbol = Symbol {
-            name: stmt.temp_var.value().clone(),
-            ty: TypeId(0),
-            is_mutable: false,
-            declared_at: stmt.temp_var.span(),
-            kind: SymbolKind::Local,
-        };
-
-        let symbol_id = attempt!(self.register_symbol(symbol));
-        if symbol_id.is_valid() {
-            env.declare_local(stmt.temp_var.value().clone(), symbol_id);
-            self.db.symbol_table.add_resolution(stmt.id, symbol_id);
-        }
-
-        self.analyze_block_expr(env, &stmt.block);
-        env.pop_scope();
-    }
-
-    fn analyze_while(&mut self, env: &mut Environment, stmt: &Node<WhileStmt>) {
-        self.analyze_expr(env, &stmt.expr);
-        self.analyze_block_expr(env, &stmt.block);
+        self.db.symbol_table.add_resolution(decl.id(), symbol_id);
     }
 
     pub(in crate::analyzer) fn analyze_stmt(&mut self, env: &mut Environment, stmt: &Stmt) {
         match stmt {
-            Stmt::Struct(decl) => {
-                self.analyze_struct(env, decl);
-            }
-            Stmt::Function(decl) => {
-                self.register_function_decl(decl, Some(env));
-                self.analyze_fn(decl);
-            }
             Stmt::Let(decl) => {
                 self.analyze_let(env, decl);
             }
-            Stmt::For(for_stmt) => {
-                self.analyze_for(env, for_stmt);
-            }
-            Stmt::While(while_stmt) => {
-                self.analyze_while(env, while_stmt);
-            }
             Stmt::Expr(expr) => {
                 self.analyze_expr(env, expr);
-            }
-            Stmt::Global(g) => {
-                self.report_error(g.name.span(), Kind::GlobalInFn);
             }
             Stmt::Semi(expr) => {
                 self.analyze_expr(env, expr);
@@ -216,7 +168,7 @@ impl Analyzer {
                     }
                     env.declare_local(param.name.value().clone(), symbol_id);
                     analyzer.track_param(symbol_id);
-                    analyzer.db.symbol_table.add_resolution(param.id, symbol_id);
+                    analyzer.db.symbol_table.add_resolution(param.id(), symbol_id);
                 }
             }
             analyzer.analyze_block_expr(&mut env, &decl.block);
@@ -224,10 +176,8 @@ impl Analyzer {
     }
 
     pub fn symbol_resolution_pass(&mut self, ast: &Program) {
-        for stmt in &ast.items {
-            if let Stmt::Function(decl) = stmt {
-                self.analyze_fn(decl);
-            }
+        for f in &ast.functions {
+            self.analyze_fn(f);
         }
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     parser::{
         expr::expr_defs::FunctionArg,
         node::NodeId,
-        stmt::stmts::{GlobalStmt, LetStmt},
+        stmt::stmt_structs::{GlobalStmt, LetStmt},
     },
 };
 

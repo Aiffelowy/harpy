@@ -1,6 +1,6 @@
 use harpy_compiler::{
-    aliases::Result, analyzer::analyzer::Analyzer, err::ErrorPrinter, lexer::Lexer, parser::Parser,
-    source::source_map::SourceMap,
+    aliases::Result, analyzer::analyzer::Analyzer, desugar::desugarer::Desugarer,
+    err::ErrorPrinter, lexer::Lexer, parser::Parser, source::source_map::SourceMap,
 };
 
 fn main() -> Result<()> {
@@ -24,8 +24,10 @@ fn main() -> Result<()> {
         }
     };
 
+    let desugared = Desugarer::desugar(ast);
+
     let analyzer = Analyzer::default();
-    let db = match analyzer.analyze(&ast) {
+    let db = match analyzer.analyze(&desugared) {
         Ok(db) => db,
         Err((db, errors)) => {
             ErrorPrinter::print_all(&source_map, Some(&db), &errors);

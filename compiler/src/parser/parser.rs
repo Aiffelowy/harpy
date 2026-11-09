@@ -6,7 +6,7 @@ use crate::{
         tokens::{Token, TokenType, Tokenize},
         Lexer,
     },
-    parser::{node::NodeId, stmt::stmts::Program, Node},
+    parser::{node::NodeId, stmt::stmt_structs::RichProgram, Node},
     source::source_map::FileId,
     tt,
 };
@@ -40,7 +40,7 @@ macro_rules! parse_separated {
 
 #[macro_export]
 macro_rules! parse_sequence {
-    ($parser:expr, $open:tt, $close:tt, $parse_expr:expr, $sync_points:expr) => {{
+    ($parser:expr, $open:tt, $close:tt, $parse_expr:expr, [$($sync_points:expr)*]) => {{
         $parser.consume::<t!($open)>()?;
         let mut items = Vec::new();
 
@@ -51,7 +51,7 @@ macro_rules! parse_sequence {
 
             match $parse_expr {
                 Ok(item) => items.push(item),
-                Err(e) => $parser.report_error(e, $sync_points)?,
+                Err(e) => $parser.report_error(e, &[tt!($close), $(, $sync_points)*])?,
             }
         }
 
@@ -128,11 +128,8 @@ impl<'parser> Parser<'parser> {
         let inner = parsable(self)?;
         let end = self.previous_end;
 
-        Ok(Node {
-            id: self.next_id(),
-            span: Span::new(start, end, self.lexer.file_id()),
-            inner,
-        })
+        let span = Span::new(start, end, self.lexer.file_id());
+        Ok(Node::new(self.next_id(), span, inner))
     }
 
     pub(super) fn discard_next(&mut self) -> Result<Token> {
@@ -143,28 +140,96 @@ impl<'parser> Parser<'parser> {
         Ok(discarded)
     }
 
+    //    pub(super) fn report_error(
+    //        &mut self,
+    //        error: HarpyError,
+    //        recovery_points: &[TokenType],
+    //    ) -> Result<()> {
+    //        self.errors.push(error);
+    //
+    //        let first = self.peek()?;
+    //        if !matches!(first, tt!(eof)) && !recovery_points.contains(first) {
+    //            self.discard_next()?;
+    //        }
+    //
+    //        loop {
+    //            let t = self.peek()?;
+    //            if matches!(t, tt!(eof)) || recovery_points.contains(t) {
+    //                break;
+    //            }
+    //
+    //            if matches!(t, tt!(;)) {
+    //                self.discard_next()?;
+    //                break;
+    //            }
+    //
+    //            self.discard_next()?;
+    //        }
+    //
+    //        Ok(())
+    //    }
     pub(super) fn report_error(
         &mut self,
         error: HarpyError,
         recovery_points: &[TokenType],
     ) -> Result<()> {
         self.errors.push(error);
+
+        let mut depth: usize = 0;
+
+        let first = self.peek()?;
+        if !matches!(first, tt!(eof)) && !recovery_points.contains(first) {
+            if matches!(first, tt!("{") | tt!("(") | tt!("[")) {
+                depth += 1;
+            }
+            self.discard_next()?;
+        }
+
         loop {
             let t = self.peek()?;
-            if recovery_points.contains(t) {
+            if matches!(t, tt!(eof)) {
                 break;
             }
 
-            if matches!(t, tt!(eof) | tt!("}")) {
-                break;
+            if depth == 0 {
+                if recovery_points.contains(t) {
+                    break;
+                }
+                if matches!(t, tt!(;)) {
+                    self.discard_next()?;
+                    break;
+                }
             }
 
-            if matches!(t, tt!(;)) {
-                self.discard_next()?;
-                break;
+            match t {
+                tt!("{") | tt!("(") | tt!("[") => {
+                    depth += 1;
+                    self.discard_next()?;
+                }
+                tt!("}") => match depth {
+                    0 => {
+                        break;
+                    }
+                    1 => {
+                        self.discard_next()?;
+                        break;
+                    }
+                    _ => {
+                        depth -= 1;
+                        self.discard_next()?;
+                    }
+                },
+                tt!(")") | tt!("]") => match depth {
+                    0 => break,
+                    _ => {
+                        depth -= 1;
+                        self.discard_next()?;
+                    }
+                },
+                _ => {
+                    self.discard_next()?;
+                }
             }
-
-            self.discard_next()?;
         }
 
         Ok(())
@@ -180,7 +245,7 @@ impl<'parser> Parser<'parser> {
         ))
     }
 
-    pub fn build_ast(mut self) -> std::result::Result<Program, Vec<HarpyError>> {
+    pub fn build_ast(mut self) -> std::result::Result<RichProgram, Vec<HarpyError>> {
         let p = match self.parse_program() {
             Ok(p) => p,
             Err(e) => {

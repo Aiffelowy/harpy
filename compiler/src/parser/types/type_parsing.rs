@@ -1,8 +1,8 @@
 use crate::{
     aliases::Result,
-    lexer::tokens::Ident,
+    lexer::tokens::{Ident, Literal},
     parse_separated,
-    parser::{expr::expr_defs::Expr, Node, Parser},
+    parser::{Node, Parser},
     peek_and_consume, t, tt,
 };
 
@@ -10,7 +10,7 @@ use crate::{
 pub enum Type {
     Boxed(Box<Node<Type>>, bool),
     Ref(Box<Node<Type>>, bool),
-    Array(Box<Node<Type>>, Option<Box<Node<Expr>>>),
+    Array(Box<Node<Type>>, Option<Node<Literal>>),
     FunctionType(FunctionType),
     Int,
     Float,
@@ -85,7 +85,8 @@ impl<'parser> Parser<'parser> {
                 let mut size = None;
                 if let tt!(:) = self.peek()? {
                     self.consume::<t!(:)>()?;
-                    size = Some(Box::new(self.parse_node(Self::parse_expr)?));
+                    let s = self.parse_node(Self::consume)?;
+                    size = Some(s);
                 }
                 let inner = Type::Array(inner_type, size);
                 self.consume::<t!("]")>()?;

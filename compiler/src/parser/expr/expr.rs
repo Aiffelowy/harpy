@@ -2,7 +2,7 @@ use crate::err::{HarpyError, Kind};
 use crate::lexer::span::Span;
 use crate::parser::expr::expr_defs::*;
 use crate::parser::expr::ops::{AssignOp, InfixOp, PrefixOp};
-use crate::parser::stmt::stmts::Stmt;
+use crate::parser::stmt::stmts::RichStmt;
 use crate::parser::types::type_parsing::Type;
 use crate::parser::{Node, Parser};
 use crate::{aliases::Result, lexer::tokens::TokenType, t, tt};
@@ -12,7 +12,7 @@ use crate::{parse_separated, parse_sequence, peek_and_consume};
 pub(in crate::parser) enum Precedence {
     Lowest,
     Assign,
-    Range,
+    //Range,
     Or,
     And,
     Compare,
@@ -26,7 +26,7 @@ impl Precedence {
     fn get(token: &TokenType) -> Self {
         match token {
             tt!(=) | tt!(+=) | tt!(-=) | tt!(*=) | tt!(/=) | tt!(%=) => Self::Assign,
-            tt!(=>) => Self::Range,
+            //tt!(=>) => Self::Range,
             tt!(||) => Self::Or,
             tt!(&&) => Self::And,
             tt!(==) | tt!(>) | tt!(<) | tt!(<=) | tt!(>=) | tt!(!=) => Self::Compare,
@@ -39,50 +39,44 @@ impl Precedence {
 }
 
 impl<'parser> Parser<'parser> {
-    fn parse_call_expr(&mut self, callee: Node<Expr>) -> Result<CallExpr> {
+    fn parse_call_expr(&mut self, callee: Node<RichExpr>) -> Result<RichCallExpr> {
         let args = parse_separated!(self, "(", ")", ,, self.parse_node(Self::parse_expr)?);
-        Ok(CallExpr {
-            callee: Box::new(callee),
-            args,
-        })
+        Ok(RichCallExpr { callee, args })
     }
 
-    pub(in crate::parser) fn parse_block_expr(&mut self) -> Result<BlockExpr> {
-        let stmts = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_stmt), &[]);
-        let mut block = BlockExpr { stmts, tail: None };
-        let Some(last_stmt) = block.stmts.last() else {
-            return Ok(block);
-        };
+    pub(in crate::parser) fn parse_block_expr(&mut self) -> Result<RichBlockExpr> {
+        let mut stmts = parse_sequence!(self, "{", "}", self.parse_node(Self::parse_stmt), []);
+        let mut tail = None;
 
-        if let Stmt::Expr(_) = &last_stmt.inner {
-            if let Some(Node {
-                inner: Stmt::Expr(expr),
-                ..
-            }) = block.stmts.pop()
-            {
-                block.tail = Some(Box::new(expr));
+        if let Some(last) = stmts.pop() {
+            let id = last.id();
+            let (stmt, span) = last.extract();
+            match stmt {
+                RichStmt::Expr(expr) => tail = Some(expr),
+                other => stmts.push(Node::new(id, span, other)),
             }
         }
-        Ok(block)
+
+        Ok(RichBlockExpr { stmts, tail })
     }
 
-    fn parse_loop_expr(&mut self) -> Result<LoopExpr> {
+    fn parse_loop_expr(&mut self) -> Result<RichLoopExpr> {
         self.consume::<t!(loop)>()?;
         let block = self.parse_node(Self::parse_block_expr)?;
-        Ok(LoopExpr { block })
+        Ok(RichLoopExpr { block })
     }
 
-    fn parse_if_expr(&mut self) -> Result<IfExpr> {
+    fn parse_if_expr(&mut self) -> Result<RichIfExpr> {
         self.consume::<t!(if)>()?;
 
-        let expr = Box::new(self.parse_node(Self::parse_expr)?);
+        let expr = self.parse_node(Self::parse_expr)?;
         let block = self.parse_node(Self::parse_block_expr)?;
         let mut else_block = None;
         if peek_and_consume!(self, else) {
-            else_block = Some(Box::new(self.parse_node(Self::parse_expr)?));
+            else_block = Some(self.parse_node(Self::parse_expr)?);
         }
 
-        Ok(IfExpr {
+        Ok(RichIfExpr {
             expr,
             block,
             else_block,
@@ -107,14 +101,14 @@ impl<'parser> Parser<'parser> {
         self.parse_type()
     }
 
-    fn parse_closure_expr(&mut self) -> Result<ClosureExpr> {
+    fn parse_closure_expr(&mut self) -> Result<RichClosureExpr> {
         self.consume::<t!(fn)>()?;
         let args = parse_separated!(self, "(", ")",,, self.parse_function_arg()?);
         let return_type = self.parse_node(Self::parse_function_return_type)?;
 
         let block = self.parse_node(Self::parse_block_expr)?;
 
-        Ok(ClosureExpr {
+        Ok(RichClosureExpr {
             args,
             return_type,
             block,
@@ -123,14 +117,20 @@ impl<'parser> Parser<'parser> {
 
     fn parse_switch_expr(&mut self) -> Result<SwitchExpr> {
         self.consume::<t!(switch)>()?;
-        let expr = Box::new(self.parse_node(Self::parse_expr)?);
+        let expr = self.parse_node(Self::parse_expr)?;
         self.consume::<t!("{")>()?;
 
         let mut cases = Vec::new();
         let mut default = None;
 
         loop {
-            if let tt!("}") | tt!(eof) = self.peek()? {
+            let peeked = self.peek()?;
+            if let tt!("}") = peeked {
+                self.consume::<t!("}")>()?;
+                break;
+            }
+
+            if let tt!(eof) = peeked {
                 break;
             }
 
@@ -157,20 +157,20 @@ impl<'parser> Parser<'parser> {
         })
     }
 
-    fn parse_prefix(&mut self) -> Result<Expr> {
+    fn parse_prefix(&mut self) -> Result<RichExpr> {
         match self.peek()? {
             tt!(lit) => {
                 let lit = self.consume()?;
-                Ok(Expr::Literal(lit))
+                Ok(RichExpr::Literal(lit))
             }
             tt!(ident) => {
                 let name = self.consume()?;
 
-                Ok(Expr::Ident(name))
+                Ok(RichExpr::Ident(name))
             }
             tt!(.) => {
                 self.consume::<t!(.)>()?;
-                Ok(Expr::Implicit)
+                Ok(RichExpr::Implicit)
             }
 
             // hacky special syntax for spawn caged Object (sounds really cool ok?)
@@ -188,14 +188,11 @@ impl<'parser> Parser<'parser> {
                 });
 
                 if is_boxed {
-                    let node = Node {
-                        id: self.next_id(),
-                        span: Span::new(spawn.span().start, self.previous_end, self.file_id()),
-                        inner: Expr::StructInit(name, fields),
-                    };
-                    Ok(Expr::Box(Box::new(node), is_mut))
+                    let span = Span::new(spawn.span().start, self.previous_end, self.file_id());
+                    let node = Node::new(self.next_id(), span, RichExpr::StructInit(name, fields));
+                    Ok(RichExpr::Box(node, is_mut))
                 } else {
-                    Ok(Expr::StructInit(name, fields))
+                    Ok(RichExpr::StructInit(name, fields))
                 }
             }
 
@@ -217,7 +214,7 @@ impl<'parser> Parser<'parser> {
                 };
 
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
-                Ok(Expr::Prefix(op, Box::new(right)))
+                Ok(RichExpr::Prefix(op, right))
             }
 
             tt!("(") => {
@@ -229,51 +226,53 @@ impl<'parser> Parser<'parser> {
             tt!("[") => {
                 let elements =
                     parse_separated!(self, "[", "]",,, self.parse_node(Self::parse_expr)?);
-                Ok(Expr::ArrayInit(elements))
+                Ok(RichExpr::ArrayInit(elements))
             }
-            tt!("{") => Ok(Expr::Block(self.parse_node(Self::parse_block_expr)?)),
-            tt!(if) => Ok(Expr::If(self.parse_node(Self::parse_if_expr)?)),
-            tt!(loop) => Ok(Expr::Loop(self.parse_node(Self::parse_loop_expr)?)),
-            tt!(switch) => Ok(Expr::Switch(self.parse_node(Self::parse_switch_expr)?)),
-            tt!(fn) => Ok(Expr::Closure(self.parse_node(Self::parse_closure_expr)?)),
+            tt!("{") => Ok(RichExpr::Block(self.parse_node(Self::parse_block_expr)?)),
+            tt!(if) => Ok(RichExpr::If(self.parse_node(Self::parse_if_expr)?)),
+            tt!(loop) => Ok(RichExpr::Loop(self.parse_node(Self::parse_loop_expr)?)),
+            tt!(switch) => Ok(RichExpr::Switch(self.parse_node(Self::parse_switch_expr)?)),
+            tt!(fn) => Ok(RichExpr::Closure(
+                self.parse_node(Self::parse_closure_expr)?,
+            )),
             tt!(return) => {
                 self.consume::<t!(return)>()?;
                 let mut value = None;
                 if self.peek()? != &tt!(;) {
-                    value = Some(Box::new(self.parse_node(Self::parse_expr)?))
+                    value = Some(self.parse_node(Self::parse_expr)?)
                 }
-                Ok(Expr::Return(value))
+                Ok(RichExpr::Return(value))
             }
             tt!(break) => {
                 self.consume::<t!(break)>()?;
                 let mut value = None;
                 if self.peek()? != &tt!(;) {
-                    value = Some(Box::new(self.parse_node(Self::parse_expr)?))
+                    value = Some(self.parse_node(Self::parse_expr)?)
                 }
-                Ok(Expr::Break(value))
+                Ok(RichExpr::Break(value))
             }
             tt!(continue) => {
                 self.consume::<t!(continue)>()?;
-                Ok(Expr::Continue)
+                Ok(RichExpr::Continue)
             }
 
             tt!(ref) => {
                 self.consume::<t!(ref)>()?;
                 let is_mut = peek_and_consume!(self, mut);
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
-                Ok(Expr::Borrow(Box::new(right), is_mut))
+                Ok(RichExpr::Borrow(right, is_mut))
             }
 
             tt!(box) => {
                 self.consume::<t!(box)>()?;
                 let is_mut = peek_and_consume!(self, mut);
                 let right = self.parse_node(|p| p.pratt_parser(Precedence::Prefix))?;
-                Ok(Expr::Box(Box::new(right), is_mut))
+                Ok(RichExpr::Box(right, is_mut))
             }
             tt!(clone) => {
                 self.consume::<t!(clone)>()?;
                 let expr = self.parse_node(Self::parse_expr)?;
-                Ok(Expr::Clone(Box::new(expr)))
+                Ok(RichExpr::Clone(expr))
             }
 
             _ => self.unexpected("prefix token in expression"),
@@ -321,8 +320,8 @@ impl<'parser> Parser<'parser> {
         Ok(op)
     }
 
-    fn parse_infix(&mut self, left: Node<Expr>) -> Result<Node<Expr>> {
-        let start = left.span.start;
+    fn parse_infix(&mut self, left: Node<RichExpr>) -> Result<Node<RichExpr>> {
+        let start = left.span().start;
         let op_tok = self.peek()?.clone();
         let prec = Precedence::get(&op_tok);
 
@@ -342,70 +341,69 @@ impl<'parser> Parser<'parser> {
             | tt!(!=) => {
                 let op = self.parse_infix_op()?;
                 let right = self.parse_node(|p| p.pratt_parser(prec))?;
-                Expr::Infix(Box::new(left), op, Box::new(right))
+                RichExpr::Infix(left, op, right)
             }
 
-            tt!(=>) => {
-                self.consume::<t!(=>)>()?;
-                let right = self.parse_node(|p| p.pratt_parser(prec))?;
+            //tt!(=>) => {
+            //    self.consume::<t!(=>)>()?;
+            //    let right = self.parse_node(|p| p.pratt_parser(prec))?;
 
-                let start = match &left.inner {
-                    Expr::Implicit => None,
-                    _ => Some(Box::new(left)),
-                };
+            //    let start = match left.inner() {
+            //        RichExpr::Implicit => None,
+            //        _ => Some(left),
+            //    };
 
-                let end = match &right.inner {
-                    Expr::Implicit => None,
-                    _ => Some(Box::new(right)),
-                };
-                Expr::Range(start, end)
-            }
-
+            //    let end = match right.inner() {
+            //        RichExpr::Implicit => None,
+            //        _ => Some(right),
+            //    };
+            //    RichExpr::Range(start, end)
+            //}
             tt!(.) => {
                 self.consume::<t!(.)>()?;
                 let name = self.consume()?;
-                Expr::MemberAccess(Box::new(left), name)
+                RichExpr::MemberAccess(left, name)
             }
 
             tt!("[") => {
                 self.consume::<t!("[")>()?;
                 let index = self.parse_node(Self::parse_expr)?;
                 self.consume::<t!("]")>()?;
-                Expr::Index(Box::new(left), Box::new(index))
+                RichExpr::Index(left, index)
             }
 
             tt!(=) | tt!(+=) | tt!(-=) | tt!(*=) | tt!(/=) | tt!(%=) => {
                 let op = self.parse_assign_op()?;
                 let right = self.parse_node(Self::parse_expr)?;
-                Expr::Assign(Box::new(left), op, Box::new(right))
+                RichExpr::Assign(left, op, right)
             }
 
             tt!("(") => {
                 let call = self.parse_node(|p| p.parse_call_expr(left))?;
-                Expr::Call(call)
+                RichExpr::Call(call)
             }
 
             _ => unreachable!("precedence should prevent this!"),
         };
 
         let end = self.previous_end;
-        Ok(Node {
-            id: self.next_id(),
-            span: Span::new(start, end, self.file_id()),
-            inner: expr,
-        })
+        Ok(Node::new(
+            self.next_id(),
+            Span::new(start, end, self.file_id()),
+            expr,
+        ))
     }
 
-    fn pratt_parser(&mut self, precedence: Precedence) -> Result<Expr> {
+    fn pratt_parser(&mut self, precedence: Precedence) -> Result<RichExpr> {
         let mut left = self.parse_node(Self::parse_prefix)?;
         while precedence < Precedence::get(self.peek()?) {
             left = self.parse_infix(left)?;
         }
-
-        Ok(left.inner)
+        let (left, _) = left.extract();
+        Ok(left)
     }
 
-    pub(in crate::parser) fn parse_expr(&mut self) -> Result<Expr> {
+    pub(in crate::parser) fn parse_expr(&mut self) -> Result<RichExpr> {
         self.pratt_parser(Precedence::Lowest)
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     lexer::tokens::{Ident, Literal},
-    parser::{expr::ops::*, stmt::stmts::Stmt, types::type_parsing::Type, Node},
+    parser::{expr::ops::*, stmt::stmts::RichStmt, types::type_parsing::Type, Node},
 };
 
 #[derive(Debug, Clone)]
@@ -11,92 +11,92 @@ pub struct FunctionArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct CallExpr {
-    pub callee: Box<Node<Expr>>,
-    pub args: Vec<Node<Expr>>,
+pub struct RichCallExpr {
+    pub callee: Node<RichExpr>,
+    pub args: Vec<Node<RichExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct BlockExpr {
-    pub stmts: Vec<Node<Stmt>>,
-    pub tail: Option<Box<Node<Expr>>>,
+pub struct RichBlockExpr {
+    pub stmts: Vec<Node<RichStmt>>,
+    pub tail: Option<Node<RichExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LoopExpr {
-    pub block: Node<BlockExpr>,
+pub struct RichLoopExpr {
+    pub block: Node<RichBlockExpr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct IfExpr {
-    pub expr: Box<Node<Expr>>,
-    pub block: Node<BlockExpr>,
-    pub else_block: Option<Box<Node<Expr>>>,
+pub struct RichIfExpr {
+    pub expr: Node<RichExpr>,
+    pub block: Node<RichBlockExpr>,
+    pub else_block: Option<Node<RichExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ClosureExpr {
+pub struct RichClosureExpr {
     pub args: Vec<FunctionArg>,
     pub return_type: Node<Type>,
-    pub block: Node<BlockExpr>,
+    pub block: Node<RichBlockExpr>,
 }
 
 #[derive(Debug, Clone)]
 pub struct SwitchExpr {
-    pub expr: Box<Node<Expr>>,
-    pub cases: Vec<(Node<Expr>, Node<BlockExpr>)>,
-    pub default: Option<Node<BlockExpr>>,
+    pub expr: Node<RichExpr>,
+    pub cases: Vec<(Node<RichExpr>, Node<RichBlockExpr>)>,
+    pub default: Option<Node<RichBlockExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct BreakExpr {
-    pub expr: Option<Node<Expr>>,
+pub struct RichBreakExpr {
+    pub expr: Option<Node<RichExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ReturnExpr {
-    pub expr: Option<Node<Expr>>,
+pub struct RichReturnExpr {
+    pub expr: Option<Node<RichExpr>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Expr {
-    Infix(Box<Node<Expr>>, InfixOp, Box<Node<Expr>>),
-    Prefix(PrefixOp, Box<Node<Expr>>),
-    Assign(Box<Node<Expr>>, AssignOp, Box<Node<Expr>>),
+pub enum RichExpr {
+    Infix(Node<RichExpr>, InfixOp, Node<RichExpr>),
+    Prefix(PrefixOp, Node<RichExpr>),
+    Assign(Node<RichExpr>, AssignOp, Node<RichExpr>),
     Literal(Literal),
     Ident(Ident),
-    Call(Node<CallExpr>),
-    Loop(Node<LoopExpr>),
-    Return(Option<Box<Node<Expr>>>),
-    Break(Option<Box<Node<Expr>>>),
+    Call(Node<RichCallExpr>),
+    Loop(Node<RichLoopExpr>),
+    Return(Option<Node<RichExpr>>),
+    Break(Option<Node<RichExpr>>),
     Continue,
-    If(Node<IfExpr>),
+    If(Node<RichIfExpr>),
     Switch(Node<SwitchExpr>),
-    Block(Node<BlockExpr>),
-    Closure(Node<ClosureExpr>),
-    Borrow(Box<Node<Expr>>, bool),
-    Box(Box<Node<Expr>>, bool),
+    Block(Node<RichBlockExpr>),
+    Closure(Node<RichClosureExpr>),
+    Borrow(Node<RichExpr>, bool),
+    Box(Node<RichExpr>, bool),
     Implicit,
-    Range(Option<Box<Node<Expr>>>, Option<Box<Node<Expr>>>),
-    MemberAccess(Box<Node<Expr>>, Ident),
-    StructInit(Ident, Vec<(Ident, Node<Expr>)>),
-    ArrayInit(Vec<Node<Expr>>),
-    Index(Box<Node<Expr>>, Box<Node<Expr>>),
-    Clone(Box<Node<Expr>>),
+    Range(Option<Node<RichExpr>>, Option<Node<RichExpr>>),
+    MemberAccess(Node<RichExpr>, Ident),
+    StructInit(Ident, Vec<(Ident, Node<RichExpr>)>),
+    ArrayInit(Vec<Node<RichExpr>>),
+    Index(Node<RichExpr>, Node<RichExpr>),
+    Clone(Node<RichExpr>),
 }
 
-impl Expr {
+impl RichExpr {
     pub fn requires_semi(&self) -> bool {
         !matches!(
             self,
-            Expr::If(_)
-                | Expr::Loop(_)
-                | Expr::Switch(_)
-                | Expr::Block(_)
-                | Expr::Closure(_)
-                | Expr::Return(_)
-                | Expr::Break(_)
-                | Expr::Continue
+            RichExpr::If(_)
+                | RichExpr::Loop(_)
+                | RichExpr::Switch(_)
+                | RichExpr::Block(_)
+                | RichExpr::Closure(_)
+                | RichExpr::Return(_)
+                | RichExpr::Break(_)
+                | RichExpr::Continue
         )
     }
 }

@@ -24,7 +24,6 @@ pub enum Kind {
     UnknownSymbol(String),
     ArraySizeInt,
     MissingMain,
-    GlobalInFn,
     //TYPE ERRORS
     ExprNotIter,
     NotCompatible { expected: TypeId, got: TypeId },

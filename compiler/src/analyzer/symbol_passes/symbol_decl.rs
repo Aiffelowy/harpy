@@ -12,7 +12,7 @@ use crate::{
     attempt,
     err::{HarpyError, Kind},
     parser::{
-        stmt::stmts::{FunctionDecl, GlobalStmt, Program, Stmt, StructDecl},
+        stmt::stmt_structs::{FunctionDecl, GlobalStmt, Program, StructDecl},
         types::type_parsing::FunctionType,
         Node,
     },
@@ -20,11 +20,9 @@ use crate::{
 
 impl Analyzer {
     fn pass_skeleton(&mut self, ast: &Program) {
-        for stmt in &ast.items {
-            if let Stmt::Struct(decl) = &stmt {
-                let layout = StructLayout::skeleton(decl.name.value().clone(), decl.name.span());
-                attempt!(self.register_struct(layout, None));
-            }
+        for s in &ast.structs {
+            let layout = StructLayout::skeleton(s.name.value().clone(), s.name.span());
+            attempt!(self.register_struct(layout, None));
         }
     }
 
@@ -36,7 +34,7 @@ impl Analyzer {
         let mut fields = vec![];
         for field in &decl.fields {
             let ty_id = attempt!(self.resolve_type_with_env(&field.ttype, env));
-            self.db.type_table.cache(field.id, ty_id);
+            self.db.type_table.cache(field.id(), ty_id);
             fields.push(Field {
                 name: field.name.value().clone(),
                 ty: ty_id,
@@ -88,8 +86,8 @@ impl Analyzer {
                 };
                 attempt!(self.register_global(global_def));
             }
-            self.db.symbol_table.add_resolution(decl.id, symbol_id);
-            self.db.function_table.add_resolution(decl.id, func_id);
+            self.db.symbol_table.add_resolution(decl.id(), symbol_id);
+            self.db.function_table.add_resolution(decl.id(), func_id);
         }
 
         if env.is_none() && decl.name.value() == "main" {
@@ -110,20 +108,21 @@ impl Analyzer {
         };
         let global_id = attempt!(self.register_global(def));
         if global_id.is_valid() {
-            self.db.symbol_table.add_resolution(decl.id, symbol);
+            self.db.symbol_table.add_resolution(decl.id(), symbol);
         }
     }
 
     fn pass_signatures(&mut self, ast: &Program) {
-        for stmt in &ast.items {
-            match stmt {
-                Stmt::Struct(decl) => self.register_struct_fields(decl, None),
-                Stmt::Function(decl) => {
-                    self.register_function_decl(decl, None);
-                }
-                Stmt::Global(decl) => self.register_global_decl(decl),
-                _ => unreachable!(),
-            }
+        for f in &ast.functions {
+            self.register_function_decl(f, None);
+        }
+
+        for s in &ast.structs {
+            self.register_struct_fields(s, None);
+        }
+
+        for g in &ast.globals {
+            self.register_global_decl(g);
         }
     }
 

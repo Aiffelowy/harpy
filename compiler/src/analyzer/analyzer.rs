@@ -17,7 +17,7 @@ use crate::{
     },
     err::{HarpyError, Kind},
     lexer::{span::Span, tokens::Ident},
-    parser::{node::NodeId, stmt::stmts::Program},
+    parser::{node::NodeId, stmt::stmt_structs::Program},
 };
 
 #[macro_export]
@@ -341,7 +341,6 @@ impl Analyzer {
         self.pass_symbol_declaration(ast);
         self.symbol_resolution_pass(ast);
         self.check_types(ast);
-        self.dataflow_analysis(ast);
         if !self.errors.is_empty() {
             return Err((self.db, self.errors));
         }
